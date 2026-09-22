@@ -41,7 +41,7 @@
 
 {% block scripts %}
 {{ block.super }}
-<script type="text/javascript">
+<script type="module">
   $(document).ready(function(){
     $('#search-form').on('submit', function(ev) {
       if ($('#id_replacement').val() && !$('#id_project').val()) {

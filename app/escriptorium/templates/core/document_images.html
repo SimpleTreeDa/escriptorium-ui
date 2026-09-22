@@ -230,7 +230,7 @@
 
 {{ block.super }}
 {% if request.user.legacy_mode %}
-<script>
+<script type="module">
   $(document).ready(function() {
     // join the ws room
     bootWebsocket();

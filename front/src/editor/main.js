@@ -1,3 +1,4 @@
+import Vue from "vue";
 import store from "./index.js";
 import Editor from "../../vue/components/Editor.vue";
 

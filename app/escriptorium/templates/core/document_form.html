@@ -113,7 +113,7 @@
 
 {% block scripts %}
 {{ block.super }}
-<script>
+<script type="module">
  $(document).ready(function(){
      var scripts = { {% for script in form.fields.main_script.queryset %}
          '{{script.pk}}':'{{script.text_direction}}',{% endfor %} };

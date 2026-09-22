@@ -62,7 +62,7 @@
 
 {% block extrascript %}
     {% if not request.user.legacy_mode %}
-        <script src="{% static 'imagesPage.js' %}"></script>
+        <script type="module" src="{% static 'imagesPage.js' %}"></script>
     {% endif %}
 {% endblock extrascript %}
 

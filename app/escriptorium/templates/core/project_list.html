@@ -45,7 +45,7 @@
 
 {% block extrascript %}
     {% if not request.user.legacy_mode %}
-        <script src="{% static 'projectsList.js' %}"></script>
+        <script type="module" src="{% static 'projectsList.js' %}"></script>
     {% endif %}
 {% endblock extrascript %}
 

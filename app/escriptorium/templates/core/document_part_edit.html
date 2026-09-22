@@ -21,7 +21,7 @@
     {{ block.super }}
 
     {% if request.user.legacy_mode %}
-        <script>
+        <script type="module">
             $(document).ready(function() {
                 // join the ws room
                 joinDocumentRoom('{{document.pk}}');
@@ -30,7 +30,7 @@
         </script>
     {% endif %}
 
-    <script src="{% static 'editor.js' %}"></script>
+    <script type="module" src="{% static 'editor.js' %}"></script>
 {% endblock %}
 
 

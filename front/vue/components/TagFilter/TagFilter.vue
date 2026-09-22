@@ -52,7 +52,7 @@ export default {
          * ```
          * {
          *     operator: String,
-         *     tags: Array<String>,
+         *     tags: String[],
          *     untagged: Boolean,
          * }
          * ```

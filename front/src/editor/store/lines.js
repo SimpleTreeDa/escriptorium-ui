@@ -1,3 +1,4 @@
+import Vue from "vue";
 import { assign, kebabCase } from "lodash";
 import * as api from "../api";
 

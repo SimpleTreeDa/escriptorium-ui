@@ -1,4 +1,6 @@
-window.Vue = require("vue/dist/vue");
+import Vue from "vue";
+
+window.Vue = Vue;
 
 export var BasePanel = {
     // Base class for all editor panels.

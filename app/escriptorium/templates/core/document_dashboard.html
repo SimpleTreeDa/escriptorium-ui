@@ -20,7 +20,7 @@
 
 {% block extrascript %}
     {% if not request.user.legacy_mode %}
-        <script src="{% static 'documentDashboard.js' %}"></script>
+        <script type="module" src="{% static 'documentDashboard.js' %}"></script>
     {% endif %}
 {% endblock extrascript %}
 

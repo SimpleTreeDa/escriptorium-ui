@@ -1,3 +1,4 @@
+import Vue from "vue";
 import { assign } from "lodash";
 import * as api from "../api";
 import { updateTranscription } from "../../api/document";

@@ -12,48 +12,62 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 import "moment-timezone/builds/moment-timezone-with-data-10-year-range.min.js";
 import "@escriptorium/virtual-keyboard/dist-lib/content.js";
 import "bootstrap-select/dist/css/bootstrap-select.css";
+import Vue from "vue";
+import jquery from "jquery";
+import Dropzone from "dropzone";
+import moment from "moment/moment";
+import paper from "paper";
+import UndoManager from "undo-manager";
+import Sortable from "sortablejs/Sortable";
+import ReconnectingWebSocket from "reconnectingwebsocket";
+import Cookies from "js-cookie";
+import * as Diff from "diff";
+import math from "mathjs/dist/math.min";
+import BootstrapSelect from "bootstrap-select/dist/js/bootstrap-select";
+
+// Vue needs to be explicitly set on window, as some legacy editor modules
+// reference Vue globally.
+window.Vue = Vue;
 
 // JQuery needs to be explicitly set on window, as it's used at boot time
 // by various scripts
-window.jQuery = window.$ = require("jquery");
+window.jQuery = window.$ = jquery;
 
 // Dropzone needs to be explicitly set on window, as it's modified at boot time
 // by image-cards.js
-// window.Dropzone = require('dropzone/dist/dropzone');
-import Dropzone from "dropzone";
 window.Dropzone = Dropzone;
 
 // moment needs to be explicitly set on window, as it's used at boot time
 // by trans_modal.js
-window.moment = require("moment/moment");
+window.moment = moment;
 
 // Paper needs to be explicitly set on window, as it's used at boot time
 // by baseline.editor.js
-window.paper = require("paper");
+window.paper = paper;
 
 // Undo-manager needs to be explicitly set on window, as it's used at boot time
 // by seg_panel.js
-window.UndoManager = require("undo-manager");
+window.UndoManager = UndoManager;
 
 // Sortable needs to be explicitly set on window, as it's used at boot time
 // by diplo_panel.js
-window.Sortable = require("sortablejs/Sortable");
+window.Sortable = Sortable;
 
 // ReconnectingWebSocket needs to be explicitly set on window, as it's used at boot time
 // by messages.js
-window.ReconnectingWebSocket = require("reconnectingwebsocket");
+window.ReconnectingWebSocket = ReconnectingWebSocket;
 
 // Js-cookie needs to be explicitly set on window, as it's used at boot time
 // by ajax.js
-window.Cookies = require("js-cookie");
+window.Cookies = Cookies;
 
 // Diff needs to be explicitly set on window, as it's used at boot time
 // by various scripts
-window.Diff = require("diff");
+window.Diff = Diff;
 
 // Mathjs needs to be explicitly set on window, as it's used at boot time
 // by baseline.editor.js
-window.math = require("mathjs/dist/math.min");
+window.math = math;
 
 //Bootstrap select
-window.BootstrapSelect = require("bootstrap-select/dist/js/bootstrap-select");
+window.BootstrapSelect = BootstrapSelect;
