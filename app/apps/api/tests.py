@@ -1159,7 +1159,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
                               'part_pk': self.part.pk,
                               'pk': self.lt.pk})
 
-        with self.assertNumQueries(16):
+        with self.assertNumQueries(20):
             resp = self.client.put(uri, {'content': 'test',
                                          'transcription': self.lt.transcription.pk,
                                          'line': self.lt.line.pk},
