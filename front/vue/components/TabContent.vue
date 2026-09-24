@@ -278,7 +278,7 @@ export default {
                 var largestTarget = this.zoom.targets.reduce((max, target) => max.container.clientWidth > target.container.clientWidth ? max : target);
                 let ratio = largestTarget.container.clientWidth / this.image.size[0];
                 if (this.zoom.scale * ratio > full_size_scale_threshold) {
-                    this.prefetchImage(this.image.uri, function() {
+                    this.prefetchImage(this.$store.getters["parts/fullSizeImageUri"], function() {
                         this.fullsizeimage = true;
                     }.bind(this));
                 }

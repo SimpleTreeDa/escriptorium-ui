@@ -1061,8 +1061,7 @@ const actions = {
                 state.parts.find((p) => p.pk.toString() === id.toString()),
             );
             if (part) {
-                part.workflow[process] =
-                    status === "canceled" ? "error" : status;
+                part.workflow[process] = status;
                 commit("updatePart", part);
             }
         }

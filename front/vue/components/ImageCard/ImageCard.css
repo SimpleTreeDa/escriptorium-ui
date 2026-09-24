@@ -178,6 +178,7 @@
 
 /* image thumbnail */
 .escr-image-card a.img {
+    position: relative;
     display: block;
     min-width: 100%;
     max-height: 144px;
@@ -238,6 +239,20 @@
 }
 .escr-image-card .image-status svg.error {
     fill: var(--alert);
+}
+
+/* transcription progress bar along the bottom edge of the thumbnail */
+.escr-image-card .transcription-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 5px;
+    background-color: var(--background2);
+}
+.escr-image-card .transcription-progress div {
+    height: 100%;
+    background-color: var(--completed);
 }
 
 /* task status tooltips */

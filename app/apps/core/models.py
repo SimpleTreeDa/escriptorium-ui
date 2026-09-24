@@ -986,12 +986,27 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), CascadeUpdate, Or
         # os.path.split(self.image.path)[-1]?
         return self.original_filename or os.path.split(self.image.path)[1]
 
+    @property
+    def needs_display_image(self):
+        # browsers can't render TIFF, these pages get a full size 'display' thumbnail
+        return os.path.splitext(self.image.name)[1].lower() in (".tif", ".tiff")
+
     def calculate_progress(self):
         total = self.lines.count()
         if not total:
-            return 0
-        transcribed = LineTranscription.objects.filter(line__document_part=self).count()
+            self.transcription_progress = 0
+            return
+        # lines with some text in at least one of the (non archived) transcription layers
+        transcribed = (LineTranscription.objects
+                       .filter(line__document_part=self, transcription__archived=False)
+                       .exclude(content="")
+                       .values("line").distinct().count())
         self.transcription_progress = min(int(transcribed / total * 100), 100)
+
+    def update_progress(self):
+        # persist the progress without going through save() and its side effects
+        self.calculate_progress()
+        DocumentPart.objects.filter(pk=self.pk).update(transcription_progress=self.transcription_progress)
 
     def recalculate_ordering(self, read_direction=None):
         """
@@ -1156,9 +1171,9 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), CascadeUpdate, Or
             elif report.workflow_state == TaskReport.WORKFLOW_STATE_STARTED:
                 w[short_name] = "ongoing"
             elif report.workflow_state == TaskReport.WORKFLOW_STATE_ERROR:
-                w[short_name] = "canceled"
-            elif report.workflow_state == TaskReport.WORKFLOW_STATE_CANCELED:
                 w[short_name] = "error"
+            elif report.workflow_state == TaskReport.WORKFLOW_STATE_CANCELED:
+                w[short_name] = "canceled"
         return w
 
     def tasks_finished(self):
@@ -1197,7 +1212,7 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), CascadeUpdate, Or
                     send_event('document', self.document.pk, 'part:workflow',
                                {'id': self.id,
                                 'process': report.method.split('.')[-1],
-                                'status': 'error',
+                                'status': 'canceled',
                                 'reason': _('Canceled.')})
                 except Exception as e:
                     # don't crash on websocket error

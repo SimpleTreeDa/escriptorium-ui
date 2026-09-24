@@ -31,6 +31,19 @@ export const initialState = () => ({
     comments: null,
 });
 
+export const getters = {
+    // Full resolution image the browser can render. TIFF pages come with a full size
+    // 'display' thumbnail; until it is generated, fall back to the 'large' one.
+    fullSizeImageUri: (state) => {
+        const thumbnails = state.image.thumbnails || {};
+        if (thumbnails.display) return thumbnails.display;
+        if (/\.tiff?$/i.test(state.image.uri || "") && thumbnails.large) {
+            return thumbnails.large;
+        }
+        return state.image.uri;
+    },
+};
+
 export const mutations = {
     setPartPk(state, pk) {
         state.pk = pk;
@@ -206,7 +219,7 @@ export const actions = {
 
             // set order on state and remove
             if (Object.hasOwn(data, "order")) {
-                commit("setOrder", parseInt(data.order) + 1);
+                commit("setOrder", parseInt(data.order));
             }
             delete data.order;
 
@@ -303,6 +316,7 @@ export const actions = {
 export default {
     namespaced: true,
     state: initialState(),
+    getters,
     mutations,
     actions,
 };

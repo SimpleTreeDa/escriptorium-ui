@@ -304,12 +304,14 @@ class partCard {
             if (btn && this.workflow[proc] == undefined) {
                 btn.removeClass("pending")
                     .removeClass("ongoing")
+                    .removeClass("canceled")
                     .removeClass("error")
                     .removeClass("done");
                 btn.attr("title", btn.data("title"));
             } else if (btn) {
                 btn.removeClass("pending")
                     .removeClass("ongoing")
+                    .removeClass("canceled")
                     .removeClass("error")
                     .removeClass("done");
                 btn.addClass(this.workflow[proc]);
@@ -528,7 +530,7 @@ export function bootImageCards(
     });
 
     // update workflow icons, send by notification through web socket
-    var workflow_order = ["pending", "ongoing", "error", "done"];
+    var workflow_order = ["pending", "ongoing", "canceled", "error", "done"];
 
     function updateWorkflow(card, data) {
         if (

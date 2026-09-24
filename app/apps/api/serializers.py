@@ -771,6 +771,8 @@ class DetailedLineSerializer(LineSerializer):
 
 
 class PartDetailSerializer(PartSerializer):
+    # the editor also needs the full size 'display' copy of TIFF pages
+    image = ImageField(required=False, thumbnails=['card', 'large', 'display'])
     regions = BlockSerializer(many=True, source='blocks')
     lines = LineSerializer(many=True)
     metadata = DocumentPartMetadataSerializer(many=True)

@@ -9,3 +9,6 @@ ci/
 .idea
 variables.env
 .python-version
+# Kraken models at the repo root are uploaded through the app, not baked into the image
+# (root level only, test assets under app/ are kept)
+*.mlmodel

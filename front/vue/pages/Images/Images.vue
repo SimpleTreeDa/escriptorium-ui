@@ -545,6 +545,14 @@
                     :on-cancel="() => closeRedrawModal()"
                     :on-confirm="onRedrawMasks"
                 />
+                <!-- share document modal -->
+                <ShareModal
+                    v-if="shareModalOpen"
+                    :groups="groups"
+                    :disabled="loading && loading.document"
+                    :on-cancel="closeShareModal"
+                    :on-submit="shareDocument"
+                />
                 <!-- delete images modal -->
                 <ConfirmModal
                     v-if="deleteModalOpen"
@@ -600,6 +608,7 @@ import SearchPanel from "../../components/SearchPanel/SearchPanel.vue";
 import SegmentIcon from "../../components/Icons/SegmentIcon/SegmentIcon.vue";
 import SegmentModal from "../../components/SegmentModal/SegmentModal.vue";
 import SegmentedButtonGroup from "../../components/SegmentedButtonGroup/SegmentedButtonGroup.vue";
+import ShareModal from "../../components/SharePanel/ShareModal.vue";
 import SharePanel from "../../components/SharePanel/SharePanel.vue";
 import TextField from "../../components/TextField/TextField.vue";
 import ToggleButton from "../../components/ToggleButton/ToggleButton.vue";
@@ -653,6 +662,7 @@ export default {
         SegmentIcon,
         SegmentModal,
         SegmentedButtonGroup,
+        ShareModal,
         // eslint-disable-next-line vue/no-unused-components
         SharePanel,
         TextField,
@@ -715,6 +725,7 @@ export default {
         ...mapState({
             deleteModalOpen: (state) => state.images.deleteModalOpen,
             documentName: (state) => state.document.name,
+            groups: (state) => state.user.groups,
             isDragging: (state) => state.images.isDragging,
             loading: (state) => state.images.loading,
             models: (state) => state.document.models,
@@ -731,6 +742,9 @@ export default {
             regionTypes: (state) => state.document.regionTypes,
             segmentationModels: (state) => state.user.segmentationModels,
             selectedParts: (state) => state.images.selectedParts,
+            shareModalOpen: (state) => state.document.shareModalOpen,
+            sharedWithGroups: (state) => state.document.sharedWithGroups,
+            sharedWithUsers: (state) => state.document.sharedWithUsers,
             taskModalOpen: (state) => state.tasks.modalOpen,
             textualWitnesses: (state) => state.document.textualWitnesses,
             transcriptions: (state) => state.document.transcriptions,
@@ -968,10 +982,13 @@ export default {
     methods: {
         ...mapActions("alerts", ["addError"]),
         ...mapActions("document", [
+            "closeShareModal",
             "confirmImageCancelWarning",
             "fetchDocumentModels",
             "handleSubmitImport",
+            "openShareModal",
             "setId",
+            "shareDocument",
             "updatePartTaskStatus",
         ]),
         ...mapActions("images", [

@@ -397,7 +397,13 @@ THUMBNAIL_ALIASES = {
     '': {
         'list': {'size': (50, 50), 'crop': 'center'},
         'card': {'size': (180, 180), 'crop': 'smart'},
-        'large': {'size': (1000, 1000), 'crop': False, 'upscale': False}
+        'large': {'size': (1000, 1000), 'crop': False, 'upscale': False},
+        # Full-resolution copy for pages browsers can't render (TIFF), so the editor
+        # doesn't fall back to 'large'. Only generated for those, see
+        # DocumentPart.needs_display_image. High quality and no chroma subsampling
+        # to keep thin strokes and vowel dots sharp.
+        'display': {'size': (20000, 20000), 'crop': False, 'upscale': False,
+                    'quality': 95, 'subsampling': 0},
     }
 }
 # THUMBNAIL_OPTIMIZE_COMMAND = {

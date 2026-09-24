@@ -28,6 +28,13 @@
                 aria-label="edit image"
             >
                 <img :src="part.thumbnail">
+                <div
+                    v-if="part.transcription_progress"
+                    class="transcription-progress"
+                    :title="`${part.transcription_progress}% of lines transcribed`"
+                >
+                    <div :style="{ width: `${part.transcription_progress}%` }" />
+                </div>
             </a>
 
             <!-- select button -->
@@ -236,6 +243,9 @@
                             >
                                 Not initiated
                             </span>
+                            <span class="date">
+                                {{ part.transcription_progress || 0 }}% of lines transcribed
+                            </span>
                         <!-- <span class="date">
                             {{ part.transcribe_date|formatDate }}
                         </span> -->
@@ -356,6 +366,8 @@ export default {
                     return "In Progress";
                 case "error":
                     return "Error";
+                case "canceled":
+                    return "Canceled";
                 case "done":
                     return "Completed";
                 default:
