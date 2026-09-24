@@ -442,7 +442,7 @@ class DocumentViewSet(ModelViewSet):
                         'parts': [{
                             'id': report.document_part.pk,
                             'process': task_name,
-                            'status': 'error',
+                            'status': 'canceled',
                             'reason': _('Canceled.')
                         } for report in reports]
                     })

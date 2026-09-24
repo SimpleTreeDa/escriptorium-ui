@@ -427,7 +427,7 @@ def segment(self, instance_pks, user_pk=None, model_pk=None, steps=None, text_di
                 {
                     "id": part.pk,
                     "process": "segment",
-                    "status": "canceled",
+                    "status": "error",
                     "task_id": self.request.id,
                 }
             )
@@ -507,7 +507,7 @@ def transcribe(self, instance_pks, model_pk=None, user_pk=None, transcription_pk
                 {
                     "id": part.pk,
                     "process": "transcribe",
-                    "status": "canceled",
+                    "status": "error",
                     "task_id": self.request.id,
                 }
             )
@@ -850,7 +850,7 @@ def align(
             send_event("document", document_pk, "part:workflow", {
                 "id": part.pk,
                 "process": "align",
-                "status": "canceled",
+                "status": "error",
                 "task_id": task.request.id,
             })
             reports = part.reports.filter(method="core.tasks.align")

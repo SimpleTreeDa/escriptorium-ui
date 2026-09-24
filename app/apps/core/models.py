@@ -1161,9 +1161,9 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), CascadeUpdate, Or
             elif report.workflow_state == TaskReport.WORKFLOW_STATE_STARTED:
                 w[short_name] = "ongoing"
             elif report.workflow_state == TaskReport.WORKFLOW_STATE_ERROR:
-                w[short_name] = "canceled"
-            elif report.workflow_state == TaskReport.WORKFLOW_STATE_CANCELED:
                 w[short_name] = "error"
+            elif report.workflow_state == TaskReport.WORKFLOW_STATE_CANCELED:
+                w[short_name] = "canceled"
         return w
 
     def tasks_finished(self):
@@ -1202,7 +1202,7 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), CascadeUpdate, Or
                     send_event('document', self.document.pk, 'part:workflow',
                                {'id': self.id,
                                 'process': report.method.split('.')[-1],
-                                'status': 'error',
+                                'status': 'canceled',
                                 'reason': _('Canceled.')})
                 except Exception as e:
                     # don't crash on websocket error

@@ -356,6 +356,8 @@ export default {
                     return "In Progress";
                 case "error":
                     return "Error";
+                case "canceled":
+                    return "Canceled";
                 case "done":
                     return "Completed";
                 default:

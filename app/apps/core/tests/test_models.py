@@ -9,6 +9,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from core.models import LineTranscription, Transcription
 from core.tests.factory import CoreFactoryTestCase
+from reporting.models import TaskReport
 
 
 class DocumentPartTestCase(CoreFactoryTestCase):
@@ -36,6 +37,16 @@ class DocumentPartTestCase(CoreFactoryTestCase):
         dpk = self.part.document.pk
         wpk = self.witness.pk
         self.outdir = f"{settings.MEDIA_ROOT}/alignments/document-{dpk}/t{tpk}+w{wpk}"
+
+    def test_workflow_crashed_and_canceled_tasks(self):
+        part = self.factory.make_part()
+        for method, state, expected in (
+            ("core.tasks.segment", TaskReport.WORKFLOW_STATE_ERROR, "error"),
+            ("core.tasks.transcribe", TaskReport.WORKFLOW_STATE_CANCELED, "canceled"),
+        ):
+            part.reports.create(user=part.document.owner, document=part.document, label="test",
+                                method=method, workflow_state=state)
+            self.assertEqual(part.workflow[method.split(".")[-1]], expected)
 
     @patch("core.models.hex")
     @patch("core.models.subprocess")
