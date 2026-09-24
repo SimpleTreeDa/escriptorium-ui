@@ -219,7 +219,7 @@ export const actions = {
 
             // set order on state and remove
             if (Object.hasOwn(data, "order")) {
-                commit("setOrder", parseInt(data.order) + 1);
+                commit("setOrder", parseInt(data.order));
             }
             delete data.order;
 
