@@ -1,8 +1,12 @@
-FROM docker.io/library/node:22-alpine as frontend
+FROM docker.io/library/node:22-alpine AS frontend
 
 WORKDIR /build
+# Install dependencies in their own layer (with a persistent npm cache) so an
+# interrupted build, or a change to the sources only, doesn't re-download them.
+COPY ./front/package.json ./front/package-lock.json ./front/.npmrc /build/
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 COPY ./front /build
-RUN npm ci && npm run production
+RUN npm run production
 
 # Pull official base image
 FROM registry.gitlab.com/scripta/escriptorium/base:kraken6

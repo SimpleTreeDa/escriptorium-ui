@@ -9,3 +9,7 @@ ci/
 .idea
 variables.env
 .python-version
+.git
+**/node_modules
+front/dist
+*.mlmodel

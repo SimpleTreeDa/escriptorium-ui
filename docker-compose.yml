@@ -1,10 +1,8 @@
-version: "3.9"
-
 x-app:
   &app
   image: registry.gitlab.com/scripta/escriptorium:latest
-  build:
-    context: .
+  # The app image is built locally by the web service, never pull it.
+  pull_policy: never
   env_file: variables.env
   volumes:
     # - ./app/:/usr/src/app/
@@ -16,6 +14,10 @@ services:
 
   web:
     <<: *app
+    # Only web builds the app image, the other app services reuse it.
+    # Otherwise compose runs one identical build per service.
+    build:
+      context: .
     command: uwsgi --ini /usr/src/app/uwsgi.ini
     expose:
       - 8000
