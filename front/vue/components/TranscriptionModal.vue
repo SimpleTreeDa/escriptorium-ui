@@ -482,13 +482,7 @@ export default Vue.extend({
             return moment.tz(this.line.currentTrans.version_updated_at, this.timeZone);
         },
         modalImgSrc() {
-            if (this.image.uri.endsWith(".tif") ||
-                 this.image.uri.endsWith(".tiff")) {
-                // can't display tifs so fallback to large thumbnail
-                return this.image.thumbnails.large;
-            } else {
-                return this.image.uri;
-            }
+            return this.$store.getters["parts/fullSizeImageUri"];
         },
         otherTranscriptions() {
             let a = Object

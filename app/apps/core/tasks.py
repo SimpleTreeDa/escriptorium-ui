@@ -69,6 +69,8 @@ def generate_part_thumbnails(instance_pk=None, user_pk=None, **kwargs):
     aliases = {}
     thbnr = get_thumbnailer(part.image)
     for alias, config in settings.THUMBNAIL_ALIASES[''].items():
+        if alias == 'display' and not part.needs_display_image:
+            continue
         aliases[alias] = thbnr.get_thumbnail(config).url
     return aliases
 

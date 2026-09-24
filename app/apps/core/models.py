@@ -986,6 +986,11 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), CascadeUpdate, Or
         # os.path.split(self.image.path)[-1]?
         return self.original_filename or os.path.split(self.image.path)[1]
 
+    @property
+    def needs_display_image(self):
+        # browsers can't render TIFF, these pages get a full size 'display' thumbnail
+        return os.path.splitext(self.image.name)[1].lower() in (".tif", ".tiff")
+
     def calculate_progress(self):
         total = self.lines.count()
         if not total:

@@ -193,7 +193,7 @@ export default {
                 (!this.fullsizeimage &&
                  this.$store.state.parts.image.thumbnails !== undefined &&
                  this.$store.state.parts.image.thumbnails.large) ||
-                this.$store.state.parts.image.uri;
+                this.$store.getters["parts/fullSizeImageUri"];
             return src;
         },
         groupedTaxonomies() {
