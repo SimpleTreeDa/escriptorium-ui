@@ -994,9 +994,19 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), CascadeUpdate, Or
     def calculate_progress(self):
         total = self.lines.count()
         if not total:
-            return 0
-        transcribed = LineTranscription.objects.filter(line__document_part=self).count()
+            self.transcription_progress = 0
+            return
+        # lines with some text in at least one of the (non archived) transcription layers
+        transcribed = (LineTranscription.objects
+                       .filter(line__document_part=self, transcription__archived=False)
+                       .exclude(content="")
+                       .values("line").distinct().count())
         self.transcription_progress = min(int(transcribed / total * 100), 100)
+
+    def update_progress(self):
+        # persist the progress without going through save() and its side effects
+        self.calculate_progress()
+        DocumentPart.objects.filter(pk=self.pk).update(transcription_progress=self.transcription_progress)
 
     def recalculate_ordering(self, read_direction=None):
         """

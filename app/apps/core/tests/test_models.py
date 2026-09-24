@@ -38,6 +38,33 @@ class DocumentPartTestCase(CoreFactoryTestCase):
         wpk = self.witness.pk
         self.outdir = f"{settings.MEDIA_ROOT}/alignments/document-{dpk}/t{tpk}+w{wpk}"
 
+    def test_calculate_progress(self):
+        part = self.factory.make_part()
+        layer = self.factory.make_transcription(document=part.document)
+        self.factory.make_content(part, amount=4, transcription=layer)
+        lines = list(part.lines.all())
+        part.calculate_progress()
+        self.assertEqual(part.transcription_progress, 100)
+
+        # empty lines are not transcribed
+        LineTranscription.objects.filter(line=lines[0]).update(content="")
+        part.calculate_progress()
+        self.assertEqual(part.transcription_progress, 75)
+
+        # lines transcribed in several layers count once
+        other = self.factory.make_transcription(document=part.document, name="other")
+        for line in lines[1:]:
+            LineTranscription.objects.create(transcription=other, line=line, content="text")
+        part.calculate_progress()
+        self.assertEqual(part.transcription_progress, 75)
+
+        # archived layers don't count
+        archived = self.factory.make_transcription(document=part.document, name="old", archived=True)
+        LineTranscription.objects.create(transcription=archived, line=lines[0], content="text")
+        part.update_progress()
+        part.refresh_from_db()
+        self.assertEqual(part.transcription_progress, 75)
+
     def test_workflow_crashed_and_canceled_tasks(self):
         part = self.factory.make_part()
         for method, state, expected in (

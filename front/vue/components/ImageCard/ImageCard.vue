@@ -236,6 +236,9 @@
                             >
                                 Not initiated
                             </span>
+                            <span class="date">
+                                {{ part.transcription_progress || 0 }}% of lines transcribed
+                            </span>
                         <!-- <span class="date">
                             {{ part.transcribe_date|formatDate }}
                         </span> -->
@@ -279,6 +282,13 @@
                 </VDropdown>
             </div>
             <span class="element-number">{{ part.order + 1 }}</span>
+            <div
+                v-if="part.transcription_progress"
+                class="transcription-progress"
+                :title="`${part.transcription_progress}% of lines transcribed`"
+            >
+                <div :style="{ width: `${part.transcription_progress}%` }" />
+            </div>
         </div>
         <div
             :class="{

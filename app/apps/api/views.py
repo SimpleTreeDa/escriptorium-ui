@@ -1266,7 +1266,13 @@ class LineTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
+        self.update_part_progress()
         return Response(serializer.data)
+
+    def update_part_progress(self):
+        part = DocumentPart.objects.filter(pk=self.kwargs['part_pk']).first()
+        if part:
+            part.update_progress()
 
     def get_serializer_class(self):
         lines = Line.objects.filter(document_part=self.kwargs['part_pk'])
@@ -1281,6 +1287,7 @@ class LineTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
         serializer = LineTranscriptionSerializer(data=lines, many=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        self.update_part_progress()
 
         return Response({'status': 'ok', 'lines': serializer.data}, status=200)
 
@@ -1306,6 +1313,7 @@ class LineTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
             else:
                 errors.append(serializer.errors)
 
+        self.update_part_progress()
         if errors:
             return Response(errors,
                             status=status.HTTP_400_BAD_REQUEST)
@@ -1317,6 +1325,7 @@ class LineTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
         lines = request.data.get("lines")
         qs = LineTranscription.objects.filter(pk__in=lines)
         qs.update(content='')
+        self.update_part_progress()
         return Response(status=status.HTTP_204_NO_CONTENT, )
 
 

@@ -1130,11 +1130,13 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk,
                               'pk': self.lt.pk})
-        with self.assertNumQueries(14):
+        with self.assertNumQueries(18):
             resp = self.client.patch(uri, {
                 'content': 'update'
             }, content_type='application/json')
         self.assertEqual(resp.status_code, 200)
+        self.part.refresh_from_db()
+        self.assertEqual(self.part.transcription_progress, 100)
 
     def test_create(self):
         self.client.force_login(self.user)
@@ -1173,7 +1175,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
         ll = Line.objects.create(
             mask=[10, 10, 50, 50],
             document_part=self.part)
-        with self.assertNumQueries(28):
+        with self.assertNumQueries(32):
             resp = self.client.post(
                 uri,
                 {'lines': [
@@ -1191,7 +1193,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
         uri = reverse('api:linetranscription-bulk-update',
                       kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk})
 
-        with self.assertNumQueries(36):
+        with self.assertNumQueries(40):
             resp = self.client.put(uri, {'lines': [
                 {'pk': self.lt.pk,
                  'content': 'test1 new',
@@ -1210,16 +1212,19 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
             self.assertEqual(resp.status_code, 200)
 
     def test_bulk_delete(self):
+        self.part.update_progress()
         self.client.force_login(self.user)
         uri = reverse('api:linetranscription-bulk-delete',
                       kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk})
-        with self.assertNumQueries(5):
+        with self.assertNumQueries(9):
             resp = self.client.post(uri, {'lines': [self.lt.pk, self.lt2.pk]},
                                     content_type='application/json')
             lines = LineTranscription.objects.all()
             self.assertEqual(lines[0].content, "")
             self.assertEqual(lines[1].content, "")
             self.assertEqual(resp.status_code, 204)
+        self.part.refresh_from_db()
+        self.assertEqual(self.part.transcription_progress, 0)
 
 
 class OcrModelViewSetTestCase(CoreFactoryTestCase):

@@ -240,6 +240,22 @@
     fill: var(--alert);
 }
 
+/* transcription progress bar along the bottom of the card */
+.escr-image-card .transcription-progress {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 6px;
+    height: 4px;
+    border-radius: 2px;
+    background-color: var(--background2);
+}
+.escr-image-card .transcription-progress div {
+    height: 100%;
+    border-radius: 2px;
+    background-color: var(--completed);
+}
+
 /* task status tooltips */
 .v-popper--theme-escr-task-tooltip .v-popper__inner {
     background-color: var(--tag-text);
