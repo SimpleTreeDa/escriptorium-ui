@@ -17,13 +17,13 @@ from rest_framework import filters, status
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotAuthenticated
+from rest_framework.exceptions import NotAuthenticated, NotFound
 from rest_framework.filters import OrderingFilter
 from rest_framework.mixins import CreateModelMixin
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
-from rest_framework.serializers import PrimaryKeyRelatedField
+from rest_framework.serializers import PrimaryKeyRelatedField, RelatedField
 from rest_framework.viewsets import GenericViewSet, ModelViewSet, ReadOnlyModelViewSet
 
 from api.serializers import (
@@ -668,7 +668,7 @@ class DocumentViewSet(ModelViewSet):
         data = request.data
         # we pass parts in POST data since this is on a Document
         part_pks = data.pop("parts")
-        parts = DocumentPart.objects.filter(document=pk, pk__in=part_pks).order_by("order")
+        parts = self.get_object().parts.filter(pk__in=part_pks).order_by("order")
         serializer = PartBulkMoveSerializer(parts=parts, data=data)
         if serializer.is_valid() and parts.count():
             serializer.bulk_move()
@@ -783,15 +783,52 @@ class TaskReportViewSet(ModelViewSet):
 
 
 class DocumentPermissionMixin():
-    def get_queryset(self):
+    """
+    For viewsets nested under documents/<document_pk>/ (and parts/<part_pk>/).
+
+    Access is checked before any action runs, not only when it happens to call get_queryset
+    (create and most custom actions never do), and relations sent by the client are
+    restricted to the document and part of the url.
+    """
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
         try:
             self.document = (Document.objects
-                             .for_user(self.request.user)
+                             .for_user(request.user)
                              .get(pk=self.kwargs.get('document_pk')))
-        except Document.DoesNotExist:
+        except (Document.DoesNotExist, ValueError):
             raise PermissionDenied
+        self.part = None
+        if 'part_pk' in self.kwargs:
+            try:
+                self.part = self.document.parts.get(pk=self.kwargs['part_pk'])
+            except (DocumentPart.DoesNotExist, ValueError):
+                raise NotFound
 
-        return super().get_queryset()
+    def get_serializer(self, *args, **kwargs):
+        return self.scope_serializer(super().get_serializer(*args, **kwargs))
+
+    def scope_serializer(self, serializer):
+        """Only accept related objects belonging to the document (and part) of the url."""
+        fields = getattr(serializer, 'child', serializer).fields
+        parts = self.document.parts.filter(pk=self.part.pk) if self.part else self.document.parts.all()
+        lines = Line.objects.filter(document_part__in=parts)
+        scopes = {
+            'document_part': parts,
+            'part': parts,
+            'region': Block.objects.filter(document_part__in=parts),
+            'line': lines,
+            'start_line': lines,
+            'end_line': lines,
+            'transcription': Transcription.objects.filter(document=self.document),
+            'taxonomy': AnnotationTaxonomy.objects.filter(document=self.document),
+        }
+        for name, queryset in scopes.items():
+            field = fields.get(name)
+            if isinstance(field, RelatedField) and not field.read_only:
+                field.queryset = queryset
+        return serializer
 
 
 class DocumentMetadataViewSet(DocumentPermissionMixin, ModelViewSet):
@@ -879,7 +916,7 @@ class PartViewSet(DocumentPermissionMixin, ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def move(self, request, document_pk=None, pk=None):
-        part = DocumentPart.objects.get(document=document_pk, pk=pk)
+        part = self.get_object()
         serializer = PartMoveSerializer(part=part, data=request.data)
         if serializer.is_valid():
             serializer.move()
@@ -889,7 +926,7 @@ class PartViewSet(DocumentPermissionMixin, ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, document_pk=None, pk=None):
-        part = DocumentPart.objects.get(document=document_pk, pk=pk)
+        part = self.get_object()
         part.cancel_tasks(username=self.request.user.username)
         part.refresh_from_db()
         return Response({'status': 'canceled', 'workflow': part.workflow})
@@ -899,7 +936,7 @@ class PartViewSet(DocumentPermissionMixin, ModelViewSet):
         # If quotas are enforced, assert that the user still has free CPU minutes
         if not settings.DISABLE_QUOTAS and not request.user.has_free_cpu_minutes():
             return Response({'error': "You don't have any CPU minutes left."}, status=status.HTTP_400_BAD_REQUEST)
-        part = DocumentPart.objects.get(document=document_pk, pk=pk)
+        part = self.get_object()
         onlyParam = request.query_params.get("only")
         only = onlyParam and list(map(int, onlyParam.split(',')))
         recalculate_masks.delay(instance_pk=part.pk, user_pk=request.user.pk, only=only)
@@ -907,14 +944,14 @@ class PartViewSet(DocumentPermissionMixin, ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def recalculate_ordering(self, request, document_pk=None, pk=None):
-        document_part = DocumentPart.objects.get(pk=pk)
+        document_part = self.get_object()
         document_part.recalculate_ordering()
         serializer = LineOrderSerializer(document_part.lines.all(), many=True)
         return Response({'status': 'done', 'lines': serializer.data}, status=200)
 
     @action(detail=True, methods=['post'])
     def rotate(self, request, document_pk=None, pk=None):
-        document_part = DocumentPart.objects.get(pk=pk)
+        document_part = self.get_object()
         angle = self.request.data.get('angle')
         if angle:
             document_part.rotate(angle, user=self.request.user)
@@ -925,7 +962,7 @@ class PartViewSet(DocumentPermissionMixin, ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def crop(self, request, document_pk=None, pk=None):
-        document_part = DocumentPart.objects.get(pk=pk)
+        document_part = self.get_object()
         x1 = self.request.data.get('x1')
         y1 = self.request.data.get('y1')
         x2 = self.request.data.get('x2')
@@ -1142,7 +1179,7 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
         # We can't used the DetailedLineSerializer, since the Transcription serializer requires a line property,
         # which is unknown at this time - the line has not been created yet.
         # We may want to move this code into the DetailedLineSerializer's create method at some point.
-        serializer = LineSerializer(data=lines, many=True)
+        serializer = self.scope_serializer(LineSerializer(data=lines, many=True))
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
@@ -1161,7 +1198,7 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
             transcriptions += line_transcriptions
             line_pks.append(pk)
 
-        serializer = LineTranscriptionSerializer(data=transcriptions, many=True)
+        serializer = self.scope_serializer(LineTranscriptionSerializer(data=transcriptions, many=True))
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
@@ -1183,7 +1220,7 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
     @action(detail=False, methods=['post'])
     def bulk_delete(self, request, document_pk=None, part_pk=None):
         deleted_lines = request.data.get("lines")
-        qs = Line.objects.filter(pk__in=deleted_lines)
+        qs = self.get_queryset().filter(pk__in=deleted_lines)
         serializer = DetailedLineSerializer(qs, many=True)
         json = serializer.data
         qs.delete()
@@ -1200,7 +1237,10 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
         if len(original_lines) > MAX_MERGE_SIZE:
             return Response(dict(status='error', error=f"Can't merge more than {MAX_MERGE_SIZE} lines"), status=status.HTTP_400_BAD_REQUEST)
 
-        lines = list(Line.objects.filter(pk__in=original_lines))
+        lines = list(self.get_queryset().filter(pk__in=original_lines))
+        if len(lines) != len(set(original_lines)):
+            return Response(dict(status='error', error="Some lines don't belong to this element."),
+                            status=status.HTTP_400_BAD_REQUEST)
         for line in lines:
             if not line.baseline:
                 return Response(dict(status='error', error="Lines without a baseline cannot be merged"), status=status.HTTP_400_BAD_REQUEST)
@@ -1219,7 +1259,10 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
     @action(detail=False, methods=['post'])
     def move(self, request, document_pk=None, part_pk=None, pk=None):
         data = request.data.get('lines')
-        qs = Line.objects.filter(pk__in=[line['pk'] for line in data])
+        qs = self.get_queryset().filter(pk__in=[line['pk'] for line in data])
+        if qs.count() != len({line['pk'] for line in data}):
+            return Response({'error': "Some lines don't belong to this element."},
+                            status=status.HTTP_400_BAD_REQUEST)
         serializer = LineOrderSerializer(qs, data=data, many=True)
         if serializer.is_valid():
             resp = serializer.save()
@@ -1284,7 +1327,7 @@ class LineTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
     @action(detail=False, methods=['POST'])
     def bulk_create(self, request, document_pk=None, part_pk=None, pk=None):
         lines = request.data.get("lines")
-        serializer = LineTranscriptionSerializer(data=lines, many=True)
+        serializer = self.scope_serializer(LineTranscriptionSerializer(data=lines, many=True))
         serializer.is_valid(raise_exception=True)
         serializer.save()
         self.update_part_progress()
@@ -1297,8 +1340,8 @@ class LineTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
         response = []
         errors = []
         for line in lines:
-            lt = get_object_or_404(LineTranscription, pk=line["pk"])
-            serializer = LineTranscriptionSerializer(lt, data=line, partial=True)
+            lt = get_object_or_404(self.get_queryset(), pk=line["pk"])
+            serializer = self.scope_serializer(LineTranscriptionSerializer(lt, data=line, partial=True))
 
             if serializer.is_valid():
                 try:
@@ -1323,7 +1366,7 @@ class LineTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
     @action(detail=False, methods=['POST'])
     def bulk_delete(self, request, document_pk=None, part_pk=None, pk=None):
         lines = request.data.get("lines")
-        qs = LineTranscription.objects.filter(pk__in=lines)
+        qs = self.get_queryset().filter(pk__in=lines)
         qs.update(content='')
         self.update_part_progress()
         return Response(status=status.HTTP_204_NO_CONTENT, )
