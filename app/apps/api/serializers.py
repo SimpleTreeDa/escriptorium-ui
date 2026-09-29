@@ -592,12 +592,36 @@ class DocumentPartMetadataSerializer(serializers.ModelSerializer):
         return instance
 
 
+class PartEditorialStatusSerializer(serializers.ModelSerializer):
+    """
+    The editorial status of a part, who set it and when; changed with the set_status action.
+    """
+    editorial_status_by = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DocumentPart
+        fields = ('pk', 'editorial_status', 'editorial_status_by', 'editorial_status_at')
+        read_only_fields = fields
+
+    def get_editorial_status_by(self, part):
+        return part.editorial_status_by.username if part.editorial_status_by else None
+
+
+class SetEditorialStatusSerializer(serializers.Serializer):
+    parts = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
+    status = serializers.ChoiceField(choices=DocumentPart.EDITORIAL_STATUS_CHOICES)
+
+
 class PartSerializer(serializers.ModelSerializer):
     image = ImageField(required=False, thumbnails=['card', 'large'])
     image_file_size = serializers.IntegerField(required=False)
     filename = serializers.CharField(read_only=True)
     workflow = serializers.JSONField(read_only=True)
     transcription_progress = serializers.IntegerField(read_only=True)
+    # changed with the set_status action only, which records who and when
+    editorial_status = serializers.CharField(read_only=True)
+    editorial_status_by = serializers.SerializerMethodField()
+    editorial_status_at = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = DocumentPart
@@ -618,7 +642,13 @@ class PartSerializer(serializers.ModelSerializer):
             'max_avg_confidence',
             'comments',
             'updated_at',
+            'editorial_status',
+            'editorial_status_by',
+            'editorial_status_at',
         )
+
+    def get_editorial_status_by(self, part):
+        return part.editorial_status_by.username if part.editorial_status_by else None
 
     def validate(self, data):
         # If quotas are enforced, assert that the user still has free disk storage
@@ -781,7 +811,7 @@ class PartNavigationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DocumentPart
-        fields = ('pk', 'order', 'name', 'title', 'filename', 'thumbnail')
+        fields = ('pk', 'order', 'name', 'title', 'filename', 'thumbnail', 'editorial_status')
 
     def get_thumbnail(self, part):
         thumbnail = get_thumbnailer(part.image).get_thumbnail(

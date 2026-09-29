@@ -50,6 +50,7 @@ from api.serializers import (
     OcrModelSerializer,
     PartBulkMoveSerializer,
     PartDetailSerializer,
+    PartEditorialStatusSerializer,
     PartMoveSerializer,
     PartNavigationSerializer,
     PartSerializer,
@@ -58,6 +59,7 @@ from api.serializers import (
     ScriptSerializer,
     SegmentSerializer,
     SegTrainSerializer,
+    SetEditorialStatusSerializer,
     TaskGroupSerializer,
     TaskReportSerializer,
     TextAnnotationSerializer,
@@ -881,7 +883,7 @@ class ImportViewSet(DocumentPermissionMixin, GenericViewSet, CreateModelMixin):
 
 class PartViewSet(DocumentPermissionMixin, ModelViewSet):
     filter_backends = (OrderingFilter,)
-    queryset = DocumentPart.objects.all().select_related('document')
+    queryset = DocumentPart.objects.all().select_related('document', 'editorial_status_by')
     filter_backends = [filters.OrderingFilter]
 
     def get_queryset(self):
@@ -914,6 +916,22 @@ class PartViewSet(DocumentPermissionMixin, ModelViewSet):
         return HttpResponseRedirect(reverse('api:part-detail',
                                             kwargs={'document_pk': self.kwargs.get('document_pk'),
                                                     'pk': part.pk}))
+
+    @action(detail=False, methods=['post'])
+    def set_status(self, request, document_pk=None):
+        """
+        Set the editorial status of one or several elements of the document:
+        {"parts": [pk, ...], "status": "reviewed_1"}.
+        """
+        serializer = SetEditorialStatusSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        pks = set(serializer.validated_data['parts'])
+        parts = self.get_queryset().filter(pk__in=pks)
+        if parts.count() != len(pks):
+            return Response({'parts': [_("Some elements do not belong to this document.")]},
+                            status=status.HTTP_400_BAD_REQUEST)
+        DocumentPart.set_editorial_status(parts, serializer.validated_data['status'], request.user)
+        return Response(PartEditorialStatusSerializer(parts.order_by('order'), many=True).data)
 
     @action(detail=False, methods=['get'])
     def navigation(self, request, document_pk=None):
@@ -1297,6 +1315,7 @@ class LineTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
     def create(self, request, document_pk=None, part_pk=None):
         response = super().create(request, document_pk=document_pk, part_pk=part_pk)
         document_part = DocumentPart.objects.get(pk=part_pk)
+        document_part.mark_started(request.user)
         document_part.calculate_progress()
         document_part.save()
         return response
@@ -1323,6 +1342,7 @@ class LineTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
         part = DocumentPart.objects.filter(pk=self.kwargs['part_pk']).first()
         if part:
             part.update_progress()
+            part.mark_started(self.request.user)
 
     def get_serializer_class(self):
         lines = Line.objects.filter(document_part=self.kwargs['part_pk'])

@@ -28,6 +28,7 @@ from django.db.models.functions import Coalesce, Length
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 from django.forms import ValidationError
+from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
@@ -948,6 +949,29 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), CascadeUpdate, Or
     # this is denormalized because it's too heavy to calculate on the fly
     transcription_progress = models.PositiveSmallIntegerField(default=0)
 
+    # where the page is in the editorial workflow, set by the users
+    EDITORIAL_STATUS_NOT_STARTED = "not_started"
+    EDITORIAL_STATUS_IN_PROGRESS = "in_progress"
+    EDITORIAL_STATUS_CHOICES = (
+        (EDITORIAL_STATUS_NOT_STARTED, _("Not started")),
+        (EDITORIAL_STATUS_IN_PROGRESS, _("In progress")),
+        ("transcribed", _("Initial transcription complete")),
+        ("reviewed_1", _("Reviewed by Editor 1")),
+        ("reviewed_2", _("Reviewed by Editor 2")),
+        ("ground_truth", _("Ground truth")),
+        ("final", _("Final edited copy")),
+        ("ready_for_tei", _("Ready for TEI export")),
+    )
+    editorial_status = models.CharField(
+        max_length=32, choices=EDITORIAL_STATUS_CHOICES,
+        default=EDITORIAL_STATUS_NOT_STARTED, db_index=True
+    )
+    # who changed the status last, and when
+    editorial_status_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    editorial_status_at = models.DateTimeField(null=True, blank=True)
+
     cascade_to = 'document'
 
     class Meta(OrderedModel.Meta):
@@ -1007,6 +1031,25 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), CascadeUpdate, Or
         # persist the progress without going through save() and its side effects
         self.calculate_progress()
         DocumentPart.objects.filter(pk=self.pk).update(transcription_progress=self.transcription_progress)
+
+    @classmethod
+    def set_editorial_status(cls, parts, status, user):
+        """
+        Set the editorial status of the given parts (a queryset), recording who and when,
+        without going through save() and its side effects. Returns the number of parts changed.
+        """
+        return (parts.exclude(editorial_status=status)
+                .update(editorial_status=status, editorial_status_by=user,
+                        editorial_status_at=timezone.now()))
+
+    def mark_started(self, user):
+        """
+        A page stops being "Not started" when a user first edits its transcription.
+        """
+        if self.editorial_status == self.EDITORIAL_STATUS_NOT_STARTED:
+            DocumentPart.set_editorial_status(DocumentPart.objects.filter(pk=self.pk),
+                                              self.EDITORIAL_STATUS_IN_PROGRESS, user)
+            self.editorial_status = self.EDITORIAL_STATUS_IN_PROGRESS
 
     def recalculate_ordering(self, read_direction=None):
         """
