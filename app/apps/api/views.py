@@ -1212,7 +1212,7 @@ class LineViewSet(DocumentPermissionMixin, ModelViewSet):
     def bulk_update(self, request, document_pk=None, part_pk=None):
         lines = request.data.get("lines")
         qs = self.get_queryset().filter(pk__in=[line['pk'] for line in lines])
-        serializer = LineSerializer(qs, data=lines, partial=True, many=True)
+        serializer = self.scope_serializer(LineSerializer(qs, data=lines, partial=True, many=True))
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({'status': 'ok', 'lines': serializer.data}, status=200)

@@ -135,6 +135,25 @@ class NestedAccessTestCase(DocumentFixtureMixin, CoreFactoryTestCase):
         self.assertEqual(resp.status_code, 404)
         self.assertUntouched()
 
+    def test_bulk_update_own_line_into_other_page(self):
+        own = {'doc': self.own_doc, 'part': self.own_part}
+        resp = self.client.put(self.url('line-bulk-update', **own),
+                               {'lines': [{'pk': self.own_line.pk, 'document_part': self.victim_part.pk}]},
+                               content_type='application/json')
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.own_line.refresh_from_db()
+        self.assertEqual(self.own_line.document_part, self.own_part)
+        self.assertUntouched()
+
+    def test_bulk_update_own_line_into_other_region(self):
+        own = {'doc': self.own_doc, 'part': self.own_part}
+        resp = self.client.put(self.url('line-bulk-update', **own),
+                               {'lines': [{'pk': self.own_line.pk, 'region': self.victim_block.pk}]},
+                               content_type='application/json')
+        self.assertEqual(resp.status_code, 400, resp.content)
+        self.own_line.refresh_from_db()
+        self.assertIsNone(self.own_line.block)
+
     def test_own_document_still_works(self):
         own = {'doc': self.own_doc, 'part': self.own_part}
         resp = self.client.post(self.url('linetranscription-bulk-create', **own),
