@@ -56,6 +56,7 @@ from core.models import (
     AlreadyProcessingException,
     Document,
     DocumentPart,
+    LineTranscription,
     Metadata,
     OcrModel,
     OcrModelDocument,
@@ -862,13 +863,27 @@ class EditPart(LoginRequiredMixin, DetailView):
 
     def dispatch(self, *args, **kwargs):
         if 'part_pk' not in self.kwargs:
-            try:
-                first = self.get_queryset()[0]
-                return HttpResponseRedirect(reverse('document-part-edit',
-                                                    kwargs={'pk': first.document.pk,
-                                                            'part_pk': first.pk}))
-            except IndexError:
-                raise Http404
+            if not self.request.user.is_authenticated:
+                return self.handle_no_permission()
+            # resume on the line this user last transcribed by hand in this document,
+            # otherwise the editor falls back to the last page viewed in this browser
+            last_edit = (LineTranscription.objects
+                         .filter(line__document_part__document=self.kwargs['pk'],
+                                 version_author=self.request.user.username,
+                                 version_source=settings.VERSIONING_DEFAULT_SOURCE)
+                         .select_related('line')
+                         .order_by('-version_updated_at')
+                         .first())
+            if last_edit:
+                part_pk, query = last_edit.line.document_part_id, 'line=%d' % last_edit.line_id
+            else:
+                try:
+                    part_pk, query = self.get_queryset()[0].pk, 'resume=1'
+                except IndexError:
+                    raise Http404
+            return HttpResponseRedirect('%s?%s' % (
+                reverse('document-part-edit', kwargs={'pk': self.kwargs['pk'], 'part_pk': part_pk}),
+                query))
         else:
             return super().dispatch(*args, **kwargs)
 
