@@ -15,27 +15,51 @@
                         </h3>
                         <h1>Images</h1>
                     </div>
-                    <VDropdown
-                        placement="bottom-end"
-                        :triggers="['hover']"
-                        theme="escr-tooltip-small"
-                    >
-                        <EscrButton
-                            color="primary"
-                            :disabled="loading && loading.document"
-                            :on-click="() => openModal('import')"
-                            label="Import"
+                    <div class="escr-images-header-actions">
+                        <VDropdown
+                            placement="bottom-end"
+                            :triggers="['hover']"
+                            theme="escr-tooltip-small"
                         >
-                            <template #button-icon>
-                                <ImportIcon />
+                            <EscrButton
+                                color="secondary"
+                                :disabled="(loading && loading.document) || !partsCount"
+                                :on-click="continueEditing"
+                                label="Continue where you left off"
+                            >
+                                <template #button-icon>
+                                    <TranscribeIcon />
+                                </template>
+                            </EscrButton>
+                            <template #popper>
+                                <span class="escr-tooltip-text">
+                                    Open the editor on the line you last transcribed, or else
+                                    the page you last viewed.
+                                </span>
                             </template>
-                        </EscrButton>
-                        <template #popper>
-                            <span class="escr-tooltip-text">
-                                Import images or transcription content.
-                            </span>
-                        </template>
-                    </VDropdown>
+                        </VDropdown>
+                        <VDropdown
+                            placement="bottom-end"
+                            :triggers="['hover']"
+                            theme="escr-tooltip-small"
+                        >
+                            <EscrButton
+                                color="primary"
+                                :disabled="loading && loading.document"
+                                :on-click="() => openModal('import')"
+                                label="Import"
+                            >
+                                <template #button-icon>
+                                    <ImportIcon />
+                                </template>
+                            </EscrButton>
+                            <template #popper>
+                                <span class="escr-tooltip-text">
+                                    Import images or transcription content.
+                                </span>
+                            </template>
+                        </VDropdown>
+                    </div>
                 </div>
 
                 <!-- toolbar with searching, selecting -->
@@ -1034,6 +1058,12 @@ export default {
         /**
          * Close a context menu for an image.
          */
+        /**
+         * Open the editor where the user left off (the server picks the page and line).
+         */
+        continueEditing() {
+            window.location.assign(`/document/${this.id}/parts/edit/`);
+        },
         closeContextMenu() {
             this.contextMenuOpen = null;
         },
