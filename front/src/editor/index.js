@@ -13,6 +13,7 @@ import documentslist from "./store/documentslist";
 import forms from "../../vue/store/modules/forms";
 import alerts from "../../vue/store/modules/alerts";
 import globalTools from "./store/globalTools";
+import saveStatus from "./store/saveStatus";
 
 Vue.use(Vuex);
 Vue.use(vueFilterPrettyBytes);
@@ -31,5 +32,6 @@ export default new Vuex.Store({
         documentslist,
         globalTools,
         forms,
+        saveStatus,
     },
 });
