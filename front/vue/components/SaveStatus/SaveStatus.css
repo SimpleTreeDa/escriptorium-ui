@@ -1,0 +1,72 @@
+.escr-save-status {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin-right: 0.75rem;
+    white-space: nowrap;
+}
+.escr-save-status .save-status-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 14px;
+    color: var(--text2);
+}
+.escr-save-status .save-status-label svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}
+.escr-save-status.is-unsaved .save-status-label {
+    color: var(--at-risk);
+    font-weight: 700;
+}
+.escr-save-status.is-failed .save-status-label {
+    color: var(--alert);
+    font-weight: 700;
+}
+.escr-save-status .save-status-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: escr-save-status-spin 0.8s linear infinite;
+}
+@keyframes escr-save-status-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+.escr-save-failures {
+    width: 380px;
+    max-width: 90vw;
+    padding: 0 16px;
+    font-size: 14px;
+    color: var(--text1);
+}
+.escr-save-failures p {
+    margin: 0 0 8px;
+}
+.escr-save-failures ul {
+    max-height: 200px;
+    overflow-y: auto;
+    margin: 0 0 12px;
+    padding-left: 1.25rem;
+}
+.escr-save-failures li {
+    margin-bottom: 6px;
+}
+.escr-save-failures .failure-request {
+    display: block;
+    color: var(--text2);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+.escr-save-failures .failure-actions {
+    display: flex;
+    flex-flow: row wrap;
+    gap: 8px;
+}

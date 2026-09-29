@@ -55,6 +55,7 @@
 </template>
 
 <script>
+import axios from "axios";
 import ReconnectingWebSocket from "reconnectingwebsocket";
 import { mapActions, mapState } from "vuex";
 import Alerts from "./Toast/ToastGroup.vue";
@@ -67,6 +68,7 @@ import OntologyModal from "./OntologyModal/OntologyModal.vue";
 import TabContent from "./TabContent.vue";
 import TranscriptionManagement from "./TranscriptionManagement.vue";
 import TranscriptionsModal from "./TranscriptionsModal/TranscriptionsModal.vue";
+import { trackSaves } from "../../src/editor/saveTracking";
 import "./Editor.css";
 
 export default {
@@ -166,6 +168,11 @@ export default {
     },
 
     async created() {
+        if (!this.legacyModeEnabled) {
+            // report whether edits reached the server, and warn before leaving if not
+            trackSaves(axios, this.$store);
+            window.addEventListener("beforeunload", this.warnBeforeLeaving);
+        }
         this.$store.commit("document/setId", this.documentId);
         this.$store.commit("document/setName", this.documentName);
         this.$store.commit("document/setDefaultTextDirection", this.defaultTextDirection);
@@ -258,7 +265,21 @@ export default {
             });
         }
     },
+    beforeDestroy() {
+        window.removeEventListener("beforeunload", this.warnBeforeLeaving);
+    },
     methods: {
+        /**
+         * Make the browser ask for confirmation before leaving the page while edits are
+         * not saved yet, still being saved, or failed to save.
+         */
+        warnBeforeLeaving(event) {
+            if (this.$store.getters["saveStatus/hasUnsavedWork"]) {
+                event.preventDefault();
+                // still required by some browsers to show the dialog
+                event.returnValue = "";
+            }
+        },
         ...mapActions("globalTools", [
             "closeElementDetailsModal",
             "closeOntologyModal",

@@ -13,7 +13,8 @@
     "start": "webpack --config webpack.dev.js --watch",
     "production": "webpack --config webpack.prod.js",
     "storybook": "start-storybook -p 6006",
-    "build-storybook": "build-storybook"
+    "build-storybook": "build-storybook",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"tests/**/*.test.mjs\""
   },
   "dependencies": {
     "@escriptorium/virtual-keyboard": "^0.2.2-b2506100631",

@@ -116,6 +116,7 @@
                         </ToggleButton>
                     </div>
                     <div class="escr-line-modal-right">
+                        <SaveStatus />
                         <EscrButton
                             color="text"
                             :on-click="() => close()"
@@ -190,6 +191,7 @@
                             class="form-control mb-2 display-virtual-keyboard"
                             autocomplete="off"
                             autofocus
+                            @input="reportUnsaved($event.target.value)"
                             @keyup.down="editLine('next')"
                             @keyup.up="editLine('previous')"
                             @keyup.enter="editLine('next')"
@@ -218,6 +220,7 @@
                                     contenteditable="true"
                                     class="display-virtual-keyboard"
                                     @blur="localTranscription = $event.target.textContent"
+                                    @input="reportUnsaved($event.target.textContent)"
                                     @keyup="recomputeInputCharsScaleY()"
                                     @keyup.right="editLine('next')"
                                     @keyup.left="editLine('previous')"
@@ -431,6 +434,7 @@ import ArrowCircleRightIcon from "./Icons/ArrowCircleRightIcon/ArrowCircleRightI
 import EscrButton from "./Button/Button.vue";
 import KeyboardIcon from "./Icons/KeyboardIcon/KeyboardIcon.vue";
 import LineVersion from "./LineVersion.vue";
+import SaveStatus from "./SaveStatus/SaveStatus.vue";
 import HelpVersions from "./HelpVersions.vue";
 import HelpCompareTranscriptions from "./HelpCompareTranscriptions.vue";
 import ToggleButton from "./ToggleButton/ToggleButton.vue";
@@ -446,6 +450,7 @@ export default Vue.extend({
         KeyboardIcon,
         LineVersion,
         HelpVersions,
+        SaveStatus,
         HelpCompareTranscriptions,
         ToggleButton,
         TranscriptionSelector,
@@ -501,6 +506,8 @@ export default Vue.extend({
                 return this.line.currentTrans && this.line.currentTrans.content || "";
             },
             set: async function(newValue) {
+                // from here the text is sent, its request is tracked
+                this.reportUnsaved(null);
                 let oldValue = this.line.currentTrans.content;
                 if (this.$refs.transInput.value != newValue) {
                     // Note: better way to do that?
@@ -550,6 +557,8 @@ export default Vue.extend({
         $(this.$refs.transModal).modal("hide");
     },
     destroyed() {
+        // closed: the text was saved, or the user chose to discard it
+        this.reportUnsaved(null);
         // unbind all events to avoid duplicating them
         $(document).off("hide.bs.modal");
         $(document).off("show.bs.modal");
@@ -587,6 +596,18 @@ export default Vue.extend({
                 enableVirtualKeyboard(input);
     },
     methods: {
+        /**
+         * Tell the save status whether the typed text differs from the saved one
+         * (null: nothing waiting to be saved).
+         */
+        reportUnsaved(text) {
+            const currentTrans = this.line && this.line.currentTrans;
+            const saved = (currentTrans && currentTrans.content) || "";
+            this.$store.commit("saveStatus/setUnsaved", {
+                key: "line",
+                unsaved: text !== null && text !== saved,
+            });
+        },
         close() {
             $(this.$refs.transModal).modal("hide");
         },
