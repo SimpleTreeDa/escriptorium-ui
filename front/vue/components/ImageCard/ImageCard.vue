@@ -163,16 +163,20 @@
                 </VMenu>
             </div>
 
-            <!-- filename with tooltip for overflow -->
+            <!-- label (when set) and filename, always visible; full names in the tooltip -->
             <VDropdown
                 placement="bottom"
                 :triggers="['hover']"
                 theme="escr-tooltip-small"
-                class="filename"
+                class="part-identity"
             >
-                <span>{{ part.title }}</span>
+                <span
+                    v-if="part.name"
+                    class="part-label"
+                >{{ part.name }}</span>
+                <span class="part-filename">{{ displayFilename }}</span>
                 <template #popper>
-                    {{ part.title }}
+                    {{ fullName }}
                 </template>
             </VDropdown>
 
@@ -319,6 +323,7 @@ import HorizMenuIcon from "../../components/Icons/HorizMenuIcon/HorizMenuIcon.vu
 import SegmentIcon from "../../components/Icons/SegmentIcon/SegmentIcon.vue";
 import TranscribeIcon from "../../components/Icons/TranscribeIcon/TranscribeIcon.vue";
 import TrashIcon from "../../components/Icons/TrashIcon/TrashIcon.vue";
+import { middleTruncate } from "../../store/util/filename";
 import "./ImageCard.css";
 
 export default {
@@ -431,7 +436,18 @@ export default {
             parts: (state) => state.document.parts,
             selectedParts: (state) => state.images.selectedParts,
             isDragging: (state) => state.images.isDragging,
-        })
+        }),
+        /**
+         * Filename shortened in the middle so it fits on two lines of the card
+         */
+        displayFilename() {
+            return middleTruncate(this.part.filename, 48);
+        },
+        fullName() {
+            return this.part.name
+                ? `${this.part.name} – ${this.part.filename}`
+                : this.part.filename;
+        },
     },
     methods: {
         ...mapActions("alerts", ["addError"]),
