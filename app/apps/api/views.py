@@ -1336,7 +1336,7 @@ class LineTranscriptionViewSet(DocumentPermissionMixin, ModelViewSet):
         lines = request.data.get("lines")
         serializer = self.scope_serializer(LineTranscriptionSerializer(data=lines, many=True))
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        serializer.save(version_author=request.user.username)
         self.update_part_progress()
 
         return Response({'status': 'ok', 'lines': serializer.data}, status=200)

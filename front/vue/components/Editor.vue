@@ -117,6 +117,10 @@ export default {
         },
     },
     computed: {
+        lastViewedKey() {
+            // a browser can be shared by several users
+            return `${userProfile.userId}:${this.documentId}`;
+        },
         ...mapState({
             modalOpen: (state) => state.globalTools.modalOpen,
             partsLoaded: (state) => state.parts.loaded,
@@ -139,6 +143,11 @@ export default {
                     window.location.origin);
                 tabUrl.searchParams.set("select", this.$store.state.parts.pk);
                 $("#nav-img-tab").attr("href", tabUrl);
+
+                // where to resume when the user has not transcribed anything in this document
+                const lastViewed = userProfile.get("lastViewedParts") || {};
+                lastViewed[this.lastViewedKey] = n;
+                userProfile.set("lastViewedParts", lastViewed);
             }
         },
         "$store.state.transcriptions.selectedTranscription": function(n, o) {
@@ -162,14 +171,46 @@ export default {
         this.$store.commit("document/setDefaultTextDirection", this.defaultTextDirection);
         this.$store.commit("document/setMainTextDirection", this.mainTextDirection);
         this.$store.commit("document/setReadDirection", this.readDirection);
+        // "Continue where you left off" redirects here with ?line=<the line this user last
+        // transcribed>, or ?resume=1 when there is none, to reopen the last page viewed.
+        // Read it before loading a page, which records the new last viewed page.
+        const params = new URLSearchParams(window.location.search);
+        const resumeLine = !this.legacyModeEnabled && params.get("line");
+        const resumePage = !this.legacyModeEnabled && params.has("resume")
+            && (userProfile.get("lastViewedParts") || {})[this.lastViewedKey];
+        if (params.has("line") || params.has("resume")) {
+            params.delete("line");
+            params.delete("resume");
+            const query = params.toString();
+            const url = window.location.pathname + (query ? `?${query}` : "");
+            window.history.replaceState({}, "", url + window.location.hash);
+        }
         try {
-            await this.$store.dispatch("parts/fetchPart", {pk: this.partId});
-            let tr = userProfile.get("initialTranscriptions")
-                  && userProfile.get("initialTranscriptions")[this.$store.state.document.id]
-                  && this.$store.state.transcriptions.all.find(e => e.pk == userProfile.get("initialTranscriptions"))
-                  || this.$store.state.transcriptions.all[0].pk;
+            let resumed = false;
+            if (resumePage && resumePage != this.partId) {
+                try {
+                    await this.$store.dispatch("parts/fetchPart", {pk: resumePage});
+                    resumed = true;
+                } catch (err) {
+                    // deleted since, open the first page instead
+                }
+            }
+            if (!resumed) {
+                await this.$store.dispatch("parts/fetchPart", {pk: this.partId});
+            }
+            const transcriptions = this.$store.state.transcriptions.all;
+            const remembered = (userProfile.get("initialTranscriptions") || {})[this.documentId];
+            let tr = transcriptions.find((e) => e.pk == remembered)
+                ? remembered
+                : transcriptions[0].pk;
 
             this.$store.commit("transcriptions/setSelectedTranscription", tr);
+
+            if (resumeLine) {
+                this.resumeOnLine(resumeLine);
+            } else if (resumed) {
+                this.add({ color: "text", message: `Resumed at ${this.$store.state.parts.title}` });
+            }
         } catch (err) {
             console.log("couldn't fetch part data!", err);
         }
@@ -231,6 +272,32 @@ export default {
         ...mapActions("document", ["saveOntologyChanges"]),
         ...mapActions("parts", ["savePartChanges"]),
         ...mapActions("alerts", ["add"]),
+        /**
+         * Open the transcription of the line the user last edited, if it still exists.
+         */
+        resumeOnLine(linePk) {
+            const findLine = () => this.$store.state.lines.all.find((l) => l.pk == linePk);
+            const line = findLine();
+            if (!line) return;
+            this.add({
+                color: "text",
+                message: `Resumed at ${this.$store.state.parts.title}, line ${line.order + 1}`,
+            });
+            // the transcription modal lives in the visualisation panel
+            if (!this.$store.state.document.editorPanels.includes("visualisation")) return;
+            // wait for the line's text: loading it replaces the line objects
+            const partPk = this.$store.state.parts.pk;
+            const unwatch = this.$watch(
+                () => this.$store.state.parts.pk !== partPk || (findLine() || {}).currentTrans,
+                (loaded) => {
+                    if (!loaded) return;
+                    unwatch();
+                    if (this.$store.state.parts.pk === partPk) {
+                        this.$store.commit("lines/setEditedLine", findLine());
+                    }
+                },
+            );
+        },
         async onSavePart() {
             await this.savePartChanges();
             this.closeElementDetailsModal();
