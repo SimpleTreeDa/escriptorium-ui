@@ -16,6 +16,7 @@
     flex: 1 0 auto;
     display: flex;
     justify-content: flex-end;
+    align-items: center;
 }
 .escr-line-modal-header .escr-vk-toggle:not(:active):not([class*="active"]):not(:hover) {
     background-color: transparent;

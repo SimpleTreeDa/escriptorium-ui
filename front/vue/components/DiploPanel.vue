@@ -714,6 +714,7 @@ export default {
 
         changed() {
             this.$refs.saveNotif.classList.remove("hide");
+            this.$store.commit("saveStatus/setUnsaved", { key: "diplomatic", unsaved: true });
             this.debouncedSave();
         },
 
@@ -863,6 +864,8 @@ export default {
                new lines add them to createdLines then save
             */
             this.$refs.saveNotif.classList.add("hide");
+            // from here the edits are sent, their requests are tracked
+            this.$store.commit("saveStatus/setUnsaved", { key: "diplomatic", unsaved: false });
             this.addToList();
             var updated = this.bulkUpdate();
             this.bulkCreate();
