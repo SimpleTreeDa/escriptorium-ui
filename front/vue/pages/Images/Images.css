@@ -324,3 +324,9 @@ td .task-metadata .status.ongoing::before {
 td.task-metadata .status.error::before {
     background-color: var(--alert);
 }
+.escr-images-header .escr-images-header-actions {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    gap: 0.75rem;
+}
