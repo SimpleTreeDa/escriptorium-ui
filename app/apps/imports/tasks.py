@@ -119,7 +119,8 @@ def document_export(task, file_format, part_pks,
         report.error(str(e))
 
         if user:
-            user.notify(_("Something went wrong during the export!"),
+            # an exporter can say what went wrong in words the user can act on
+            user.notify(getattr(e, "user_message", None) or _("Something went wrong during the export!"),
                         links=[{'text': 'Report', 'src': report.uri}],
                         id="export-error",
                         level='danger')

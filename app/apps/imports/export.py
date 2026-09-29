@@ -12,12 +12,20 @@ from django.template import loader
 from django.utils.text import slugify
 
 from core.models import Block
+from imports.tei import (
+    READY_STATUS,
+    TEIDocumentBuilder,
+    TEIExportError,
+    serialize,
+    validate,
+)
 
 TEXT_FORMAT = "text"
 PAGEXML_FORMAT = "pagexml"
 ALTO_FORMAT = "alto"
 OPENITI_MARKDOWN_FORMAT = "openitimarkdown"
 TEI_XML_FORMAT = "teixml"
+EPHREM_TEI_FORMAT = "tei"
 
 
 class EsZipFile(zipfile.ZipFile):
@@ -265,10 +273,65 @@ class TEIXMLExporter(OpenITIMARkdownExporter):
         super().render(tei_conversion=True)
 
 
+class EphremTEIExporter(BaseExporter):
+    """
+    One TEI document of the selected pages that are "Ready for TEI export", see imports.tei;
+    a single XML file, zipped with the images when they are included.
+    """
+    file_format = EPHREM_TEI_FORMAT
+
+    def __init__(self, part_pks, region_types, include_images, *args, **kwargs):
+        self.file_extension = "zip" if include_images else "xml"
+        super().__init__(part_pks, region_types, include_images, *args, **kwargs)
+
+    def document_url(self):
+        from django.contrib.sites.models import Site
+        from django.urls import reverse
+        return "https://%s%s" % (Site.objects.get_current().domain,
+                                 reverse("document-images", kwargs={"pk": self.document.pk}))
+
+    def render(self):
+        DocumentPart = apps.get_model("core", "DocumentPart")
+        selected = (DocumentPart.objects
+                    .filter(document=self.document, pk__in=self.part_pks)
+                    .select_related("editorial_status_by", "typology")
+                    .prefetch_related("metadata__key")
+                    .order_by("order"))
+        ready = []
+        for part in selected:
+            if part.editorial_status == READY_STATUS:
+                ready.append(part)
+            else:
+                self.report.append('Skipped {element}: its status is "{status}", not "Ready for '
+                                   'TEI export".'.format(element=part.title,
+                                                         status=part.get_editorial_status_display()))
+
+        region_filters = Block.get_filters(block_types=list(self.region_types), filtering_lines=True)
+        builder = TEIDocumentBuilder(self.document, ready, self.transcription, region_filters,
+                                     self.document_url())
+        tree = builder.build()
+        for warning in builder.warnings:
+            self.report.append(warning)
+        errors = validate(tree)
+        if errors:
+            raise TEIExportError(["The TEI file made is not valid, please report it:"] + errors[:20])
+
+        content = serialize(tree)
+        if self.include_images:
+            with EsZipFile(self.filepath, "w") as zip_:
+                for part in ready:
+                    zip_.write(part.image.path, part.filename)
+                zip_.writestr(os.path.splitext(os.path.basename(self.filepath))[0] + ".xml", content)
+        else:
+            with open(self.filepath, "wb") as fh:
+                fh.write(content)
+
+
 ENABLED_EXPORTERS = {
     TEXT_FORMAT: {"class": TextExporter, "label": "Text"},
     PAGEXML_FORMAT: {"class": PageXMLExporter, "label": "PAGE"},
     ALTO_FORMAT: {"class": AltoExporter, "label": "ALTO"},
+    EPHREM_TEI_FORMAT: {"class": EphremTEIExporter, "label": "TEI (Ephrem Project)"},
 }
 
 if settings.EXPORT_OPENITI_MARKDOWN_ENABLED:

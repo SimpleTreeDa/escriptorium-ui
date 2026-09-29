@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Ephrem Project TEI profile: the subset of TEI P5 written by the eScriptorium TEI export
+  (apps/imports/tei.py). Every element, attribute and order allowed here is allowed by the
+  TEI P5 content models (tei_all), so a document valid against this schema is valid TEI,
+  and also has the minimum content the project needs: manuscript and work identification,
+  a stable identifier, responsibility, review status, language, page breaks, lines and
+  links to the images.
+-->
+<grammar xmlns="http://relaxng.org/ns/structure/1.0"
+         xmlns:a="http://relaxng.org/ns/compatibility/annotations/1.0"
+         ns="http://www.tei-c.org/ns/1.0"
+         datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+
+  <start>
+    <element name="TEI">
+      <ref name="xml.lang"/>
+      <ref name="teiHeader"/>
+      <ref name="facsimile"/>
+      <ref name="text"/>
+    </element>
+  </start>
+
+  <!-- attributes -->
+  <define name="xml.lang">
+    <optional>
+      <attribute name="xml:lang" ns="http://www.w3.org/XML/1998/namespace">
+        <data type="language"/>
+      </attribute>
+    </optional>
+  </define>
+  <define name="xml.id">
+    <attribute name="xml:id" ns="http://www.w3.org/XML/1998/namespace">
+      <data type="ID"/>
+    </attribute>
+  </define>
+  <define name="word">
+    <data type="token">
+      <param name="pattern">[^\p{C}\p{Z}]+</param>
+    </data>
+  </define>
+  <define name="nonEmptyText">
+    <data type="string">
+      <param name="pattern">.*\S.*</param>
+    </data>
+  </define>
+  <define name="pointer">
+    <!-- as TEI's teidata.pointer -->
+    <data type="anyURI">
+      <param name="pattern">\S+</param>
+    </data>
+  </define>
+  <define name="date">
+    <data type="date"/>
+  </define>
+
+  <!-- header -->
+  <define name="teiHeader">
+    <element name="teiHeader">
+      <element name="fileDesc">
+        <ref name="titleStmt"/>
+        <ref name="publicationStmt"/>
+        <ref name="sourceDesc"/>
+      </element>
+      <element name="profileDesc">
+        <element name="langUsage">
+          <element name="language">
+            <attribute name="ident"><data type="language"/></attribute>
+            <ref name="nonEmptyText"/>
+          </element>
+        </element>
+      </element>
+      <ref name="revisionDesc"/>
+    </element>
+  </define>
+
+  <define name="titleStmt">
+    <element name="titleStmt">
+      <element name="title">
+        <attribute name="level"><value>a</value></attribute>
+        <optional><attribute name="ref"><ref name="pointer"/></attribute></optional>
+        <ref name="nonEmptyText"/>
+      </element>
+      <element name="title">
+        <attribute name="type"><value>sub</value></attribute>
+        <ref name="nonEmptyText"/>
+      </element>
+      <optional>
+        <element name="author"><ref name="nonEmptyText"/></element>
+      </optional>
+      <zeroOrMore>
+        <element name="respStmt">
+          <element name="resp"><ref name="nonEmptyText"/></element>
+          <oneOrMore>
+            <element name="name">
+              <attribute name="type">
+                <choice><value>person</value><value>software</value></choice>
+              </attribute>
+              <optional>
+                <choice>
+                  <ref name="xml.id"/>
+                  <attribute name="ref"><ref name="pointer"/></attribute>
+                </choice>
+              </optional>
+              <ref name="nonEmptyText"/>
+            </element>
+          </oneOrMore>
+        </element>
+      </zeroOrMore>
+    </element>
+  </define>
+
+  <define name="publicationStmt">
+    <element name="publicationStmt">
+      <element name="authority"><ref name="nonEmptyText"/></element>
+      <element name="idno">
+        <a:documentation>Stable record identifier</a:documentation>
+        <attribute name="type"><choice><value>URI</value><value>local</value></choice></attribute>
+        <ref name="nonEmptyText"/>
+      </element>
+      <element name="date">
+        <attribute name="when"><ref name="date"/></attribute>
+        <empty/>
+      </element>
+    </element>
+  </define>
+
+  <define name="sourceDesc">
+    <element name="sourceDesc">
+      <element name="msDesc">
+        <element name="msIdentifier">
+          <optional>
+            <element name="settlement"><ref name="nonEmptyText"/></element>
+          </optional>
+          <optional>
+            <element name="repository"><ref name="nonEmptyText"/></element>
+          </optional>
+          <element name="idno">
+            <attribute name="type"><value>shelfmark</value></attribute>
+            <ref name="nonEmptyText"/>
+          </element>
+        </element>
+        <element name="msContents">
+          <oneOrMore>
+            <element name="msItem">
+              <attribute name="n"><ref name="nonEmptyText"/></attribute>
+              <optional>
+                <element name="author"><ref name="nonEmptyText"/></element>
+              </optional>
+              <element name="title">
+                <optional><attribute name="ref"><ref name="pointer"/></attribute></optional>
+                <ref name="nonEmptyText"/>
+              </element>
+            </element>
+          </oneOrMore>
+        </element>
+      </element>
+    </element>
+  </define>
+
+  <define name="revisionDesc">
+    <element name="revisionDesc">
+      <attribute name="status"><ref name="word"/></attribute>
+      <oneOrMore>
+        <element name="change">
+          <attribute name="status"><ref name="word"/></attribute>
+          <optional><attribute name="when"><ref name="date"/></attribute></optional>
+          <optional><attribute name="who"><ref name="pointer"/></attribute></optional>
+          <ref name="nonEmptyText"/>
+        </element>
+      </oneOrMore>
+    </element>
+  </define>
+
+  <!-- images -->
+  <define name="facsimile">
+    <element name="facsimile">
+      <oneOrMore>
+        <element name="surface">
+          <ref name="xml.id"/>
+          <attribute name="n"><ref name="nonEmptyText"/></attribute>
+          <element name="graphic">
+            <attribute name="url"><ref name="pointer"/></attribute>
+            <empty/>
+          </element>
+        </element>
+      </oneOrMore>
+    </element>
+  </define>
+
+  <!-- text: one division per work, a page break per image, a block per region, a line break
+       before each line -->
+  <define name="text">
+    <element name="text">
+      <ref name="xml.lang"/>
+      <element name="body">
+        <oneOrMore>
+          <element name="div">
+            <attribute name="type"><value>work</value></attribute>
+            <attribute name="n"><ref name="nonEmptyText"/></attribute>
+            <oneOrMore>
+              <element name="pb">
+                <attribute name="n"><ref name="nonEmptyText"/></attribute>
+                <attribute name="facs"><ref name="pointer"/></attribute>
+                <empty/>
+              </element>
+              <zeroOrMore>
+                <element name="ab">
+                  <attribute name="type"><ref name="word"/></attribute>
+                  <oneOrMore>
+                    <element name="lb">
+                      <attribute name="n"><ref name="nonEmptyText"/></attribute>
+                      <empty/>
+                    </element>
+                    <text/>
+                  </oneOrMore>
+                </element>
+              </zeroOrMore>
+            </oneOrMore>
+          </element>
+        </oneOrMore>
+      </element>
+    </element>
+  </define>
+</grammar>

@@ -29,6 +29,15 @@
                 :on-change="handleFileFormatChange"
                 required
             />
+            <p
+                v-if="fileFormat === 'tei'"
+                class="escr-help-text escr-tei-help"
+            >
+                One TEI file for the Ephrem Project website, with only the selected images whose
+                status is "Ready for TEI export". The document needs "Work" and "Shelfmark"
+                metadata fields (Edit document &gt; Metadata); "Repository", "Settlement",
+                "Author", "Identifier" and "Language" are used when present.
+            </p>
             <div class="escr-form-field escr-include-images-field escr-checkbox-field">
                 <label>
                     <input
@@ -216,6 +225,11 @@ export default {
                     label: "ALTO",
                     value: "alto",
                     selected: this.fileFormat === "alto",
+                },
+                {
+                    label: "TEI (Ephrem Project)",
+                    value: "tei",
+                    selected: this.fileFormat === "tei",
                 },
             ];
             if (this.markdownEnabled) {
