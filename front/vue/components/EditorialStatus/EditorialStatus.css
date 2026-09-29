@@ -1,0 +1,50 @@
+/* an editorial status label with a colored dot, e.g. on cards, lists and menus */
+.escr-editorial-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+.escr-editorial-status::before {
+    content: "";
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--editorial-status-color, #a7a8a9);
+}
+.status-not_started { --editorial-status-color: #a7a8a9; }
+.status-in_progress { --editorial-status-color: #1761b5; }
+.status-transcribed { --editorial-status-color: #5869fc; }
+.status-reviewed_1 { --editorial-status-color: #9b51e0; }
+.status-reviewed_2 { --editorial-status-color: #6c3483; }
+.status-ground_truth { --editorial-status-color: #28a696; }
+.status-final { --editorial-status-color: #219653; }
+.status-ready_for_tei { --editorial-status-color: #f2994a; }
+
+.escr-editorial-status-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 6px;
+    height: 22px;
+    border: 1px solid var(--background2-dark, #ccc);
+    border-radius: 11px;
+    background-color: var(--background1);
+    color: var(--text1);
+    font-size: 13px;
+    line-height: 20px;
+    cursor: pointer;
+}
+.escr-editorial-status-button:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+.escr-editorial-status-button svg {
+    width: 12px;
+    height: 12px;
+    fill: currentColor;
+}
+.escr-editorial-status-menu button.selected {
+    font-weight: 700;
+}

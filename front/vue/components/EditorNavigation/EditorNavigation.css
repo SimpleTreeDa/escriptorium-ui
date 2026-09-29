@@ -18,6 +18,21 @@ nav.escr-editor-nav .escr-editor-nav-meta {
 nav.escr-editor-nav .escr-breadcrumbs {
     margin: 0;
 }
+nav.escr-editor-nav .escr-element-title-row {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    padding-right: 16px;
+    /* keep the full line height, like the title used to */
+    flex-shrink: 0;
+}
+nav.escr-editor-nav .escr-element-title-row h1.escr-element-title {
+    /* the title gives way to the status */
+    flex: 0 1 auto;
+    min-width: 0;
+}
 nav.escr-editor-nav h1.escr-element-title {
     font-weight: 700;
     font-size: 18px;

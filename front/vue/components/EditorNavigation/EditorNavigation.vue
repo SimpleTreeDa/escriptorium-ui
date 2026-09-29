@@ -4,12 +4,21 @@
             <EscrBreadcrumbs
                 :items="breadcrumbs"
             />
-            <h1
-                class="escr-element-title"
-                :title="elementHeadingFull"
-            >
-                {{ elementHeading }}
-            </h1>
+            <div class="escr-element-title-row">
+                <h1
+                    class="escr-element-title"
+                    :title="elementHeadingFull"
+                >
+                    {{ elementHeading }}
+                </h1>
+                <EditorialStatusMenu
+                    v-if="elementPk"
+                    :status="editorialStatus || 'not_started'"
+                    :change="statusChangeText"
+                    :disabled="disabled"
+                    :on-select="setStatus"
+                />
+            </div>
         </div>
         <div class="escr-editor-nav-actions">
             <SaveStatus />
@@ -141,11 +150,13 @@ import ArrowCircleLeftIcon from "../Icons/ArrowCircleLeftIcon/ArrowCircleLeftIco
 import ArrowCircleRightIcon from "../Icons/ArrowCircleRightIcon/ArrowCircleRightIcon.vue";
 import EscrBreadcrumbs from "../Breadcrumbs/Breadcrumbs.vue";
 import EscrButton from "../Button/Button.vue";
+import EditorialStatusMenu from "../EditorialStatus/EditorialStatusMenu.vue";
 import InfoOutlineIcon from "../Icons/InfoOutlineIcon/InfoOutlineIcon.vue";
 import OntologyIcon from "../Icons/OntologyIcon/OntologyIcon.vue";
 import PagePicker from "../PagePicker/PagePicker.vue";
 import SaveStatus from "../SaveStatus/SaveStatus.vue";
 import TranscribeIcon from "../Icons/TranscribeIcon/TranscribeIcon.vue";
+import { editorialStatusChange } from "../../store/util/editorialStatus";
 import { middleTruncate } from "../../store/util/filename";
 import "./EditorNavigation.css";
 
@@ -155,6 +166,7 @@ export default {
         ArrowCircleLeftIcon,
         ArrowCircleRightIcon,
         EscrBreadcrumbs,
+        EditorialStatusMenu,
         EscrButton,
         InfoOutlineIcon,
         OntologyIcon,
@@ -180,6 +192,7 @@ export default {
             elementNumber: (state) => state.parts.order,
             elementPk: (state) => state.parts.pk,
             elementTitle: (state) => state.parts.title,
+            editorialStatus: (state) => state.parts.editorial_status,
             nextPart: (state) => state.parts.next,
             partsCount: (state) => state.document.partsCount,
             prevPart: (state) => state.parts.previous,
@@ -187,6 +200,12 @@ export default {
             projectSlug: (state) => state.document.projectSlug,
             readDirection: (state) => state.document.readDirection,
         }),
+        statusChangeText() {
+            return editorialStatusChange({
+                editorial_status_by: this.$store.state.parts.editorial_status_by,
+                editorial_status_at: this.$store.state.parts.editorial_status_at,
+            });
+        },
         breadcrumbs() {
             let breadcrumbs = [{ title: "Loading..." }];
             if (this.projectName && this.projectSlug && this.documentName && this.documentId) {
@@ -230,7 +249,14 @@ export default {
         },
     },
     methods: {
-        ...mapActions("parts", ["loadPart", "loadPartByOrder"]),
+        ...mapActions("parts", ["loadPart", "loadPartByOrder", "setEditorialStatus"]),
+        async setStatus(status) {
+            try {
+                await this.setEditorialStatus(status);
+            } catch (err) {
+                // reported by the save status
+            }
+        },
         ...mapActions("globalTools", ["openModal"]),
         ...mapMutations("document", ["setBlockShortcuts"]),
         hasPrevOrNextElement(direction) {

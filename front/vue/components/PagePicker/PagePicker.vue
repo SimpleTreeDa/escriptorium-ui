@@ -95,6 +95,11 @@
                                 class="page-filename"
                                 :title="page.filename"
                             >{{ shorten(page.filename) }}</span>
+                            <span
+                                v-if="page.editorial_status"
+                                :class="['escr-editorial-status', 'page-status',
+                                         `status-${page.editorial_status}`]"
+                            >{{ statusLabel(page.editorial_status) }}</span>
                         </span>
                     </li>
                 </ul>
@@ -108,8 +113,10 @@ import { mapActions, mapMutations, mapState } from "vuex";
 import { retrieveDocumentPartsNavigation } from "../../../src/api";
 import EscrButton from "../Button/Button.vue";
 import ImagesIcon from "../Icons/ImagesIcon/ImagesIcon.vue";
+import { editorialStatusLabel } from "../../store/util/editorialStatus";
 import { middleTruncate } from "../../store/util/filename";
 import { searchPages } from "../../store/util/pageSearch";
+import "../EditorialStatus/EditorialStatus.css";
 import "./PagePicker.css";
 
 /**
@@ -248,6 +255,9 @@ export default {
         },
         shorten(filename) {
             return middleTruncate(filename, 44);
+        },
+        statusLabel(status) {
+            return editorialStatusLabel(status);
         },
     },
 };

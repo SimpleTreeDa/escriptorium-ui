@@ -73,3 +73,7 @@
 .escr-page-picker .page-filename {
     overflow-wrap: anywhere;
 }
+.escr-page-picker .page-status {
+    font-size: 12px;
+    color: var(--text2);
+}

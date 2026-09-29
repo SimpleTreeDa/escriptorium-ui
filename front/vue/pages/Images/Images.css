@@ -330,3 +330,8 @@ td.task-metadata .status.error::before {
     align-items: center;
     gap: 0.75rem;
 }
+.escr-images-toolbar .status-filter {
+    flex: 0 0 auto;
+    width: 220px;
+    margin-left: 8px;
+}

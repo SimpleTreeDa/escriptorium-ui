@@ -5,6 +5,7 @@ import {
     retrieveDocumentPartByOrder,
     updatePart as apiUpdatePart,
     rotateDocumentPart,
+    setPartsEditorialStatus,
     createPartMetadata as apiCreatePartMetadata,
     retrievePartMetadata,
     updatePartMetadata as apiUpdatePartMetadata,
@@ -29,6 +30,9 @@ export const initialState = () => ({
     metadata: null,
     typologies: null,
     comments: null,
+    editorial_status: null,
+    editorial_status_by: null,
+    editorial_status_at: null,
 });
 
 export const getters = {
@@ -231,6 +235,12 @@ export const actions = {
     async updatePart({ state, commit, rootState }, data) {
         const resp = await apiUpdatePart(rootState.document.id, state.pk, data);
         commit("load", resp.data);
+    },
+
+    async setEditorialStatus({ state, commit, rootState }, status) {
+        const { data } = await setPartsEditorialStatus(rootState.document.id, [state.pk], status);
+        const { editorial_status, editorial_status_by, editorial_status_at } = data[0];
+        commit("load", { editorial_status, editorial_status_by, editorial_status_at });
     },
 
     async rotate({ state, commit, dispatch, rootState }, angle) {
