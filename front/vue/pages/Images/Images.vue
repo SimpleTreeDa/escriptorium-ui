@@ -1056,14 +1056,14 @@ export default {
         ...mapMutations("images", ["setLoading", "setSelectedParts", "setIsDragging"]),
         ...mapMutations("document", ["setPartsCount"]),
         /**
-         * Close a context menu for an image.
-         */
-        /**
          * Open the editor where the user left off (the server picks the page and line).
          */
         continueEditing() {
             window.location.assign(`/document/${this.id}/parts/edit/`);
         },
+        /**
+         * Close a context menu for an image.
+         */
         closeContextMenu() {
             this.contextMenuOpen = null;
         },
