@@ -536,14 +536,8 @@ export default Vue.extend({
                 this.refreshHistoryBtns();
             }
         },
-        colorMode: function (n, o) {
-            this.$parent.prefetchImage(
-                this.imageSrc,
-                function (src) {
-                    this.setImageSource(src);
-                    this.refreshSegmenter();
-                }.bind(this)
-            );
+        colorMode: function () {
+            this.initSegmenter();
         },
         fullsizeimage: function (n, o) {
             // it was prefetched
@@ -799,6 +793,8 @@ export default Vue.extend({
             this.$parent.prefetchImage(
                 this.imageSrc,
                 function (src) {
+                    // the user moved to another page (or color mode) while this one was loading
+                    if (src !== this.imageSrc) return;
                     this.setImageSource(src);
                     this.refreshSegmenter();
                 }.bind(this)
@@ -811,12 +807,15 @@ export default Vue.extend({
         refreshSegmenter() {
             Vue.nextTick(
                 function () {
-                    if (!this.$store.state.parts.image || this.$img.naturalWidth === 0) {
+                    // the part is reset while navigating to another page
+                    if (!this.$store.state.parts.loaded) return;
+                    const image = this.$store.state.parts.image;
+                    const size = image && image.size;
+                    if (!size || this.$img.naturalWidth === 0) {
                         console.warn("refreshSegmenter called with no image");
                         return;
                     }
-                    this.segmenter.scale =
-            this.$img.naturalWidth / this.$store.state.parts.image.size[0];
+                    this.segmenter.scale = this.$img.naturalWidth / size[0];
                     if (this.segmenter.loaded) {
                         this.segmenter.refresh();
                     } else {
