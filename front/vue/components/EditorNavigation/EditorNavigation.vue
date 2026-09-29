@@ -6,7 +6,7 @@
             />
             <h1
                 class="escr-element-title"
-                :title="elementHeading"
+                :title="elementHeadingFull"
             >
                 {{ elementHeading }}
             </h1>
@@ -142,6 +142,7 @@ import EscrButton from "../Button/Button.vue";
 import InfoOutlineIcon from "../Icons/InfoOutlineIcon/InfoOutlineIcon.vue";
 import OntologyIcon from "../Icons/OntologyIcon/OntologyIcon.vue";
 import TranscribeIcon from "../Icons/TranscribeIcon/TranscribeIcon.vue";
+import { middleTruncate } from "../../store/util/filename";
 import "./EditorNavigation.css";
 
 export default {
@@ -201,16 +202,25 @@ export default {
                         }`,
                     },
                     {
-                        title: this.elementTitle ? this.elementTitle : "Loading...",
+                        title: this.elementTitle
+                            ? (this.elementTitle.length > 60
+                                ? this.elementTitle.slice(0, 60) + "…"
+                                : this.elementTitle)
+                            : "Loading...",
                     },
                 ];
             }
             return breadcrumbs;
         },
-        elementHeading() {
+        elementHeadingFull() {
             return (this.elementTitle && this.elementFilename)
                 ? `${this.elementTitle} – ${this.elementFilename}`
                 : "Loading...";
+        },
+        elementHeading() {
+            if (!this.elementTitle || !this.elementFilename) return "Loading...";
+            // shorten long filenames in the middle to keep their end (folio, extension) visible
+            return `${this.elementTitle} – ${middleTruncate(this.elementFilename, 48)}`;
         },
     },
     methods: {

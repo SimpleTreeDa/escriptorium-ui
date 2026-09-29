@@ -518,7 +518,13 @@ export default {
          */
         partsHeaders() {
             return [
-                { label: "Name", value: "title", image: "thumbnail" },
+                {
+                    label: "Label",
+                    value: "name",
+                    image: "thumbnail",
+                    format: (val) => val || "—",
+                },
+                { label: "Filename", value: "filename", class: "break-anywhere" },
                 {
                     label: "Last Update",
                     value: "updated_at",

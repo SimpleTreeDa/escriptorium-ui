@@ -882,7 +882,13 @@ export default {
                     format: (val) => val + 1,
                     class: "number",
                 },
-                { label: "Name", value: "title", image: "thumbnail" },
+                {
+                    label: "Label",
+                    value: "name",
+                    image: "thumbnail",
+                    format: (val) => val || "—",
+                },
+                { label: "Filename", value: "filename", class: "break-anywhere" },
                 {
                     label: "Segment",
                     value: "segmentWorkflow",

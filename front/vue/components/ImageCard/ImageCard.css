@@ -9,7 +9,7 @@
     position: relative;
     margin: 0 15px;
     width: 220px;
-    height: 248px;
+    height: 272px;
     border-radius: 15px;
     background-color: var(--background1);
     display: flex;
@@ -27,7 +27,7 @@
     position: absolute;
     top: 0;
     width: 125px;
-    height: 248px;
+    height: 272px;
     background-color: transparent;
     pointer-events: none;
     z-index: var(--editor-toolbar-z);
@@ -192,16 +192,29 @@
     border-top-left-radius: 15px;
 }
 
-/* image metadata */
-.escr-image-card .filename {
+/* image metadata: label (when set) and filename, both always visible */
+.escr-image-card .part-identity {
     margin: 8px;
+    max-width: calc(100% - 16px);
     text-align: center;
     font-size: 12px;
-    font-weight: 600;
-    max-width: calc(100% - 16px);
+    line-height: 16px;
+}
+.escr-image-card .part-label {
+    display: block;
+    font-weight: 700;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+}
+.escr-image-card .part-filename {
+    /* up to two lines, long names are already shortened in the middle */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    font-weight: 600;
 }
 .escr-image-card .element-number {
     margin-top: 8px;
