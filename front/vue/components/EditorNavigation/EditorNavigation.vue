@@ -68,6 +68,7 @@
                 >
                 <span v-else>-</span> / {{ partsCount }}
             </div>
+            <PagePicker :disabled="disabled" />
             <VDropdown
                 class="new-section with-separator"
                 theme="escr-tooltip-small"
@@ -141,6 +142,7 @@ import EscrBreadcrumbs from "../Breadcrumbs/Breadcrumbs.vue";
 import EscrButton from "../Button/Button.vue";
 import InfoOutlineIcon from "../Icons/InfoOutlineIcon/InfoOutlineIcon.vue";
 import OntologyIcon from "../Icons/OntologyIcon/OntologyIcon.vue";
+import PagePicker from "../PagePicker/PagePicker.vue";
 import TranscribeIcon from "../Icons/TranscribeIcon/TranscribeIcon.vue";
 import { middleTruncate } from "../../store/util/filename";
 import "./EditorNavigation.css";
@@ -154,6 +156,7 @@ export default {
         EscrButton,
         InfoOutlineIcon,
         OntologyIcon,
+        PagePicker,
         TranscribeIcon,
         VDropdown,
     },

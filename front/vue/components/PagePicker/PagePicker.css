@@ -1,0 +1,75 @@
+.escr-page-picker {
+    width: 380px;
+    max-width: 90vw;
+}
+.escr-page-picker input[type="search"] {
+    display: block;
+    width: calc(100% - 24px);
+    margin: 0 12px 8px;
+    padding: 6px 10px;
+    font-size: 14px;
+    border: 1px solid var(--background2-dark);
+    border-radius: 4px;
+    background-color: var(--background1);
+    color: var(--text1);
+}
+.escr-page-picker .picker-message {
+    margin: 8px 16px;
+    font-size: 14px;
+    color: var(--text2);
+}
+.escr-page-picker ul {
+    max-height: min(60vh, 520px);
+    overflow-y: auto;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.escr-page-picker li {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--background2);
+}
+.escr-page-picker li.active {
+    background-color: var(--background2);
+}
+.escr-page-picker li.current {
+    box-shadow: inset 4px 0 0 var(--secondary);
+}
+.escr-page-picker li img,
+.escr-page-picker li .no-thumbnail {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 4px;
+    background-color: var(--background2);
+}
+.escr-page-picker .page-number {
+    flex: 0 0 2.5rem;
+    text-align: right;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--text1);
+}
+.escr-page-picker .page-names {
+    display: flex;
+    flex-flow: column;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 17px;
+    color: var(--text1);
+}
+.escr-page-picker .page-label {
+    font-weight: 700;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.escr-page-picker .page-filename {
+    overflow-wrap: anywhere;
+}

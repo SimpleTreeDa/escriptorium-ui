@@ -51,6 +51,7 @@ from api.serializers import (
     PartBulkMoveSerializer,
     PartDetailSerializer,
     PartMoveSerializer,
+    PartNavigationSerializer,
     PartSerializer,
     ProjectSerializer,
     ProjectTagSerializer,
@@ -913,6 +914,12 @@ class PartViewSet(DocumentPermissionMixin, ModelViewSet):
         return HttpResponseRedirect(reverse('api:part-detail',
                                             kwargs={'document_pk': self.kwargs.get('document_pk'),
                                                     'pk': part.pk}))
+
+    @action(detail=False, methods=['get'])
+    def navigation(self, request, document_pk=None):
+        # every element of the document, unpaginated, for the editor's element picker
+        parts = self.get_queryset().select_related('typology').order_by('order')
+        return Response(PartNavigationSerializer(parts, many=True).data)
 
     @action(detail=True, methods=['post'])
     def move(self, request, document_pk=None, pk=None):

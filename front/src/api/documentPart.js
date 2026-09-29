@@ -8,6 +8,10 @@ export const retrieveDocumentPart = async (documentId, partId) =>
 export const retrieveDocumentPartByOrder = async (documentId, order) =>
     await axios.get(`/documents/${documentId}/parts/byorder/?order=${order}`);
 
+// every element of a document with its label, filename and thumbnail (not paginated)
+export const retrieveDocumentPartsNavigation = async (documentId) =>
+    await axios.get(`/documents/${documentId}/parts/navigation/`);
+
 export const updatePart = async (documentId, partId, data) =>
     await axios.patch(`/documents/${documentId}/parts/${partId}/`, data);
 

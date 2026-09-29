@@ -770,6 +770,25 @@ class DetailedLineSerializer(LineSerializer):
         fields = LineSerializer.Meta.fields + ('transcriptions',)
 
 
+class PartNavigationSerializer(serializers.ModelSerializer):
+    """
+    Just what is needed to find an element and go to it, cheap enough to list every
+    element of a document at once: no image dimensions, workflow or lines.
+    """
+    title = serializers.CharField(read_only=True)
+    filename = serializers.CharField(read_only=True)
+    thumbnail = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DocumentPart
+        fields = ('pk', 'order', 'name', 'title', 'filename', 'thumbnail')
+
+    def get_thumbnail(self, part):
+        thumbnail = get_thumbnailer(part.image).get_thumbnail(
+            settings.THUMBNAIL_ALIASES['']['card'], generate=False)
+        return thumbnail.url if thumbnail else None
+
+
 class PartDetailSerializer(PartSerializer):
     # the editor also needs the full size 'display' copy of TIFF pages
     image = ImageField(required=False, thumbnails=['card', 'large', 'display'])
