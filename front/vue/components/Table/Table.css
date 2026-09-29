@@ -61,6 +61,10 @@
 .escr-table tr td.with-img img ~ * {
     vertical-align: middle;
 }
+/* long unbroken values (e.g. filenames) wrap instead of widening the table */
+.escr-table tr td.break-anywhere {
+    overflow-wrap: anywhere;
+}
 /* sorting */
 .escr-table th button.escr-sort-button {
     cursor: pointer;
