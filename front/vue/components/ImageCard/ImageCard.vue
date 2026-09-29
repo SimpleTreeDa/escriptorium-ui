@@ -28,6 +28,15 @@
                 aria-label="edit image"
             >
                 <img :src="part.thumbnail">
+                <span
+                    v-if="part.editorial_status"
+                    :class="[
+                        'escr-editorial-status', 'card-status', `status-${part.editorial_status}`,
+                    ]"
+                    :title="editorialStatusChange"
+                >
+                    {{ editorialStatusLabel }}
+                </span>
                 <div
                     v-if="part.transcription_progress"
                     class="transcription-progress"
@@ -323,7 +332,9 @@ import HorizMenuIcon from "../../components/Icons/HorizMenuIcon/HorizMenuIcon.vu
 import SegmentIcon from "../../components/Icons/SegmentIcon/SegmentIcon.vue";
 import TranscribeIcon from "../../components/Icons/TranscribeIcon/TranscribeIcon.vue";
 import TrashIcon from "../../components/Icons/TrashIcon/TrashIcon.vue";
+import { editorialStatusChange, editorialStatusLabel } from "../../store/util/editorialStatus";
 import { middleTruncate } from "../../store/util/filename";
+import "../EditorialStatus/EditorialStatus.css";
 import "./ImageCard.css";
 
 export default {
@@ -431,6 +442,12 @@ export default {
         }
     },
     computed: {
+        editorialStatusLabel() {
+            return editorialStatusLabel(this.part.editorial_status);
+        },
+        editorialStatusChange() {
+            return editorialStatusChange(this.part);
+        },
         ...mapState({
             loading: (state) => state.images.loading,
             parts: (state) => state.document.parts,

@@ -29,7 +29,8 @@ class PartNavigationTestCase(CoreFactoryTestCase):
         # not paginated: all 12, more than a page of the regular list endpoint
         self.assertEqual([p['pk'] for p in data], [p.pk for p in self.parts])
         self.assertEqual([p['order'] for p in data], list(range(12)))
-        self.assertEqual(set(data[0]), {'pk', 'order', 'name', 'title', 'filename', 'thumbnail'})
+        self.assertEqual(set(data[0]), {'pk', 'order', 'name', 'title', 'filename', 'thumbnail',
+                                        'editorial_status'})
         self.assertEqual(data[2]['name'], 'f. 23r')
         self.assertEqual(data[2]['title'], 'f. 23r')
         self.assertEqual(data[2]['filename'], 'BL_Add_14572_f023r.tif')

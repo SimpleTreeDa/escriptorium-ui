@@ -12,6 +12,13 @@ export const retrieveDocumentPartByOrder = async (documentId, order) =>
 export const retrieveDocumentPartsNavigation = async (documentId) =>
     await axios.get(`/documents/${documentId}/parts/navigation/`);
 
+// set the editorial status of one or several elements of a document
+export const setPartsEditorialStatus = async (documentId, partIds, status) =>
+    await axios.post(`/documents/${documentId}/parts/set_status/`, {
+        parts: partIds,
+        status,
+    });
+
 export const updatePart = async (documentId, partId, data) =>
     await axios.patch(`/documents/${documentId}/parts/${partId}/`, data);
 

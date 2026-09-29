@@ -1130,7 +1130,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk,
                               'pk': self.lt.pk})
-        with self.assertNumQueries(19):
+        with self.assertNumQueries(20):
             resp = self.client.patch(uri, {
                 'content': 'update'
             }, content_type='application/json')
@@ -1144,7 +1144,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk})
 
-        with self.assertNumQueries(27):
+        with self.assertNumQueries(28):
             resp = self.client.post(uri, {
                 'line': self.line2.pk,
                 'transcription': self.transcription.pk,
@@ -1159,7 +1159,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
                               'part_pk': self.part.pk,
                               'pk': self.lt.pk})
 
-        with self.assertNumQueries(21):
+        with self.assertNumQueries(22):
             resp = self.client.put(uri, {'content': 'test',
                                          'transcription': self.lt.transcription.pk,
                                          'line': self.lt.line.pk},
@@ -1175,7 +1175,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
         ll = Line.objects.create(
             mask=[10, 10, 50, 50],
             document_part=self.part)
-        with self.assertNumQueries(34):
+        with self.assertNumQueries(35):
             resp = self.client.post(
                 uri,
                 {'lines': [
@@ -1193,7 +1193,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
         uri = reverse('api:linetranscription-bulk-update',
                       kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk})
 
-        with self.assertNumQueries(38):
+        with self.assertNumQueries(39):
             resp = self.client.put(uri, {'lines': [
                 {'pk': self.lt.pk,
                  'content': 'test1 new',
@@ -1216,7 +1216,7 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
         self.client.force_login(self.user)
         uri = reverse('api:linetranscription-bulk-delete',
                       kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk})
-        with self.assertNumQueries(11):
+        with self.assertNumQueries(12):
             resp = self.client.post(uri, {'lines': [self.lt.pk, self.lt2.pk]},
                                     content_type='application/json')
             lines = LineTranscription.objects.all()

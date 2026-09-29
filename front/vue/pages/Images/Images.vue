@@ -98,6 +98,13 @@
                             :disabled="(loading && loading.images) || !parts.length"
                             :on-click="onSubmitSearch"
                         />
+                        <EscrDropdown
+                            class="status-filter"
+                            label="Show only the images with this editorial status"
+                            :disabled="(loading && loading.images) || !parts.length"
+                            :options="statusFilterOptions"
+                            :on-change="onStatusFilter"
+                        />
                         <div
                             v-if="importProgress"
                             class="import-progress"
@@ -291,6 +298,45 @@
                                 <MasksIcon />
                             </template>
                         </EscrButton>
+                        <VMenu
+                            placement="bottom-start"
+                            :triggers="['click']"
+                            theme="vertical-menu"
+                        >
+                            <EscrButton
+                                color="secondary"
+                                class="context-menu-button"
+                                label="Set status"
+                                size="small"
+                                :disabled="loading && loading.images"
+                                :on-click="() => {}"
+                            >
+                                <template #button-icon-right>
+                                    <ChevronDownIcon />
+                                </template>
+                            </EscrButton>
+                            <template #popper="{ hide }">
+                                <ul class="escr-vertical-menu">
+                                    <li
+                                        v-for="status in editorialStatuses"
+                                        :key="status.value"
+                                    >
+                                        <button
+                                            @click="() => { hide(); setSelectedStatus(status); }"
+                                        >
+                                            <span
+                                                :class="[
+                                                    'escr-editorial-status',
+                                                    `status-${status.value}`,
+                                                ]"
+                                            >
+                                                {{ status.label }}
+                                            </span>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </template>
+                        </VMenu>
                         <EscrButton
                             color="secondary"
                             label="Export"
@@ -605,6 +651,7 @@ import AlignModal from "../../components/AlignModal/AlignModal.vue";
 import ConfirmModal from "../../components/ConfirmModal/ConfirmModal.vue";
 import ChevronDownIcon from "../../components/Icons/ChevronDownIcon/ChevronDownIcon.vue";
 import EscrButton from "../../components/Button/Button.vue";
+import EscrDropdown from "../../components/Dropdown/Dropdown.vue";
 import EscrLoader from "../../components/Loader/Loader.vue";
 import EscrPage from "../Page/Page.vue";
 import EscrTable from "../../components/Table/Table.vue";
@@ -642,6 +689,9 @@ import TranscribeIcon from "../../components/Icons/TranscribeIcon/TranscribeIcon
 import TranscribeModal from "../../components/TranscribeModal/TranscribeModal.vue";
 import TrashIcon from "../../components/Icons/TrashIcon/TrashIcon.vue";
 import XCircleFilledIcon from "../../components/Icons/XCircleFilledIcon/XCircleFilledIcon.vue";
+import { setPartsEditorialStatus } from "../../../src/api";
+import { EDITORIAL_STATUSES, editorialStatusLabel } from "../../store/util/editorialStatus";
+import "../../components/EditorialStatus/EditorialStatus.css";
 import "../../components/VerticalMenu/VerticalMenu.css";
 import "./Images.css";
 
@@ -653,6 +703,7 @@ export default {
         ChevronDownIcon,
         ConfirmModal,
         EscrButton,
+        EscrDropdown,
         EscrLoader,
         EscrPage,
         EscrTable,
@@ -741,6 +792,8 @@ export default {
             rangeInputValue: "",
             rangeRegex: /^\d+((,|-)\d+)*$/g,
             redrawModalOpen: false,
+            editorialStatuses: EDITORIAL_STATUSES,
+            statusFilter: "all",
             textFilter: "",
             textFilterValue: "",
         }
@@ -800,14 +853,25 @@ export default {
          * Parts (title) filtered by search query
          */
         filteredParts() {
+            let parts = this.sortedParts;
+            if (this.statusFilter !== "all") {
+                parts = parts.filter((part) => part.editorial_status === this.statusFilter);
+            }
             if (this.textFilter) {
-                return this.sortedParts.filter((part) => {
+                parts = parts.filter((part) => {
                     return part.title.toLowerCase().includes(this.textFilter.toLowerCase());
                 });
             }
-            else {
-                return this.sortedParts;
-            }
+            return parts;
+        },
+        statusFilterOptions() {
+            return [
+                { value: "all", label: "All statuses", selected: this.statusFilter === "all" },
+                ...EDITORIAL_STATUSES.map((status) => ({
+                    ...status,
+                    selected: this.statusFilter === status.value,
+                })),
+            ];
         },
         tableParts() {
             return this.filteredParts.map((part) => ({
@@ -913,6 +977,11 @@ export default {
                     format: (val) => val || "—",
                 },
                 { label: "Filename", value: "filename", class: "break-anywhere" },
+                {
+                    label: "Status",
+                    value: "editorial_status",
+                    format: (val) => editorialStatusLabel(val),
+                },
                 {
                     label: "Segment",
                     value: "segmentWorkflow",
@@ -1188,6 +1257,35 @@ export default {
         /**
          * Load all remaining images
          */
+        /**
+         * Show only the images with the chosen editorial status (all images loaded first)
+         */
+        async onStatusFilter(e) {
+            const status = e.target.value;
+            if (status !== "all") await this.loadAll();
+            this.statusFilter = status;
+        },
+        /**
+         * Set the editorial status of the selected images
+         */
+        async setSelectedStatus(status) {
+            try {
+                const { data } = await setPartsEditorialStatus(
+                    this.id, [...this.selectedParts], status.value,
+                );
+                data.forEach((changed) => {
+                    const part = this.parts.find((p) => p.pk === changed.pk);
+                    if (part) this.$store.commit("document/updatePart", { ...part, ...changed });
+                });
+                this.$store.dispatch("alerts/add", {
+                    color: "success",
+                    message: `${data.length} ${data.length === 1 ? "image" : "images"} `
+                        + `set to "${status.label}"`,
+                });
+            } catch (err) {
+                this.addError(err);
+            }
+        },
         async loadAll(callback = () => {}, maxRetries = 5) {
             let failureCount = 0;
             this.setLoading({ key: "images", loading: true });
