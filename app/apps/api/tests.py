@@ -20,6 +20,7 @@ from core.models import (
     LineType,
     Metadata,
     OcrModel,
+    Project,
     Transcription,
 )
 from core.tests.factory import CoreFactoryTestCase
@@ -1504,6 +1505,27 @@ class ProjectViewSetTestCase(CoreFactoryTestCase):
 
         self.assertEqual(resp.status_code, 403)
         self.assertFalse(self.project.shared_with_users.filter(pk=other.pk).exists())
+
+    def test_destroy(self):
+        self.client.force_login(self.project.owner)
+        uri = reverse('api:project-detail', kwargs={'pk': self.project.pk})
+        resp = self.client.delete(uri)
+
+        self.assertEqual(resp.status_code, 204)
+        self.assertFalse(Project.objects.filter(pk=self.project.pk).exists())
+
+    def test_destroy_not_owner(self):
+        collaborator = self.factory.make_user()
+        self.project.shared_with_users.add(collaborator)
+        # a collaborator owning a document of the project still can't delete the project
+        doc = self.factory.make_document(project=self.project, owner=collaborator)
+        self.client.force_login(collaborator)
+        uri = reverse('api:project-detail', kwargs={'pk': self.project.pk})
+        resp = self.client.delete(uri)
+
+        self.assertEqual(resp.status_code, 403)
+        self.assertTrue(Project.objects.filter(pk=self.project.pk).exists())
+        self.assertTrue(Document.objects.filter(pk=doc.pk).exists())
 
     def test_can_manage(self):
         collaborator = self.factory.make_user()

@@ -254,6 +254,12 @@ class ProjectViewSet(ModelViewSet):
                 .order_by('-updated_at')
                 )
 
+    def perform_destroy(self, project):
+        # deleting a project deletes all of its documents, only its owner can do it
+        if not project.can_manage(self.request.user):
+            raise PermissionDenied
+        project.delete()
+
     @action(detail=True, methods=['post'])
     def share(self, request, pk=None):
         project = self.get_object()
