@@ -827,6 +827,8 @@ export default Vue.extend({
             );
         },
         updateZoom() {
+            // not on the page: closed (the listener stays), or while the next page loads
+            if (!this.$el.isConnected) return;
             // might not be mounted yet
             if (this.segmenter && this.$img.complete) {
                 // the zoom position in this panel's pixels
@@ -860,6 +862,12 @@ export default Vue.extend({
                 if (x !== this.toolbarPosition.x || y !== this.toolbarPosition.y) {
                     this.toolbarPosition = { x, y };
                 }
+            }
+            const toolbar = this.$refs["segmentation-toolbar"]?.$el;
+            const tooltip = this.$el.querySelector("#info-tooltip");
+            if (!this.legacyModeEnabled && toolbar && tooltip) {
+                // keep the line type tooltip under the toolbar, which wraps in a narrow panel
+                tooltip.style.top = `${toolbar.offsetHeight}px`;
             }
         },
         // undo manager helpers

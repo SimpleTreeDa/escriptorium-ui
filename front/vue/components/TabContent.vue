@@ -144,9 +144,11 @@
             ]"
         >
             <template v-for="(panel, index) in editorPanels">
+                <!-- keyed by the panel after it: closing a panel must not move the others,
+                which would reset their scroll -->
                 <PanelResizer
                     v-if="index > 0"
-                    :key="`resizer-${index}`"
+                    :key="`resizer-${panel}`"
                     :index="index - 1"
                     :label="resizerLabel(editorPanels[index - 1], panel)"
                     :min-panel-size="minPanelSize"

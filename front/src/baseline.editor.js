@@ -2032,6 +2032,9 @@ export class Segmenter {
         var bounds = this.img.getBoundingClientRect();
         var boundsWidth = parseInt(bounds.width);
         var boundsHeight = parseInt(bounds.height);
+        // not displayed (e.g. while the next page loads): scaling the view to 0
+        // would break it for good, the next refresh will fit it
+        if (!boundsWidth || !boundsHeight) return;
 
         if (paper.view) {
             var imgRatio = boundsWidth / this.img.naturalWidth;

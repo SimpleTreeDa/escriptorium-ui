@@ -29,6 +29,23 @@
     background-color: var(--primary);
 }
 
+/* high contrast: backgrounds are replaced, use system colours */
+@media (forced-colors: active) {
+    .escr-panel-resizer {
+        forced-color-adjust: none;
+        background-color: CanvasText;
+    }
+    .escr-panel-resizer:hover,
+    .escr-panel-resizer.dragging {
+        background-color: Highlight;
+    }
+    .escr-panel-resizer:focus-visible {
+        background-color: Highlight;
+        outline: 2px solid CanvasText;
+        outline-offset: 1px;
+    }
+}
+
 /* while dragging, keep the resize cursor and don't select text */
 body.escr-panel-resizing {
     user-select: none;

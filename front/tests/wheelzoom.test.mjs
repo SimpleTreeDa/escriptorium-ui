@@ -148,6 +148,38 @@ describe("WheelZoom in the new UI (panels of different widths)", () => {
     });
 });
 
+describe("WheelZoom resize observer (new UI)", () => {
+    test("redraws when a panel changes size, not when it leaves the page", () => {
+        let callback = null;
+        globalThis.ResizeObserver = class {
+            constructor(fn) {
+                callback = fn;
+            }
+            observe() {}
+        };
+        try {
+            const zoom = new WheelZoom({ legacyModeEnabled: false });
+            let refreshed = 0;
+            zoom.refresh = () => { refreshed += 1; };
+            const entry = (isConnected, width) => ({
+                target: { isConnected }, contentRect: { width, height: width },
+            });
+
+            // closed, or removed while the next page loads: a redraw at 0x0
+            // would break the segmentation view
+            callback([entry(false, 0)]);
+            callback([entry(true, 0)]);
+            assert.equal(refreshed, 0);
+
+            callback([entry(true, 500)]);
+            callback([entry(false, 0), entry(true, 300)]);
+            assert.equal(refreshed, 2);
+        } finally {
+            delete globalThis.ResizeObserver;
+        }
+    });
+});
+
 describe("WheelZoom in the legacy UI", () => {
     test("keeps the position in pixels, rounded, the same for every panel", () => {
         const zoom = new WheelZoom({ legacyModeEnabled: true });

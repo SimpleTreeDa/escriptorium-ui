@@ -34,13 +34,14 @@ between the panels (PanelResizer). Each slot's flex-grow is its share. */
 div.escr-editor-tabcontent .escr-panel-layout.escr-panel-layout-column {
     flex-flow: column nowrap;
 }
+/* no overflow: hidden here, it would cut the annotation editor popups: the
+panel contents clip themselves (zoom containers, DiploPanel's scrolling text) */
 div.escr-editor-tabcontent .escr-panel-slot {
     flex: 1 1 0;
     display: flex;
     flex-flow: column nowrap;
     min-width: 0;
     min-height: 0;
-    overflow: hidden;
 }
 /* keep panels usable when the window gets smaller: same minimum as the
 handles (MIN_PANEL_SIZE in TabContent.vue), but three panels always fit */
@@ -60,6 +61,12 @@ div.escr-editor-tabcontent .escr-panel-slot > .col.panel {
 }
 div.escr-editor-tabcontent .escr-panel-slot > .col.panel > * {
     flex: 0 0 auto;
+}
+/* SegPanel's line type tooltip: in a flex column it would sit at the top of
+the panel, put it back under the toolbar (SegPanel adjusts it when the
+toolbar wraps) */
+div.escr-editor-tabcontent .escr-panel-slot > .col.panel > #info-tooltip {
+    top: 54px;
 }
 
 /* content container */

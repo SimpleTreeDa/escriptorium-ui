@@ -95,19 +95,27 @@ export default {
             else document.body.classList.remove(...classes);
         },
         /**
-         * Pixels per unit of size, the smallest size as a fraction, and the
-         * direction (1 or -1) of the panel after this handle on screen.
+         * The sizes as shown (a panel can be shown bigger than its saved size,
+         * at its minimum size), pixels per unit of size, the smallest size as a
+         * fraction, and the direction (1 or -1) of the panel after this handle.
          */
         measure() {
             const before = this.$el.previousElementSibling.getBoundingClientRect();
             const after = this.$el.nextElementSibling.getBoundingClientRect();
             const row = this.orientation === "row";
-            const pixels = row ? before.width + after.width : before.height + after.height;
+            const beforePixels = row ? before.width : before.height;
+            const pixels = beforePixels + (row ? after.width : after.height);
             const fraction = this.sizes[this.index] + this.sizes[this.index + 1];
+            const sizes = this.sizes.slice();
+            if (pixels > 0) {
+                sizes[this.index] = (beforePixels / pixels) * fraction;
+                sizes[this.index + 1] = fraction - sizes[this.index];
+            }
             const pixelsPerUnit = pixels / fraction || 1;
             // with a right-to-left page, the panel after this handle is on the left
             const direction = (row ? after.left >= before.left : after.top >= before.top) ? 1 : -1;
             return {
+                sizes,
                 pixelsPerUnit,
                 min: this.minPanelSize / pixelsPerUnit,
                 direction,
@@ -126,7 +134,6 @@ export default {
             this.$el.setPointerCapture(event.pointerId);
             this.start = {
                 position: this.position(event),
-                sizes: this.sizes.slice(),
                 ...this.measure(),
             };
             this.lastSizes = null;
@@ -147,6 +154,8 @@ export default {
             this.$emit("resize-end", this.lastSizes);
         },
         onKeyDown(event) {
+            // leave Ctrl/Alt/Cmd + arrow to the editor (pages) and the browser (history)
+            if (event.ctrlKey || event.altKey || event.metaKey) return;
             // the editor's keyboard shortcuts must not see the keys used here
             if (event.key === "Enter") {
                 event.preventDefault();
@@ -160,10 +169,9 @@ export default {
             if (!(event.key in keys)) return;
             event.preventDefault();
             event.stopPropagation();
-            const { min, direction } = this.measure();
+            const { sizes, min, direction } = this.measure();
             const step = (event.shiftKey ? LARGE_STEP : STEP) * keys[event.key] * direction;
-            const sizes = resizeAt(this.sizes, this.index, step, min);
-            this.$emit("resize-end", sizes);
+            this.$emit("resize-end", resizeAt(sizes, this.index, step, min));
         },
     },
 };

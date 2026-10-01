@@ -42,7 +42,8 @@ export var BasePanel = {
             // New UI: update ratio whenever this panel changes size (window resize,
             // panel layout, resize handles). Called at most once per frame.
             this.resizeObserver = new ResizeObserver(() => {
-                if (this.$store.state.parts.loaded) {
+                // not when it leaves the page (closed, or while the next page loads)
+                if (this.$store.state.parts.loaded && this.$el.isConnected) {
                     this.refresh();
                 }
             });

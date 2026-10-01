@@ -164,8 +164,13 @@ export class WheelZoom {
         // get it in pixels for a given panel.
         this.relative = !legacyModeEnabled;
         if (this.relative && typeof ResizeObserver !== "undefined") {
-            // re-apply the position when a panel changes size
-            this.resizeObserver = new ResizeObserver(() => this.refresh());
+            // re-apply the position when a panel changes size, but not when a panel
+            // leaves the page (closed, or while the next page loads): it is then 0x0
+            this.resizeObserver = new ResizeObserver((entries) => {
+                if (entries.some((e) => e.target.isConnected && e.contentRect.width > 0)) {
+                    this.refresh();
+                }
+            });
         }
 
         // create a dummy tag for event bindings

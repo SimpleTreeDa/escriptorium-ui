@@ -172,6 +172,8 @@
                     color="text-alt"
                     label="Layout"
                     aria-label="Panel layout"
+                    aria-haspopup="true"
+                    :aria-expanded="layoutMenuOpen ? 'true' : 'false'"
                 >
                     <template #button-icon>
                         <LayoutStackedIcon v-if="layoutOrientation === 'column'" />
@@ -181,19 +183,15 @@
                         <ChevronDownIcon />
                     </template>
                 </EscrButton>
+                <!-- click, not mousedown, so that Enter and Space work too -->
                 <template #popper>
-                    <ul
-                        class="escr-vertical-menu escr-layout-menu"
-                        role="menu"
-                        aria-label="Panel layout"
-                    >
+                    <ul class="escr-vertical-menu escr-layout-menu">
                         <li>
                             <button
                                 type="button"
-                                role="menuitemradio"
-                                :aria-checked="layoutOrientation === 'row' ? 'true' : 'false'"
+                                :aria-pressed="layoutOrientation === 'row' ? 'true' : 'false'"
                                 :class="{ preselected: layoutOrientation === 'row' }"
-                                @mousedown="onSetLayout('row')"
+                                @click="onSetLayout('row')"
                             >
                                 <LayoutSideBySideIcon />
                                 <span>Side by side</span>
@@ -202,10 +200,9 @@
                         <li>
                             <button
                                 type="button"
-                                role="menuitemradio"
-                                :aria-checked="layoutOrientation === 'column' ? 'true' : 'false'"
+                                :aria-pressed="layoutOrientation === 'column' ? 'true' : 'false'"
                                 :class="{ preselected: layoutOrientation === 'column' }"
-                                @mousedown="onSetLayout('column')"
+                                @click="onSetLayout('column')"
                             >
                                 <LayoutStackedIcon />
                                 <span>Stacked</span>
@@ -214,9 +211,8 @@
                         <li class="new-section">
                             <button
                                 type="button"
-                                role="menuitem"
                                 :disabled="editorPanels.length < 2"
-                                @mousedown="onResetPanelSizes"
+                                @click="onResetPanelSizes"
                             >
                                 <span class="escr-menuitem-noicon">Reset panel sizes</span>
                             </button>
