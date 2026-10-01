@@ -40,6 +40,13 @@
                         <h2>Delete Project "{{ projectToDelete.name }}"</h2>
                         <p>
                             Are you sure you want to delete this project?
+                            <template v-if="projectToDelete.documents_count">
+                                This will permanently delete {{
+                                    projectToDelete.documents_count === 1 ?
+                                        "its document" :
+                                        `all ${projectToDelete.documents_count} of its documents`
+                                }}, with their images and transcriptions.
+                            </template>
                             This action cannot be undone.
                         </p>
                     </template>
@@ -72,6 +79,7 @@
                     >
                         <template #actions="{ item }">
                             <EscrButton
+                                v-if="item.can_manage"
                                 v-tooltip.bottom="'Delete'"
                                 size="small"
                                 color="text"

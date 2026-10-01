@@ -22,6 +22,8 @@ import { throttle } from "../util/throttle";
 
 // initial state
 const state = () => ({
+    // whether the current user owns the document or its project, and so may share or delete it
+    canManage: false,
     deleteModalOpen: false,
     // list of all possible document tags from project
     documentTags: [],
@@ -329,6 +331,7 @@ const actions = {
         // fetch document
         const { data } = await retrieveDocument(state.id);
         if (data) {
+            commit("setCanManage", !!data.can_manage);
             commit("setLastModified", data.updated_at);
             commit("setMainScript", data.main_script);
             commit("setReadDirection", data.read_direction);
@@ -1129,6 +1132,9 @@ const mutations = {
     },
     setPartsCount(state, partsCount) {
         state.partsCount = partsCount;
+    },
+    setCanManage(state, canManage) {
+        state.canManage = canManage;
     },
     setProjectId(state, projectId) {
         state.projectId = projectId;

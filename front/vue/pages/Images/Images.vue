@@ -628,14 +628,36 @@
                     v-if="deleteModalOpen"
                     :body-text="partTitleToDelete ?
                         `Are you sure you want to delete ${partTitleToDelete}?` :
-                        'Are you sure you want to delete the selected image(s)?'"
+                        `Are you sure you want to delete ${selectedParts.length === 1 ?
+                            'this image' : `these ${selectedParts.length} images`}?`"
                     confirm-verb="Delete"
                     :title="selectedParts.length === 1 ? 'Delete Image' : 'Delete Images'"
                     :cannot-undo="true"
                     :disabled="loading && loading.images"
+                    :confirm-disabled="!deleteCountConfirmed"
                     :on-cancel="() => closeDeleteModal(!!partTitleToDelete)"
                     :on-confirm="deleteSelectedParts"
-                />
+                >
+                    <ul class="escr-delete-parts-list">
+                        <li
+                            v-for="part in partsToDelete.slice(0, deleteListLimit)"
+                            :key="part.pk"
+                        >
+                            {{ part.filename }}
+                        </li>
+                        <li v-if="partsToDelete.length > deleteListLimit">
+                            …and {{ partsToDelete.length - deleteListLimit }} more
+                        </li>
+                    </ul>
+                    <TextField
+                        v-if="deleteNeedsTypedCount"
+                        :label="`Type ${selectedParts.length} to confirm`"
+                        :value="deleteConfirmation"
+                        :disabled="loading && loading.images"
+                        :on-input="(e) => deleteConfirmation = e.target.value"
+                        class="escr-delete-parts-confirm"
+                    />
+                </ConfirmModal>
             </div>
         </template>
     </EscrPage>
@@ -694,6 +716,11 @@ import { EDITORIAL_STATUSES, editorialStatusLabel } from "../../store/util/edito
 import "../../components/EditorialStatus/EditorialStatus.css";
 import "../../components/VerticalMenu/VerticalMenu.css";
 import "./Images.css";
+
+// deleting more images than this requires typing how many are deleted
+const DELETE_CONFIRM_THRESHOLD = 5;
+// how many filenames the delete confirmation lists
+const DELETE_LIST_LIMIT = 20;
 
 export default {
     name: "EscrImages",
@@ -784,6 +811,8 @@ export default {
     data() {
         return {
             contextMenuOpen: null,
+            deleteConfirmation: "",
+            deleteListLimit: DELETE_LIST_LIMIT,
             displayMode: "grid",
             importProgress: "",
             isReorderMode: false,
@@ -800,6 +829,7 @@ export default {
     },
     computed: {
         ...mapState({
+            canManage: (state) => state.document.canManage,
             deleteModalOpen: (state) => state.images.deleteModalOpen,
             documentName: (state) => state.document.name,
             groups: (state) => state.user.groups,
@@ -826,6 +856,22 @@ export default {
             textualWitnesses: (state) => state.document.textualWitnesses,
             transcriptions: (state) => state.document.transcriptions,
         }),
+        /**
+         * The selected parts, as listed in the delete confirmation.
+         */
+        partsToDelete() {
+            return this.parts.filter((part) => this.selectedParts.includes(part.pk));
+        },
+        /**
+         * Deleting more than DELETE_CONFIRM_THRESHOLD images requires typing how many.
+         */
+        deleteNeedsTypedCount() {
+            return this.selectedParts.length > DELETE_CONFIRM_THRESHOLD;
+        },
+        deleteCountConfirmed() {
+            return !this.deleteNeedsTypedCount ||
+                this.deleteConfirmation.trim() === String(this.selectedParts.length);
+        },
         /**
          * Links and titles for the breadcrumbs above the page.
          */
@@ -897,6 +943,7 @@ export default {
                         disabled: this.loading?.document,
                         users: this.sharedWithUsers,
                         groups: this.sharedWithGroups,
+                        canShare: this.canManage,
                         openShareModal: this.openShareModal,
                     },
                     icon: PeopleIcon,
@@ -1025,6 +1072,11 @@ export default {
     /**
      * On load, fetch basic details about the document.
      */
+    watch: {
+        deleteModalOpen(open) {
+            if (open) this.deleteConfirmation = "";
+        },
+    },
     async created() {
         // set mode based on user preference (grid or list view)
         const initMode = this.getDisplayMode() || "grid";

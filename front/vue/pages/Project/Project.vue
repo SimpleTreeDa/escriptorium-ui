@@ -99,6 +99,7 @@
                                     </template>
                                 </EscrButton>
                                 <EscrButton
+                                    v-if="item.can_manage"
                                     v-tooltip.bottom="'Delete'"
                                     size="small"
                                     color="text"
@@ -131,7 +132,7 @@
                 <!-- delete project modal -->
                 <ConfirmModal
                     v-if="deleteModalOpen"
-                    body-text="Are you sure you want to delete this project?"
+                    :body-text="deleteProjectText"
                     confirm-verb="Delete"
                     title="Delete Project"
                     :cannot-undo="true"
@@ -144,10 +145,11 @@
                     v-if="deleteDocumentModalOpen"
                     :body-text="`Are you sure you want to delete the document ${
                         (documentToDelete && documentToDelete.name) || ''
-                    }?`"
+                    }? It will no longer be available to you or its collaborators. ` +
+                        'An administrator can restore it.'"
                     confirm-verb="Delete"
                     :title="`Delete ${(documentToDelete && documentToDelete.name) || 'Document'}`"
-                    :cannot-undo="true"
+                    :cannot-undo="false"
                     :disabled="loading"
                     :on-cancel="closeDeleteDocumentModal"
                     :on-confirm="deleteDocument"
@@ -233,10 +235,12 @@ export default {
     computed: {
         ...mapState({
             allProjectTags: (state) => state.projects.tags,
+            canManage: (state) => state.project.canManage,
             createDocumentModalOpen: (state) => state.project.createDocumentModalOpen,
             deleteModalOpen: (state) => state.project.deleteModalOpen,
             deleteDocumentModalOpen: (state) => state.project.deleteDocumentModalOpen,
             documents: (state) => state.project.documents,
+            documentsCount: (state) => state.project.documentsCount,
             documentTags: (state) => state.project.documentTags,
             documentToDelete: (state) => state.project.documentToDelete,
             editModalOpen: (state) => state.project.editModalOpen,
@@ -286,22 +290,39 @@ export default {
          * Menu items for the vertical menu in the top right corner of the dashboard.
          */
         projectMenuItems() {
-            return [
+            const items = [
                 {
                     icon: PencilIcon,
                     key: "edit",
                     label: "Edit",
                     onClick: this.openEditModal,
                 },
-                {
+            ];
+            // only the owner of the project may delete it
+            if (this.canManage) {
+                items.push({
                     icon: TrashIcon,
                     // Add the "new-section" class if/when there is more than one item above this
                     // class: "new-section",
                     key: "delete",
                     label: "Delete Project",
                     onClick: this.openDeleteModal,
-                }
-            ]
+                });
+            }
+            return items;
+        },
+        /**
+         * Deleting a project deletes all of its documents for good, unlike deleting a document.
+         */
+        deleteProjectText() {
+            if (!this.documentsCount) {
+                return "Are you sure you want to delete this project?";
+            }
+            const documents = this.documentsCount === 1
+                ? "its document"
+                : `all ${this.documentsCount} of its documents`;
+            return `Are you sure you want to delete this project? This will permanently delete ${
+                documents}, with their images and transcriptions.`;
         },
         /**
          * Sidebar quick actions for the project dashboard.
@@ -313,6 +334,7 @@ export default {
                         disabled: this.loading,
                         users: this.sharedWithUsers,
                         groups: this.sharedWithGroups,
+                        canShare: this.canManage,
                         openShareModal: this.openShareModal,
                     },
                     icon: PeopleIcon,
