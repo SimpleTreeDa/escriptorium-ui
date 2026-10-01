@@ -139,21 +139,41 @@
         </div>
         <div
             v-else
-            class="row marginless"
+            :class="[
+                'row', 'marginless', 'escr-panel-layout', `escr-panel-layout-${layoutOrientation}`,
+            ]"
         >
-            <keep-alive
-                v-for="(panel, index) in editorPanels"
-                :key="panel"
-            >
-                <component
-                    :is="getComponent(panel)"
-                    v-if="partsLoaded"
-                    :panel-index="index"
-                    :fullsizeimage="fullsizeimage"
-                    :legacy-mode-enabled="legacyModeEnabled"
-                    :disabled="isWorking"
+            <template v-for="(panel, index) in editorPanels">
+                <PanelResizer
+                    v-if="index > 0"
+                    :key="`resizer-${index}`"
+                    :index="index - 1"
+                    :label="resizerLabel(editorPanels[index - 1], panel)"
+                    :min-panel-size="minPanelSize"
+                    :orientation="layoutOrientation"
+                    :sizes="panelSizes"
+                    @resize="onPanelResize"
+                    @resize-end="onPanelResizeEnd"
+                    @reset="resetEditorPanelSizes"
                 />
-            </keep-alive>
+                <!-- the panels must stay children of this component: they use $parent.zoom -->
+                <div
+                    :key="`slot-${panel}`"
+                    class="escr-panel-slot"
+                    :style="{ flexGrow: panelSizes[index] }"
+                >
+                    <keep-alive>
+                        <component
+                            :is="getComponent(panel)"
+                            v-if="partsLoaded"
+                            :panel-index="index"
+                            :fullsizeimage="fullsizeimage"
+                            :legacy-mode-enabled="legacyModeEnabled"
+                            :disabled="isWorking"
+                        />
+                    </keep-alive>
+                </div>
+            </template>
         </div>
     </div>
 </template>
@@ -161,16 +181,23 @@
 <script>
 import { mapActions, mapMutations, mapState } from "vuex";
 import EditorGlobalToolbar from "../components/EditorGlobalToolbar/EditorGlobalToolbar.vue";
+import PanelResizer from "./PanelResizer/PanelResizer.vue";
 import SourcePanel from "./SourcePanel.vue";
 import SegPanel from "./SegPanel.vue";
 import VisuPanel from "./VisuPanel.vue";
 import DiploPanel from "./DiploPanel.vue";
 import PartMetadataPanel from "./PartMetadataPanel.vue";
+import { equalSizes } from "../../src/editor/panelLayout";
+
+// smallest panel size in pixels: wide enough for the panel toolbars side by
+// side, tall enough for a toolbar and a few lines when stacked
+const MIN_PANEL_SIZE = { row: 320, column: 160 };
 
 export default {
     components: {
         DiploPanel,
         EditorGlobalToolbar,
+        PanelResizer,
         PartMetadataPanel,
         SegPanel,
         SourcePanel,
@@ -194,12 +221,21 @@ export default {
             }),
             fullsizeimage: false,
             isWorking: false,
+            // panel sizes while a resize handle is dragged (saved when released)
+            draggedPanelSizes: null,
+            panelNames: {
+                segmentation: "Segmentation",
+                visualisation: "Transcription",
+                diplomatic: "Text / Line Ordering",
+                source: "Image Annotation",
+            },
         };
     },
     computed: {
         ...mapState({
             activeTool: (state) => state.globalTools.activeTool,
             blockShortcuts: (state) => state.document.blockShortcuts,
+            editorLayout: (state) => state.document.editorLayout,
             editorPanels: (state) => state.document.editorPanels,
             image: (state) => state.parts.image,
             nextPart: (state) => state.parts.next,
@@ -209,6 +245,21 @@ export default {
             visiblePanels: (state) => state.document.visible_panels,
             segmentationToken: (state) => state.document.segmentationToken,
         }),
+        layoutOrientation() {
+            return this.editorLayout.orientation;
+        },
+        /**
+         * Share of the space for each open panel, adding up to 1
+         */
+        panelSizes() {
+            const sizes = this.draggedPanelSizes || this.editorLayout.sizes[this.layoutOrientation];
+            return sizes && sizes.length === this.editorPanels.length
+                ? sizes
+                : equalSizes(this.editorPanels.length);
+        },
+        minPanelSize() {
+            return MIN_PANEL_SIZE[this.layoutOrientation];
+        },
     },
     created() {
         document.addEventListener("keydown", async function(event) {
@@ -289,9 +340,32 @@ export default {
         }
     },
     methods: {
-        ...mapMutations("document", ["setSegmentationOpened"]),
+        ...mapMutations("document", [
+            "resetEditorPanelSizes",
+            "setEditorPanelSizes",
+            "setSegmentationOpened",
+        ]),
         ...mapActions("parts", ["loadPart", "rotate"]),
         ...mapActions("globalTools", ["toggleTool", "setActiveTool"]),
+        /**
+         * Accessible name of the handle between two panels
+         */
+        resizerLabel(before, after) {
+            return `Resize the ${this.panelNames[before]} and ${this.panelNames[after]} panels`;
+        },
+        /**
+         * A resize handle is being dragged
+         */
+        onPanelResize(sizes) {
+            this.draggedPanelSizes = sizes;
+        },
+        /**
+         * A resize handle was released, or moved with the keyboard
+         */
+        onPanelResizeEnd(sizes) {
+            this.draggedPanelSizes = null;
+            if (sizes) this.setEditorPanelSizes(sizes);
+        },
         prefetchImage(src, callback) {
             // It is the panel's responsibility to call this!
             let img = new Image();

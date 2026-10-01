@@ -23,4 +23,10 @@
 }
 .escr-editortoolbar-section:last-of-type {
     justify-content: flex-end;
+    gap: 8px;
+}
+
+/* panel layout menu: line up the item without an icon with the others */
+.escr-layout-menu .escr-menuitem-noicon {
+    margin-left: calc(20px + 1rem);
 }

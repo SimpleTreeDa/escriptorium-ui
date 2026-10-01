@@ -1,0 +1,43 @@
+/* handle between two editor panels */
+.escr-panel-resizer {
+    flex: 0 0 4px;
+    position: relative;
+    z-index: 3;
+    background-color: var(--text1);
+    touch-action: none;
+    outline: none;
+    transition: background-color 0.15s ease;
+}
+/* easier to grab than the visible bar */
+.escr-panel-resizer::before {
+    content: "";
+    position: absolute;
+    inset: 0 -4px;
+}
+.escr-panel-resizer-row {
+    cursor: col-resize;
+}
+.escr-panel-resizer-column {
+    cursor: row-resize;
+}
+.escr-panel-resizer-column::before {
+    inset: -4px 0;
+}
+.escr-panel-resizer:hover,
+.escr-panel-resizer:focus-visible,
+.escr-panel-resizer.dragging {
+    background-color: var(--primary);
+}
+
+/* while dragging, keep the resize cursor and don't select text */
+body.escr-panel-resizing {
+    user-select: none;
+}
+body.escr-panel-resizing-row,
+body.escr-panel-resizing-row * {
+    cursor: col-resize !important;
+}
+body.escr-panel-resizing-column,
+body.escr-panel-resizing-column * {
+    cursor: row-resize !important;
+}

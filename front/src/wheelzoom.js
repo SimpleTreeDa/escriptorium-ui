@@ -6,6 +6,18 @@
 
 "use strict";
 
+/**
+ * New position after zooming by `ratio` (new scale / old scale) around `point`,
+ * given relative to the zoomed element's current top left corner: the point
+ * under the cursor stays where it is.
+ */
+export function zoomedPosition(pos, point, ratio, round = (value) => value) {
+    return {
+        x: pos.x - round((point.x - point.x / ratio) * ratio),
+        y: pos.y - round((point.y - point.y / ratio) * ratio),
+    };
+}
+
 class zoomTarget {
     constructor(
         domElement,
@@ -146,6 +158,15 @@ export class WheelZoom {
         this.disabled = disabled;
         this.legacyModeEnabled = legacyModeEnabled;
         this.getActiveTool = getActiveTool;
+        // New UI: panels can have different widths, and each one fits the page to
+        // its width. The position is then kept as a fraction of the panel width,
+        // so that every panel shows the same part of the page. Use pixelPos() to
+        // get it in pixels for a given panel.
+        this.relative = !legacyModeEnabled;
+        if (this.relative && typeof ResizeObserver !== "undefined") {
+            // re-apply the position when a panel changes size
+            this.resizeObserver = new ResizeObserver(() => this.refresh());
+        }
 
         // create a dummy tag for event bindings
         this.events = document.createElement("div");
@@ -167,8 +188,9 @@ export class WheelZoom {
         );
 
         let target = new zoomTarget(domElement, { map: map });
-        target.update(this.pos, this.scale);
+        target.update(this.pixelPos(target), this.scale);
         this.targets.push(target);
+        if (this.resizeObserver) this.resizeObserver.observe(target.container);
         if (!mirror) {
             // domElement.style.cursor = 'zoom-in';
 
@@ -203,7 +225,37 @@ export class WheelZoom {
         return target;
     }
 
+    /**
+     * Width that the position is relative to for this target: the width of its
+     * panel, which the page is fitted to.
+     */
+    unitWidth(target) {
+        return (this.relative && target && target.container.clientWidth) || 1;
+    }
+
+    /**
+     * The position in pixels for this target.
+     */
+    pixelPos(target) {
+        if (!this.relative) return this.pos;
+        const width = this.unitWidth(target);
+        return {
+            x: Math.round(this.pos.x * width),
+            y: Math.round(this.pos.y * width),
+        };
+    }
+
+    /**
+     * Convert a point or a distance in pixels in this target to the unit of the
+     * position.
+     */
+    toUnits(point, target) {
+        const width = this.unitWidth(target);
+        return { x: point.x / width, y: point.y / width };
+    }
+
     zoomTo(target, delta) {
+        // target: the point to zoom around, in the unit of the position
         var oldScale = this.scale;
         this.scale *= Math.exp(delta);
         if (this.minScale !== null)
@@ -212,36 +264,35 @@ export class WheelZoom {
             this.scale = Math.min(this.maxScale, this.scale);
 
         var diff = { scale: this.scale / oldScale };
-        this.pos.x -= Math.round(
-            (target.x - target.x / diff.scale) * diff.scale,
-        );
-        this.pos.y -= Math.round(
-            (target.y - target.y / diff.scale) * diff.scale,
+        // fractions of a width can't be rounded, pixels are
+        this.pos = zoomedPosition(
+            this.pos, target, diff.scale, this.relative ? undefined : Math.round,
         );
 
         this.updateStyle(diff);
         for (let itarget of this.targets) {
-            itarget.showMap(this.pos, this.scale);
+            itarget.showMap(this.pixelPos(itarget), this.scale);
         }
         return diff;
     }
 
     zoomIn() {
-        var tr = this.targets[0].element.getBoundingClientRect();
-        var target = {
-            x: tr.width / 2 - this.pos.x,
-            y: tr.height / 2 - this.pos.y,
-        };
-        this.zoomTo(target, 0.1);
+        this.zoomTo(this.centerPoint(), 0.1);
     }
 
     zoomOut() {
-        var tr = this.targets[0].element.getBoundingClientRect();
-        var target = {
-            x: tr.width / 2 - this.pos.x,
-            y: tr.height / 2 - this.pos.y,
+        this.zoomTo(this.centerPoint(), -0.1);
+    }
+
+    centerPoint() {
+        // closed panels stay registered: use the first one still on the page
+        var first = this.targets.find((t) => t.container.isConnected) || this.targets[0];
+        var tr = first.element.getBoundingClientRect();
+        var center = this.toUnits({ x: tr.width / 2, y: tr.height / 2 }, first);
+        return {
+            x: center.x - this.pos.x,
+            y: center.y - this.pos.y,
         };
-        this.zoomTo(target, -0.1);
     }
 
     scrolled(e) {
@@ -257,10 +308,10 @@ export class WheelZoom {
         delta = Math.max(-1, Math.min(1, delta));
         // determine the point on where the slide is zoomed in
         let bounds = e.target.getBoundingClientRect();
-        var zoom_point = {
+        var zoom_point = this.toUnits({
             x: e.pageX - bounds.x - document.documentElement.scrollLeft,
             y: e.pageY - bounds.y - document.documentElement.scrollTop,
-        };
+        }, this.scrolling);
 
         return this.zoomTo(zoom_point, delta * this.factor);
     }
@@ -281,8 +332,12 @@ export class WheelZoom {
                 this.angle =
                     (this.angle + (e.pageX - this.previousEvent.pageX)) % 360;
             } else {
-                this.pos.x += e.pageX - this.previousEvent.pageX;
-                this.pos.y += e.pageY - this.previousEvent.pageY;
+                const moved = this.toUnits({
+                    x: e.pageX - this.previousEvent.pageX,
+                    y: e.pageY - this.previousEvent.pageY,
+                }, target);
+                this.pos.x += moved.x;
+                this.pos.y += moved.y;
             }
         }
         // Make sure the slide stays in its container area when zooming in/out
@@ -326,7 +381,7 @@ export class WheelZoom {
             angle: this.angle - oldAngle,
         };
         this.updateStyle(diff);
-        this.dragging.showMap(this.pos, this.scale);
+        this.dragging.showMap(this.pixelPos(this.dragging), this.scale);
         return diff;
     }
 
@@ -356,7 +411,7 @@ export class WheelZoom {
     updateStyle(delta) {
         this.targets.forEach(
             function (target, i) {
-                target.update(this.pos, this.scale);
+                target.update(this.pixelPos(target), this.scale);
                 // if (this.rotationOrigin) {
                 //     target.rotationContainer.style.transformOrigin = this.rotationOrigin.x+'px '+this.rotationOrigin.y+'px';
                 //     target.rotationContainer.style.transform = 'rotate('+this.angle+'deg)';
