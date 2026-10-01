@@ -19,6 +19,15 @@ services:
     command: uwsgi --ini /usr/src/app/uwsgi.ini
     expose:
       - 8000
+    # entrypoint.sh runs migrate + collectstatic before uwsgi loads the app,
+    # so the container is "up" well before it can serve requests
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/', timeout=5)"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 5m
+      start_interval: 3s
 
   channelserver:
     <<: *app
@@ -38,6 +47,14 @@ services:
   nginx:
     image: registry.gitlab.com/scripta/escriptorium/nginx
     build: ./nginx
+    restart: unless-stopped
+    # wait until django can actually answer, otherwise nginx returns 502
+    # (or exits if the upstream hostnames don't resolve yet)
+    depends_on:
+      web:
+        condition: service_healthy
+      channelserver:
+        condition: service_started
     environment:
       - SERVERNAME=${DOMAIN:-localhost}
     volumes:
