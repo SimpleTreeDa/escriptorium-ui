@@ -47,9 +47,19 @@ class ProjectAdmin(admin.ModelAdmin):
 
 
 class DocumentAdmin(admin.ModelAdmin):
-    list_display = ['pk', 'name', 'owner', 'project']
+    list_display = ['pk', 'name', 'owner', 'project', 'workflow_state', 'updated_at']
+    list_filter = ['workflow_state']
     search_fields = ['name', 'owner__username', 'project__name']
     inlines = (MetadataInline, DocumentTagInline)
+    actions = ['restore']
+
+    @admin.action(description="Restore archived documents")
+    def restore(self, request, queryset):
+        # archived documents come back as drafts, whether or not they were published before
+        count = (queryset
+                 .filter(workflow_state=Document.WORKFLOW_STATE_ARCHIVED)
+                 .update(workflow_state=Document.WORKFLOW_STATE_DRAFT))
+        self.message_user(request, f"{count} document(s) restored.")
 
 
 class DocumentPartAdmin(admin.ModelAdmin):

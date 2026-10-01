@@ -257,6 +257,8 @@ class ProjectViewSet(ModelViewSet):
     @action(detail=True, methods=['post'])
     def share(self, request, pk=None):
         project = self.get_object()
+        if not project.can_manage(request.user):
+            raise PermissionDenied
         if 'group' in request.data:
             try:
                 target = (Group.objects
@@ -280,7 +282,7 @@ class ProjectViewSet(ModelViewSet):
                             status=status.HTTP_400_BAD_REQUEST)
 
         # re-instantiate serializer to use updated data
-        serializer = ProjectSerializer(project)
+        serializer = ProjectSerializer(project, context=self.get_serializer_context())
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -338,6 +340,15 @@ class DocumentViewSet(ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    def perform_destroy(self, document):
+        """
+        Archive the document instead of deleting it with all its pages and transcriptions,
+        an administrator can restore it. Only the owners can do it.
+        """
+        if not document.can_manage(self.request.user):
+            raise PermissionDenied
+        document.archive()
 
     @action(detail=False, methods=['get'])
     def tasks(self, request):
@@ -682,6 +693,8 @@ class DocumentViewSet(ModelViewSet):
     @action(detail=True, methods=['post'])
     def share(self, request, pk=None):
         document = self.get_object()
+        if not document.can_manage(request.user):
+            raise PermissionDenied
         if 'group' in request.data:
             try:
                 target = (Group.objects

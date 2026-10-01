@@ -478,6 +478,10 @@ class Project(ExportModelOperationsMixin("Project"), models.Model):
     def __str__(self):
         return self.name
 
+    def can_manage(self, user):
+        """Whether the user may share or delete the project: only its owner can."""
+        return user.is_authenticated and self.owner_id == user.pk
+
     def make_slug(self):
         slug = slugify(self.name, allow_unicode=True)
         # check unicity
@@ -638,6 +642,17 @@ class Document(ExportModelOperationsMixin("Document"), CascadeUpdate, models.Mod
     @property
     def is_archived(self):
         return self.workflow_state == self.WORKFLOW_STATE_ARCHIVED
+
+    def can_manage(self, user):
+        """
+        Whether the user may share or delete (archive) the document:
+        only its owner or the owner of its project can, not other collaborators.
+        """
+        return user.is_authenticated and user.pk in (self.owner_id, self.project.owner_id)
+
+    def archive(self):
+        self.workflow_state = self.WORKFLOW_STATE_ARCHIVED
+        self.save(update_fields=["workflow_state", "updated_at"])
 
     @cached_property
     def is_transcribing(self):
