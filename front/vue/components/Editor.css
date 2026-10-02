@@ -18,12 +18,9 @@ div.escr-editor-tabcontent .marginless.row {
 div.escr-editor-tabcontent .marginless.row {
     margin: 0;
     display: flex;
-    flex-flow: row;
+    flex-flow: row nowrap;
     gap: 0;
     padding: 0;
-}
-div.escr-editor-tabcontent .marginless.row div.col.panel:not(:first-of-type) {
-    border-left: 4px solid var(--text1);
 }
 #escriptorium div.escr-editor-tabcontent .col.panel {
     padding: 0;
@@ -32,24 +29,75 @@ div.escr-editor-tabcontent .marginless.row div.col.panel:not(:first-of-type) {
     color: var(--text1);
 }
 
+/* panel layout: side by side (row) or stacked (column), with resize handles
+between the panels (PanelResizer). Each slot's flex-grow is its share. */
+div.escr-editor-tabcontent .escr-panel-layout.escr-panel-layout-column {
+    flex-flow: column nowrap;
+}
+/* no overflow: hidden here, it would cut the annotation editor popups: the
+panel contents clip themselves (zoom containers, DiploPanel's scrolling text) */
+div.escr-editor-tabcontent .escr-panel-slot {
+    flex: 1 1 0;
+    display: flex;
+    flex-flow: column nowrap;
+    min-width: 0;
+    min-height: 0;
+}
+/* keep panels usable when the window gets smaller: same minimum as the
+handles (MIN_PANEL_SIZE in TabContent.vue), but three panels always fit */
+div.escr-editor-tabcontent .escr-panel-layout-row > .escr-panel-slot {
+    min-width: min(320px, 30%);
+}
+div.escr-editor-tabcontent .escr-panel-layout-column > .escr-panel-slot {
+    min-height: min(160px, calc((100vh - 126px) * 0.3));
+}
+/* each panel fills its slot: toolbars on top, content in the rest */
+div.escr-editor-tabcontent .escr-panel-slot > .col.panel {
+    flex: 1 1 auto;
+    display: flex;
+    flex-flow: column nowrap;
+    min-height: 0;
+    max-width: 100%;
+}
+div.escr-editor-tabcontent .escr-panel-slot > .col.panel > * {
+    flex: 0 0 auto;
+}
+/* SegPanel's line type tooltip: in a flex column it would sit at the top of
+the panel, put it back under the toolbar (SegPanel adjusts it when the
+toolbar wraps) */
+div.escr-editor-tabcontent .escr-panel-slot > .col.panel > #info-tooltip {
+    top: 54px;
+}
+
 /* content container */
 div.escr-editor-tabcontent .col.panel .content-container {
     background-color: var(--background2);
     border: none;
     border-radius: 0;
-    flex: 1 0 auto;
 }
-div.escr-editor-tabcontent .col.panel .content-container,
+div.escr-editor-tabcontent .escr-panel-slot > .col.panel > .content-container,
+div.escr-editor-tabcontent .escr-panel-slot > .col.panel > .r6o-content-wrapper,
+div.escr-editor-tabcontent .escr-panel-slot .r6o-content-wrapper > .content-container {
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: none;
+}
+/* the text annotations (recogito) wrap DiploPanel's content in a div */
+div.escr-editor-tabcontent .escr-panel-slot > .col.panel > .r6o-content-wrapper {
+    display: flex;
+    flex-flow: column nowrap;
+}
 div.escr-editor-tabcontent .col.panel .js-wheelzoom-container {
-    min-height: calc(100vh - 180px);
-    max-height: calc(100vh - 180px);
+    height: 100%;
+    min-height: 0;
+    max-height: none;
 }
 
-/* DiploPanel height override */
+/* DiploPanel: the text scrolls inside the panel */
 div.escr-editor-tabcontent #diplo-panel .content-container {
     overflow-y: auto;
     overflow-x: hidden;
-    max-height: calc(100vh - 180px);
+    max-height: none;
 }
 div.escr-editor-tabcontent #diplo-panel #save-notif {
     color: var(--primary);

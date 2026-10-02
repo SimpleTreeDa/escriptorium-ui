@@ -408,7 +408,6 @@ export default {
                     await this.loadAnnotations();
                 });
             }
-            this.$nextTick(() => this.recalculatePanelHeight())
         },
         isSortModeEnabled(isEnabled) {
             // reset selected lines on sort mode toggle
@@ -438,11 +437,8 @@ export default {
             // diplo panel, the panel width won't be bigger than other, especially for ttb text:
             const clientWidth = document.querySelector("#diplo-panel").clientWidth;
             document.querySelector("#diplo-panel").style.width = `${clientWidth}px`;
-        } else if (this.$refs.annotationToolbar && this.$refs.contentContainer) {
-            // ensure panel height takes anno toolbar into account, and does so again on resize
-            this.recalculatePanelHeight();
-            window.addEventListener("resize", this.recalculatePanelHeight);
         }
+        // (new UI: the text takes the panel height left under the toolbars, see Editor.css)
         nextTick(function() {
             var vm = this;
             vm.sortable = window.Sortable.create(this.$refs.diplomaticLines, {
@@ -1279,19 +1275,6 @@ export default {
                 this.selectedLines = [linePk];
                 this.selectionAnchor = linePk;
             }
-        },
-        /**
-         * New UI: ensure max height of DiploPanel takes height of annotation toolbar
-         * into account.
-         */
-        recalculatePanelHeight() {
-            let newHeight = "100vh - 180px";
-            if (this.$refs.annotationToolbar) {
-                const toolbarHeight = this.$refs.annotationToolbar.clientHeight;
-                newHeight = `100vh - 180px - ${toolbarHeight}px`;
-            }
-            this.$refs.contentContainer.style.setProperty("min-height", `calc(${newHeight})`);
-            this.$refs.contentContainer.style.setProperty("max-height", `calc(${newHeight})`);
         },
         /**
          * New UI: On region drag, set the dragged region's lines selected and set dragging state

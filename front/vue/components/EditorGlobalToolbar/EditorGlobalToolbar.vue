@@ -155,8 +155,71 @@
             </div>
         </div>
 
-        <!-- quick actions and add panel -->
+        <!-- quick actions, panel layout and add panel -->
         <div class="escr-editortoolbar-section">
+            <VDropdown
+                placement="bottom-end"
+                theme="vertical-menu"
+                :shown="layoutMenuOpen"
+                :triggers="[]"
+                :auto-hide="true"
+                @apply-hide="closeLayoutMenu"
+            >
+                <EscrButton
+                    class="escr-layout-menu-toggle"
+                    :disabled="disabled"
+                    :on-click="openLayoutMenu"
+                    color="text-alt"
+                    label="Layout"
+                    aria-label="Panel layout"
+                    aria-haspopup="true"
+                    :aria-expanded="layoutMenuOpen ? 'true' : 'false'"
+                >
+                    <template #button-icon>
+                        <LayoutStackedIcon v-if="layoutOrientation === 'column'" />
+                        <LayoutSideBySideIcon v-else />
+                    </template>
+                    <template #button-icon-right>
+                        <ChevronDownIcon />
+                    </template>
+                </EscrButton>
+                <!-- click, not mousedown, so that Enter and Space work too -->
+                <template #popper>
+                    <ul class="escr-vertical-menu escr-layout-menu">
+                        <li>
+                            <button
+                                type="button"
+                                :aria-pressed="layoutOrientation === 'row' ? 'true' : 'false'"
+                                :class="{ preselected: layoutOrientation === 'row' }"
+                                @click="onSetLayout('row')"
+                            >
+                                <LayoutSideBySideIcon />
+                                <span>Side by side</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button
+                                type="button"
+                                :aria-pressed="layoutOrientation === 'column' ? 'true' : 'false'"
+                                :class="{ preselected: layoutOrientation === 'column' }"
+                                @click="onSetLayout('column')"
+                            >
+                                <LayoutStackedIcon />
+                                <span>Stacked</span>
+                            </button>
+                        </li>
+                        <li class="new-section">
+                            <button
+                                type="button"
+                                :disabled="editorPanels.length < 2"
+                                @click="onResetPanelSizes"
+                            >
+                                <span class="escr-menuitem-noicon">Reset panel sizes</span>
+                            </button>
+                        </li>
+                    </ul>
+                </template>
+            </VDropdown>
             <VDropdown
                 v-if="editorPanels.length < 3"
                 placement="bottom-end"
@@ -224,13 +287,15 @@
     </div>
 </template>
 <script>
-import { mapActions, mapState } from "vuex";
+import { mapActions, mapMutations, mapState } from "vuex";
 import AddPanelIcon from "../Icons/AddPanelIcon/AddPanelIcon.vue";
 import ChevronDownIcon from "../Icons/ChevronDownIcon/ChevronDownIcon.vue";
 import CursorPanIcon from "../Icons/CursorPanIcon/CursorPanIcon.vue";
 import CursorSelectIcon from "../Icons/CursorSelectIcon/CursorSelectIcon.vue";
 import EscrButton from "../Button/Button.vue";
 import ImageAnnotationIcon from "../Icons/ImageAnnotationIcon/ImageAnnotationIcon.vue";
+import LayoutSideBySideIcon from "../Icons/LayoutSideBySideIcon/LayoutSideBySideIcon.vue";
+import LayoutStackedIcon from "../Icons/LayoutStackedIcon/LayoutStackedIcon.vue";
 import RotateCCWIcon from "../Icons/RotateCCWIcon/RotateCCWIcon.vue";
 import RotateCWIcon from "../Icons/RotateCWIcon/RotateCWIcon.vue";
 import SegmentIcon from "../Icons/SegmentIcon/SegmentIcon.vue";
@@ -251,6 +316,8 @@ export default {
         CursorSelectIcon,
         EscrButton,
         ImageAnnotationIcon,
+        LayoutSideBySideIcon,
+        LayoutStackedIcon,
         RotateCCWIcon,
         RotateCWIcon,
         SegmentIcon,
@@ -317,13 +384,44 @@ export default {
     data() {
         return {
             addPanelMenuOpen: false,
+            layoutMenuOpen: false,
         }
     },
     computed: {
-        ...mapState({ editorPanels: (state) => state.document.editorPanels }),
+        ...mapState({
+            editorPanels: (state) => state.document.editorPanels,
+            layoutOrientation: (state) => state.document.editorLayout.orientation,
+        }),
     },
     methods: {
-        ...mapActions("document", ["addEditorPanel"]),
+        ...mapActions("document", ["addEditorPanel", "setEditorLayout"]),
+        ...mapMutations("document", ["resetEditorPanelSizes"]),
+        /**
+         * Callback to close the panel layout menu
+         */
+        closeLayoutMenu() {
+            this.layoutMenuOpen = false;
+        },
+        /**
+         * Callback to open the panel layout menu
+         */
+        openLayoutMenu() {
+            this.layoutMenuOpen = true;
+        },
+        /**
+         * Callback to show the panels side by side ("row") or stacked ("column")
+         */
+        onSetLayout(orientation) {
+            this.closeLayoutMenu();
+            this.setEditorLayout(orientation);
+        },
+        /**
+         * Callback to give all the panels the same size
+         */
+        onResetPanelSizes() {
+            this.closeLayoutMenu();
+            this.resetEditorPanelSizes();
+        },
         /**
          * Callback to close the add panel menu
          */

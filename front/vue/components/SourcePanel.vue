@@ -222,7 +222,7 @@ export default {
         this.anno.destroy();
     },
     mounted: function() {
-        this.$parent.zoom.register(
+        this.zoomTarget = this.$parent.zoom.register(
             this.$el.querySelector("#source-zoom-container"),
             {map: true});
 
@@ -419,9 +419,11 @@ export default {
         },
 
         fixEditorPosition() {
-            const zoom = this.$parent.zoom;
-            const editor = this.anno._appContainerEl.firstChild;
-            if (editor) editor.style.transform = "translate("+(zoom.pos.x)+"px,"+(zoom.pos.y)+"px)";
+            // the zoom position in this panel's pixels
+            const pos = this.$parent.zoom.pixelPos(this.zoomTarget);
+            // the panel may have been closed
+            const editor = this.anno?._appContainerEl?.firstChild;
+            if (editor) editor.style.transform = "translate("+(pos.x)+"px,"+(pos.y)+"px)";
         },
 
         setThisAnnoTaxonomy(taxo) {

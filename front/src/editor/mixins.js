@@ -32,11 +32,27 @@ export var BasePanel = {
         };
     },
     created() {
-        // Update ratio on window resize
-        window.addEventListener("resize", this.refresh);
+        if (this.legacyModeEnabled) {
+            // Update ratio on window resize
+            window.addEventListener("resize", this.refresh);
+        }
+    },
+    mounted() {
+        if (!this.legacyModeEnabled && typeof ResizeObserver !== "undefined") {
+            // New UI: update ratio whenever this panel changes size (window resize,
+            // panel layout, resize handles). Called at most once per frame.
+            this.resizeObserver = new ResizeObserver(() => {
+                // not when it leaves the page (closed, or while the next page loads)
+                if (this.$store.state.parts.loaded && this.$el.isConnected) {
+                    this.refresh();
+                }
+            });
+            this.resizeObserver.observe(this.$el);
+        }
     },
     destroyed() {
         window.removeEventListener("resize", this.refresh);
+        if (this.resizeObserver) this.resizeObserver.disconnect();
     },
     watch: {
         "$store.state.parts.loaded": function (n, o) {
@@ -74,13 +90,19 @@ export var LineBase = {
     methods: {
         showOverlay() {
             if (this.line && this.line.mask) {
+                const imageWidth = this.$store.state.parts.image?.size?.[0];
                 Array.from(document.querySelectorAll(".panel-overlay")).map(
                     function (e) {
                         e.classList.add("show");
-                        if (this.maskPoints) {
+                        // each panel shows the page at its own width
+                        const ratio = imageWidth && e.clientWidth
+                            ? e.clientWidth / imageWidth
+                            : this.ratio;
+                        const points = this.maskPointsAt(ratio);
+                        if (points) {
                             e.querySelector("polygon").setAttribute(
                                 "points",
-                                this.maskPoints,
+                                points,
                             );
                         }
                     }.bind(this),
@@ -94,18 +116,21 @@ export var LineBase = {
                 },
             );
         },
-    },
-    computed: {
-        maskPoints() {
+        maskPointsAt(ratio) {
             if (this.line == null || !this.line.mask) return "";
             return this.line.mask
                 .map(
                     (pt) =>
-                        Math.round(pt[0] * this.ratio) +
+                        Math.round(pt[0] * ratio) +
                         "," +
-                        Math.round(pt[1] * this.ratio),
+                        Math.round(pt[1] * ratio),
                 )
                 .join(" ");
+        },
+    },
+    computed: {
+        maskPoints() {
+            return this.maskPointsAt(this.ratio);
         },
     },
 };
