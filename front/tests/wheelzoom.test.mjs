@@ -2,7 +2,7 @@
 /* global globalThis */
 import assert from "node:assert/strict";
 import { before, describe, test } from "node:test";
-import { WheelZoom, zoomedPosition } from "../src/wheelzoom.js";
+import { PAN_SPEED, WheelZoom, validPanSpeed, zoomedPosition } from "../src/wheelzoom.js";
 
 before(() => {
     // just enough DOM for the WheelZoom constructor and its events
@@ -37,16 +37,35 @@ function fakePanel(width) {
     };
 }
 
+// event times, far enough apart not to be taken as one touchpad gesture
+let clock = 0;
+
 /**
  * Wheel event at (x, y) pixels in a panel whose top left is at (0, 0): the
  * event target is the zoomed page, whose top left is at the zoom position.
+ * By default a notch of a mouse wheel (in Chromium), up (zooming in) for a
+ * positive delta.
  */
-const wheel = (zoom, panel, x, y, delta = 1) => ({
+const wheel = (zoom, panel, x, y, delta = 1, fields = {}) => ({
     preventDefault() {},
-    wheelDelta: delta,
+    deltaX: 0,
+    deltaY: -100 * delta,
+    deltaMode: 0,
+    wheelDeltaY: 120 * delta,
+    ctrlKey: false,
+    timeStamp: (clock += 1000),
     pageX: x,
     pageY: y,
     target: { getBoundingClientRect: () => zoom.pixelPos(panel) },
+    ...fields,
+});
+
+// what browsers send when scrolling with two fingers on a touchpad
+const touchpad = (deltaX, deltaY, fields = {}) => ({
+    deltaX,
+    deltaY,
+    wheelDeltaY: -3 * deltaY,
+    ...fields,
 });
 
 /**
@@ -198,5 +217,119 @@ describe("WheelZoom in the legacy UI", () => {
         assert.equal(zoom.pixelPos(a), zoom.pos);
         assert.deepEqual(a.pos, zoom.pos);
         assert.deepEqual(b.pos, zoom.pos);
+    });
+});
+
+describe("WheelZoom wheel events: mouse wheel, touchpad scrolling and pinching", () => {
+    const zoom = new WheelZoom({ legacyModeEnabled: false });
+    const event = (fields) => ({ deltaX: 0, deltaY: 0, deltaMode: 0, ...fields });
+
+    test("tells mouse wheels from touchpads", () => {
+        // Chromium mouse wheel notches (Windows, Linux)
+        assert.ok(zoom.isMouseWheel(event({ deltaY: 100, wheelDeltaY: -120 })));
+        assert.ok(zoom.isMouseWheel(event({ deltaY: 53.33, wheelDeltaY: -120 })));
+        // Firefox mouse wheel, in lines
+        assert.ok(zoom.isMouseWheel(event({ deltaY: 3, deltaMode: 1 })));
+        // Chromium touchpad, also with a big delta when swiping fast
+        assert.ok(!zoom.isMouseWheel(event({ deltaY: 4, wheelDeltaY: -12 })));
+        assert.ok(!zoom.isMouseWheel(event({ deltaY: 40, wheelDeltaY: -120 })));
+        // sideways
+        assert.ok(!zoom.isMouseWheel(event({ deltaX: 3, deltaY: 100, wheelDeltaY: -120 })));
+        // Firefox touchpad, in pixels
+        assert.ok(!zoom.isMouseWheel(event({ deltaY: 2.5 })));
+        assert.ok(!zoom.isMouseWheel(event({ deltaY: 12 })));
+    });
+
+    test("scrolling with two fingers pans every panel, without zooming", () => {
+        const zoom = new WheelZoom({ legacyModeEnabled: false });
+        const wide = fakePanel(800);
+        const narrow = fakePanel(400);
+        zoom.targets.push(wide, narrow);
+        zoom.scrolling = narrow;
+        zoom.scrolled(wheel(zoom, narrow, 100, 100, 1, touchpad(20, 40)));
+        assert.equal(zoom.scale, 1);
+        // by 3/4 of the distance scrolled
+        assert.deepEqual(narrow.pos, { x: -15, y: -30 });
+        assert.deepEqual(wide.pos, { x: -30, y: -60 });
+    });
+
+    test("pinching zooms by as much as the fingers moved, around the cursor", () => {
+        const zoom = new WheelZoom({ legacyModeEnabled: false });
+        const panel = fakePanel(800);
+        zoom.targets.push(panel);
+        const before = pageFractionAt(zoom, panel, 300, 200);
+        zoom.scrolling = panel;
+        zoom.scrolled(wheel(zoom, panel, 300, 200, 1, touchpad(0, -5, { ctrlKey: true })));
+        assertClose(zoom.scale, Math.exp(0.05), 1e-9, "scale");
+        const after = pageFractionAt(zoom, panel, 300, 200);
+        assertClose(after.x, before.x, 1 / 800, "cursor x");
+        assertClose(after.y, before.y, 1 / 800, "cursor y");
+    });
+
+    test("a mouse wheel zooms a step for each notch, also with ctrl", () => {
+        const zoom = new WheelZoom({ legacyModeEnabled: false });
+        const panel = fakePanel(800);
+        zoom.targets.push(panel);
+        zoom.scrolling = panel;
+        zoom.scrolled(wheel(zoom, panel, 300, 200, 1));
+        assertClose(zoom.scale, Math.exp(0.1), 1e-9, "zoomed in");
+        zoom.scrolled(wheel(zoom, panel, 300, 200, -1, { ctrlKey: true }));
+        assertClose(zoom.scale, 1, 1e-9, "zoomed back out");
+    });
+
+    test("the events of a touchpad gesture all pan, even ones that look like a mouse", () => {
+        const zoom = new WheelZoom({ legacyModeEnabled: false });
+        const panel = fakePanel(800);
+        zoom.targets.push(panel);
+        zoom.scrolling = panel;
+        const start = clock;
+        zoom.scrolled(wheel(zoom, panel, 0, 0, 1, { ...touchpad(0, 4), timeStamp: start + 1 }));
+        // a fast swipe, 16ms later
+        zoom.scrolled(wheel(zoom, panel, 0, 0, 1, {
+            deltaY: 100, wheelDeltaY: -120, timeStamp: start + 17,
+        }));
+        assert.equal(zoom.scale, 1);
+        assert.deepEqual(panel.pos, { x: 0, y: -78 });
+        // after a pause, a mouse wheel zooms again
+        zoom.scrolled(wheel(zoom, panel, 0, 0, 1, { timeStamp: start + 600 }));
+        assert.ok(zoom.scale > 1);
+    });
+
+    test("in the legacy UI, panning keeps the page in view", () => {
+        const zoom = new WheelZoom({ legacyModeEnabled: true });
+        const panel = fakePanel(600);
+        zoom.targets.push(panel);
+        zoom.scrolling = panel;
+        // the page fits in the panel at this scale: nowhere to pan to
+        zoom.scrolled(wheel(zoom, panel, 0, 0, 1, touchpad(-30, -30)));
+        assert.deepEqual(zoom.pos, { x: 0, y: 0 });
+    });
+});
+
+describe("touchpad pan speed setting", () => {
+    test("keeps a saved or picked speed within the range", () => {
+        assert.equal(validPanSpeed(1.5), 1.5);
+        // from a range input
+        assert.equal(validPanSpeed("0.8"), 0.8);
+        assert.equal(validPanSpeed(10), PAN_SPEED.max);
+        assert.equal(validPanSpeed(0), PAN_SPEED.min);
+    });
+
+    test("falls back to the default when nothing usable was saved", () => {
+        for (const value of [undefined, null, "", "fast", NaN, {}]) {
+            assert.equal(validPanSpeed(value), PAN_SPEED.default, String(value));
+        }
+    });
+
+    test("panning follows a speed changed after creating the zoom", () => {
+        const zoom = new WheelZoom({ legacyModeEnabled: false, panSpeed: 1 });
+        const panel = fakePanel(400);
+        zoom.targets.push(panel);
+        zoom.scrolling = panel;
+        zoom.scrolled(wheel(zoom, panel, 0, 0, 1, touchpad(0, 40)));
+        assert.deepEqual(panel.pos, { x: 0, y: -40 });
+        zoom.panSpeed = 0.5;
+        zoom.scrolled(wheel(zoom, panel, 0, 0, 1, touchpad(0, 40)));
+        assert.deepEqual(panel.pos, { x: 0, y: -60 });
     });
 });

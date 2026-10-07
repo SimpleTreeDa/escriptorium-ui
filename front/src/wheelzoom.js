@@ -141,9 +141,27 @@ class zoomTarget {
     }
 }
 
+// How far scrolling with two fingers on a touchpad moves the page, relative
+// to how far the browser would scroll: the default, and the range to pick from.
+export const PAN_SPEED = { default: 0.75, min: 0.25, max: 2 };
+
+/**
+ * A pan speed within PAN_SPEED's range, from a number or a string (as saved,
+ * or from a range input), or the default one if it isn't a number.
+ */
+export function validPanSpeed(value) {
+    const speed = typeof value === "string" ? parseFloat(value) : value;
+    if (typeof speed !== "number" || !Number.isFinite(speed)) {
+        return PAN_SPEED.default;
+    }
+    return Math.min(PAN_SPEED.max, Math.max(PAN_SPEED.min, speed));
+}
+
 export class WheelZoom {
     constructor({
         factor = 0.1,
+        // see PAN_SPEED
+        panSpeed = PAN_SPEED.default,
         minScale = 0.2,
         maxScale = 10,
         initialScale = 1,
@@ -152,6 +170,7 @@ export class WheelZoom {
         getActiveTool = () => {},
     } = {}) {
         this.factor = factor;
+        this.panSpeed = panSpeed;
         this.minScale = minScale;
         this.maxScale = maxScale;
         this.initialScale = initialScale;
@@ -202,7 +221,8 @@ export class WheelZoom {
             const scroll = function (event) {
                 // looks like it breaks on some configurations?
                 // if (event.altKey) return;  // supposed to move in history
-                // if (event.ctrlKey) return;  // browser zoom
+                // (ctrl is not the browser zoom here: it is how browsers send
+                // pinching on a touchpad)
                 this.scrolling = target;
                 this.scrolled.bind(this)(event);
             }
@@ -218,11 +238,10 @@ export class WheelZoom {
                 this.draggable.bind(this)(event);
             }
 
-            target.container.addEventListener("mousewheel", scroll.bind(this));
-            target.container.addEventListener(
-                "DOMMouseScroll",
-                scroll.bind(this),
-            ); // firefox
+            // not passive, scrolled() prevents the browser's own scroll/zoom
+            target.container.addEventListener("wheel", scroll.bind(this), {
+                passive: false,
+            });
             target.container.addEventListener("mousedown", drag.bind(this));
         } else {
             target.container.classList.add("mirror");
@@ -300,17 +319,54 @@ export class WheelZoom {
         };
     }
 
+    /**
+     * Whether a wheel event comes from a mouse wheel rather than from scrolling
+     * with two fingers on a touchpad. Browsers don't tell, so this goes by what
+     * they send for each.
+     */
+    isMouseWheel(e) {
+        // Firefox scrolls by lines (or pages) for a mouse wheel
+        if (e.deltaMode !== 0) return true;
+        // touchpads also scroll sideways
+        if (e.deltaX !== 0) return false;
+        if (e.wheelDeltaY) {
+            // Chromium and Safari: a touchpad's legacy delta is -3 times its
+            // delta, a mouse wheel's is a number of notches of 120
+            if (e.wheelDeltaY === -3 * e.deltaY) return false;
+            return e.wheelDeltaY % 120 === 0;
+        }
+        // else a mouse wheel scrolls by big steps, a touchpad by small ones
+        return Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50;
+    }
+
     scrolled(e) {
         if (this.disabled) return null;
         e.preventDefault();
 
-        var delta = e.delta || e.wheelDelta;
-        if (delta === undefined) {
-            //we are on firefox
-            delta = -e.detail;
+        // a touchpad gesture is a stream of events (with more of them after
+        // the fingers leave, with momentum): handle them all the same way
+        const time = e.timeStamp ?? Date.now();
+        const mouse =
+            this.lastWheel && time - this.lastWheel.time < 200
+                ? this.lastWheel.mouse
+                : this.isMouseWheel(e);
+        this.lastWheel = { time, mouse };
+
+        if (!e.ctrlKey && !mouse) {
+            // scrolling with two fingers on a touchpad
+            return this.panBy(
+                -e.deltaX * this.panSpeed,
+                -e.deltaY * this.panSpeed,
+                this.scrolling,
+            );
         }
-        // cap the delta to [-1,1] for cross browser consistency
-        delta = Math.max(-1, Math.min(1, delta));
+
+        // a mouse wheel zooms a step for each notch, while pinching on a
+        // touchpad (which browsers send as wheel events with ctrl) zooms as
+        // much as the fingers moved
+        const delta = mouse
+            ? -Math.sign(e.deltaY) * this.factor
+            : Math.max(-1, Math.min(1, -e.deltaY / 100));
         // determine the point on where the slide is zoomed in
         let bounds = e.target.getBoundingClientRect();
         var zoom_point = this.toUnits({
@@ -318,7 +374,24 @@ export class WheelZoom {
             y: e.pageY - bounds.y - document.documentElement.scrollTop,
         }, this.scrolling);
 
-        return this.zoomTo(zoom_point, delta * this.factor);
+        return this.zoomTo(zoom_point, delta);
+    }
+
+    panBy(x, y, target) {
+        // move the page by (x, y) pixels in target
+        const oldPos = { x: this.pos.x, y: this.pos.y };
+        const moved = this.toUnits({ x, y }, target);
+        this.pos.x += moved.x;
+        this.pos.y += moved.y;
+        this.keepInView(target);
+        const diff = {
+            x: (this.pos.x - oldPos.x) / this.scale,
+            y: (this.pos.y - oldPos.y) / this.scale,
+            angle: 0,
+        };
+        this.updateStyle(diff);
+        target.showMap(this.pixelPos(target), this.scale);
+        return diff;
     }
 
     drag(e) {
@@ -326,10 +399,7 @@ export class WheelZoom {
         e.preventDefault();
         var target = this.dragging;
         if (!target) return null;
-        var ts = target.container.getBoundingClientRect();
-        var ter = target.element.getBoundingClientRect();
-        var delta,
-            oldPos = { x: this.pos.x, y: this.pos.y },
+        var oldPos = { x: this.pos.x, y: this.pos.y },
             oldAngle = this.angle;
 
         if (this.previousEvent) {
@@ -345,9 +415,24 @@ export class WheelZoom {
                 this.pos.y += moved.y;
             }
         }
+        this.keepInView(target);
+        this.previousEvent = e;
+        let diff = {
+            x: (this.pos.x - oldPos.x) / this.scale,
+            y: (this.pos.y - oldPos.y) / this.scale,
+            angle: this.angle - oldAngle,
+        };
+        this.updateStyle(diff);
+        this.dragging.showMap(this.pixelPos(this.dragging), this.scale);
+        return diff;
+    }
+
+    keepInView(target) {
         // Make sure the slide stays in its container area when zooming in/out
         if (this.legacyModeEnabled) {
             // disabled on new UI. there's a reset zoom button for this!
+            var ts = target.container.getBoundingClientRect();
+            var ter = target.element.getBoundingClientRect();
             if (ter.width * this.scale > ts.width) {
                 if (this.pos.x > 0) {
                     this.pos.x = 0;
@@ -379,15 +464,6 @@ export class WheelZoom {
                 }
             }
         }
-        this.previousEvent = e;
-        let diff = {
-            x: (this.pos.x - oldPos.x) / this.scale,
-            y: (this.pos.y - oldPos.y) / this.scale,
-            angle: this.angle - oldAngle,
-        };
-        this.updateStyle(diff);
-        this.dragging.showMap(this.pixelPos(this.dragging), this.scale);
-        return diff;
     }
 
     removeDrag() {

@@ -27,6 +27,7 @@ import {
     loadSyriacFont,
     saveSyriacFont,
 } from "../syriacFont";
+import { validPanSpeed } from "../../wheelzoom";
 
 // "New UI" panels: from userProfile, or by default, [segmentation, visualisation]
 const savedEditorPanels = () => {
@@ -78,6 +79,9 @@ export const initialState = () => ({
     // side by side or stacked, and the size of each panel (see panelLayout.js)
     // eslint-disable-next-line no-undef
     editorLayout: loadLayout(userProfile.get("editor-layout"), savedEditorPanels().length),
+    // how fast scrolling with two fingers on a touchpad pans the image (see wheelzoom.js)
+    // eslint-disable-next-line no-undef
+    panSpeed: validPanSpeed(userProfile.get("pan-speed")),
 
     // Confidence overlay visibility (global, from document settings)
     confidenceVisible: false,
@@ -122,6 +126,11 @@ export const mutations = {
     },
     setSyriacFont(state, value) {
         state.syriacFont = value;
+    },
+    setPanSpeed(state, speed) {
+        state.panSpeed = validPanSpeed(speed);
+        // eslint-disable-next-line no-undef
+        userProfile.set("pan-speed", state.panSpeed);
     },
     setId(state, id) {
         state.id = id;
