@@ -1,15 +1,28 @@
 <template>
+    <!--
+        auto-hide closes the menu on a click outside it and on Escape. It is set here
+        because on the editor page floating-vue installs itself on the global Vue that the
+        legacy editor creates, before store/index.js can register the project's themes, so
+        "vertical-menu" inherits nothing from the built-in "menu" and "dropdown" themes there.
+    -->
     <VMenu
         placement="bottom-start"
         theme="vertical-menu"
         :triggers="['click']"
+        :auto-hide="true"
         :disabled="disabled"
     >
+        <!--
+            The tooltip is a child popper of the menu, and floating-vue never hides a popper
+            while one of its children is shown. Hiding the tooltip on click lets a second
+            click on the button close the menu.
+        -->
         <VDropdown
             theme="escr-tooltip-small"
             placement="bottom"
             :distance="8"
             :triggers="['hover']"
+            :hide-triggers="['hover', 'click']"
         >
             <button
                 type="button"
