@@ -1,0 +1,26 @@
+{% load i18n %}
+{# Shared confirmation dialog for the trash buttons in table.html.         #}
+{# The button that opens it carries data-title / data-message / data-action #}
+{# / data-confirm attributes; scripts.html copies them in on show.bs.modal.  #}
+<div class="modal fade" id="confirm-action-modal" tabindex="-1" role="dialog" aria-labelledby="confirm-action-title" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <form method="post">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirm-action-title">{% trans "Are you sure?" %}</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="{% trans "Close" %}">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="confirm-action-message mb-0"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">{% trans "Cancel" %}</button>
+          <button type="submit" class="btn btn-danger confirm-action-submit">{% trans "Confirm" %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
