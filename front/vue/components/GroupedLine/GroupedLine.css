@@ -10,7 +10,7 @@
     flex-flow: row nowrap;
     align-items: center;
     padding: 10px 0;
-    font-family: "Noto Sans";
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     font-size: 14px;
     font-weight: 600;
     list-style: none;
@@ -41,8 +41,9 @@
 }
 .escr-lines-region li {
     position: relative;
-    line-height: 1.45rem;
-    font-size: 1rem;
+    /* the size chosen with A− / A+ (DiploPanel), the line numbers keep theirs */
+    line-height: 1.45em;
+    font-size: calc(1rem * var(--escr-text-panel-size, 1));
     overflow-wrap: break-word;
     border: 1px solid transparent;
     border-left: 3px solid transparent;
@@ -57,7 +58,7 @@
     margin: 0;
     padding: 0;
     color: #888;
-    font-family: "Noto Sans";
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     font-size: 14px;
     font-weight: 600;
 }

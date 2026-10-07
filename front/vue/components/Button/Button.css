@@ -4,7 +4,7 @@
     color: var(--button-text);
     border-radius: 5px;
     padding: 0px 10px;
-    font-family: "Noto Sans", sans-serif;
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     font-weight: 600;
     font-size: 14px;
     cursor: pointer;

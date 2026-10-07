@@ -1,7 +1,7 @@
 /* overall editor layout */
 main:has(#escr-editor) {
     background-color: var(--background2);
-    font-family: "Noto Sans", "Resized Arabic", sans-serif;
+    font-family: "Noto Sans", "Resized Arabic", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     overflow: hidden;
 }
 #escr-editor {
@@ -138,6 +138,10 @@ div.escr-editor-tabcontent #diplo-panel .content-container {
 /* DiploPanel line and cursor styling */
 .escr-editor-tabcontent #diplo-panel {
     color: black;
+}
+/* the size chosen with A− / A+ (DiploPanel), the line numbers keep theirs */
+.escr-editor-tabcontent #diplomatic-lines {
+    font-size: calc(1em * var(--escr-text-panel-size, 1));
 }
 .escr-editor-tabcontent #diplomatic-lines > div {
     border: 1px solid transparent;

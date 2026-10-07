@@ -30,3 +30,19 @@
 .escr-layout-menu .escr-menuitem-noicon {
     margin-left: calc(20px + 1rem);
 }
+
+/* Text menu: the Syriac font of the document */
+.escr-text-menu .escr-menu-heading {
+    padding: 4px 16px 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+}
+.escr-text-menu button {
+    justify-content: space-between;
+    gap: 16px;
+}
+.escr-text-menu .escr-syriac-sample {
+    font-size: 20px;
+    line-height: 1;
+}

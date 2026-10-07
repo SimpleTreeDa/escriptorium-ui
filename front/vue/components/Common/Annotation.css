@@ -32,7 +32,7 @@
 
 /* RecogitoJS base editor styling */
 .escr-editor-tabcontent .r6o-editor {
-    font-family: "Noto Sans";
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     border-radius: 5px;
     box-shadow: 0px -1px 2px 0px rgba(0, 0, 0, 0.15);
 }
@@ -51,7 +51,7 @@
     padding: 16px;
 }
 .escr-editor-tabcontent .r6o-widget.keyvalue-widget select {
-    font-family: "Noto Sans";
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     background-color: #f0f0f0;
     font-size: 14px;
     border: none;
@@ -71,7 +71,7 @@
     border-radius: 5px;
     min-height: 38px;
     padding: 0px 16px;
-    font-family: "Noto Sans", sans-serif;
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     font-weight: 600;
     font-size: 14px;
     transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,

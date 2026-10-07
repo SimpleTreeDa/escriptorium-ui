@@ -61,6 +61,14 @@
                         :disabled="disabled"
                     />
 
+                    <TextSizeButtons
+                        :disabled="disabled"
+                        :can-be-smaller="canBeSmaller"
+                        :can-be-larger="canBeLarger"
+                        :on-smaller="smallerFont"
+                        :on-larger="largerFont"
+                    />
+
                     <!-- confidence visualization control -->
                     <div class="escr-confidence-control">
                         <VDropdown
@@ -166,10 +174,20 @@ import ConfidenceIcon from "./Icons/ConfidenceIcon/ConfidenceIcon.vue";
 import ChevronDownIcon from "./Icons/ChevronDownIcon/ChevronDownIcon.vue";
 import EscrButton from "./Button/Button.vue";
 import EditorToolbar from "./EditorToolbar/EditorToolbar.vue";
+import TextSizeButtons from "./TextSizeButtons/TextSizeButtons.vue";
 import TranscriptionDropdown from "./EditorTranscriptionDropdown/EditorTranscriptionDropdown.vue";
 import VisuLine from "./VisuLine.vue";
 import ToggleButton from "./ToggleButton/ToggleButton.vue";
 import TranscriptionModal from "./TranscriptionModal.vue";
+import {
+    TRANSCRIPTION_TEXT_SIZE,
+    canBeLarger as sizeCanBeLarger,
+    canBeSmaller as sizeCanBeSmaller,
+    larger,
+    loadSize,
+    saveSize,
+    smaller,
+} from "../../src/editor/fontSize";
 
 export default {
     name: "VisuPanel",
@@ -178,6 +196,7 @@ export default {
         ConfidenceIcon,
         EditorToolbar,
         EscrButton,
+        TextSizeButtons,
         ToggleButton,
         TranscriptionDropdown,
         TranscriptionModal,
@@ -187,7 +206,8 @@ export default {
     mixins: [BasePanel],
     data() {
         return {
-            fontSizeRatio: userProfile.get("visu-font-size-" + this.$store.state.document.id, 0.25),
+            // size of the text relative to the height of the lines, for this document
+            fontSizeRatio: loadSize(userProfile, TRANSCRIPTION_TEXT_SIZE, this.$store.state.document.id),
             confidenceMenuOpen: false,
         }
     },
@@ -202,6 +222,12 @@ export default {
             editedLine: (state) => state.lines.editedLine,
             image: (state) => state.parts.image,
         }),
+        canBeSmaller() {
+            return sizeCanBeSmaller(this.fontSizeRatio, TRANSCRIPTION_TEXT_SIZE);
+        },
+        canBeLarger() {
+            return sizeCanBeLarger(this.fontSizeRatio, TRANSCRIPTION_TEXT_SIZE);
+        },
         hasConfidence() {
             return this.allLines.some((line) => (
                 line.currentTrans?.graphs?.length || line.currentTrans?.avg_confidence
@@ -237,13 +263,14 @@ export default {
             }.bind(this));
         },
         smallerFont() {
-            this.fontSizeRatio -= this.fontSizeRatio/10;
-            userProfile.set("visu-font-size-" + this.$store.state.document.id, this.fontSizeRatio);
-            this.resetLines();
+            this.setFontSize(smaller(this.fontSizeRatio, TRANSCRIPTION_TEXT_SIZE));
         },
         largerFont() {
-            this.fontSizeRatio += this.fontSizeRatio/10;
-            userProfile.set("visu-font-size-" + this.$store.state.document.id, this.fontSizeRatio);
+            this.setFontSize(larger(this.fontSizeRatio, TRANSCRIPTION_TEXT_SIZE));
+        },
+        setFontSize(size) {
+            this.fontSizeRatio = size;
+            saveSize(userProfile, TRANSCRIPTION_TEXT_SIZE, this.$store.state.document.id, size);
             this.resetLines();
         },
         changeConfidenceScale(e) {

@@ -8,7 +8,7 @@
     border-radius: 4px;
     min-height: 32px;
     background-color: var(--background);
-    font-family: "Noto Sans";
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     font-style: normal;
     font-weight: 400;
     font-size: 14px;

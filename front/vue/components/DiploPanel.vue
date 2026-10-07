@@ -2,6 +2,7 @@
     <div
         id="diplo-panel"
         class="col panel"
+        :style="legacyModeEnabled ? null : { '--escr-text-panel-size': textSize }"
     >
         <div
             v-if="legacyModeEnabled"
@@ -66,6 +67,14 @@
                     <!-- transcription switcher -->
                     <TranscriptionDropdown
                         :disabled="disabled"
+                    />
+
+                    <TextSizeButtons
+                        :disabled="disabled"
+                        :can-be-smaller="canBeSmaller"
+                        :can-be-larger="canBeLarger"
+                        :on-smaller="smallerText"
+                        :on-larger="largerText"
                     />
 
                     <!-- Line reordering -->
@@ -285,7 +294,17 @@ import EditorToolbar from "./EditorToolbar/EditorToolbar.vue";
 import GroupedLine from "../components/GroupedLine/GroupedLine.vue";
 import RegionsIcon from "./Icons/RegionsIcon/RegionsIcon.vue";
 import ToggleButton from "./ToggleButton/ToggleButton.vue";
+import TextSizeButtons from "./TextSizeButtons/TextSizeButtons.vue";
 import TranscriptionDropdown from "./EditorTranscriptionDropdown/EditorTranscriptionDropdown.vue";
+import {
+    TEXT_PANEL_TEXT_SIZE,
+    canBeLarger as sizeCanBeLarger,
+    canBeSmaller as sizeCanBeSmaller,
+    larger,
+    loadSize,
+    saveSize,
+    smaller,
+} from "../../src/editor/fontSize";
 import "../components/Common/Annotation.css";
 
 export default {
@@ -297,6 +316,7 @@ export default {
         KeyboardIcon,
         LineOrderingIcon,
         RegionsIcon,
+        TextSizeButtons,
         ToggleButton,
         TranscriptionDropdown,
         VDropdown,
@@ -312,6 +332,9 @@ export default {
             isSortModeEnabled: false,
             selectedLines: [],
             selectionAnchor: null,
+            // size of the text relative to its normal size, for this document (new UI)
+            // eslint-disable-next-line no-undef
+            textSize: loadSize(userProfile, TEXT_PANEL_TEXT_SIZE, this.$store.state.document.id),
         };
     },
     computed: {
@@ -328,6 +351,12 @@ export default {
             transcriptionsLoaded: (state) => state.transcriptions.transcriptionsLoaded,
             partsLoaded: (state) => state.parts.loaded,
         }),
+        canBeSmaller() {
+            return sizeCanBeSmaller(this.textSize, TEXT_PANEL_TEXT_SIZE);
+        },
+        canBeLarger() {
+            return sizeCanBeLarger(this.textSize, TEXT_PANEL_TEXT_SIZE);
+        },
         groupedTaxonomies() {
             return groupBy(
                 this.annotationTaxonomies.text,
@@ -464,6 +493,17 @@ export default {
     },
 
     methods: {
+        smallerText() {
+            this.setTextSize(smaller(this.textSize, TEXT_PANEL_TEXT_SIZE));
+        },
+        largerText() {
+            this.setTextSize(larger(this.textSize, TEXT_PANEL_TEXT_SIZE));
+        },
+        setTextSize(size) {
+            this.textSize = size;
+            // eslint-disable-next-line no-undef
+            saveSize(userProfile, TEXT_PANEL_TEXT_SIZE, this.documentId, size);
+        },
         ...mapActions("textAnnotations", {
             createTextAnnotation: "create",
             deleteTextAnnotation: "delete",

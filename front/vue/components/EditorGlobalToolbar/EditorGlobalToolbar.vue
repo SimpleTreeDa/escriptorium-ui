@@ -160,6 +160,63 @@
             <VDropdown
                 placement="bottom-end"
                 theme="vertical-menu"
+                :shown="textMenuOpen"
+                :triggers="[]"
+                :auto-hide="true"
+                @apply-hide="closeTextMenu"
+            >
+                <EscrButton
+                    class="escr-text-menu-toggle"
+                    :disabled="disabled"
+                    :on-click="openTextMenu"
+                    color="text-alt"
+                    label="Text"
+                    aria-label="Text settings"
+                    aria-haspopup="true"
+                    :aria-expanded="textMenuOpen ? 'true' : 'false'"
+                >
+                    <template #button-icon>
+                        <TextPanelIcon />
+                    </template>
+                    <template #button-icon-right>
+                        <ChevronDownIcon />
+                    </template>
+                </EscrButton>
+                <template #popper>
+                    <ul
+                        class="escr-vertical-menu escr-text-menu"
+                        aria-label="Syriac font, for this document"
+                    >
+                        <li class="escr-menu-heading">
+                            Syriac font, for this document
+                        </li>
+                        <li
+                            v-for="font in syriacFonts"
+                            :key="font.value"
+                        >
+                            <button
+                                type="button"
+                                :aria-pressed="syriacFont === font.value ? 'true' : 'false'"
+                                :class="{ preselected: syriacFont === font.value }"
+                                @click="onSetSyriacFont(font.value)"
+                            >
+                                <span class="escr-menuitem-noicon">{{ font.label }}</span>
+                                <!-- a sample in the font: šlāmā, peace -->
+                                <span
+                                    class="escr-syriac-sample"
+                                    :style="{ fontFamily: `'${font.family}'` }"
+                                    lang="syr"
+                                    dir="rtl"
+                                    aria-hidden="true"
+                                >ܫܠܡܐ</span>
+                            </button>
+                        </li>
+                    </ul>
+                </template>
+            </VDropdown>
+            <VDropdown
+                placement="bottom-end"
+                theme="vertical-menu"
                 :shown="layoutMenuOpen"
                 :triggers="[]"
                 :auto-hide="true"
@@ -315,6 +372,7 @@ import TranscribeIcon from "../Icons/TranscribeIcon/TranscribeIcon.vue";
 import ZoomInIcon from "../Icons/ZoomInIcon/ZoomInIcon.vue";
 import ZoomOutIcon from "../Icons/ZoomOutIcon/ZoomOutIcon.vue";
 import ZoomResetIcon from "../Icons/ZoomResetIcon/ZoomResetIcon.vue";
+import { SYRIAC_FONTS } from "../../../src/editor/syriacFont";
 import { Dropdown as VDropdown } from "floating-vue";
 import "./EditorGlobalToolbar.css";
 
@@ -396,16 +454,32 @@ export default {
         return {
             addPanelMenuOpen: false,
             layoutMenuOpen: false,
+            textMenuOpen: false,
+            syriacFonts: SYRIAC_FONTS,
         }
     },
     computed: {
         ...mapState({
             editorPanels: (state) => state.document.editorPanels,
             layoutOrientation: (state) => state.document.editorLayout.orientation,
+            syriacFont: (state) => state.document.syriacFont,
         }),
     },
     methods: {
-        ...mapActions("document", ["addEditorPanel", "setEditorLayout"]),
+        ...mapActions("document", ["addEditorPanel", "setEditorLayout", "setSyriacFont"]),
+        closeTextMenu() {
+            this.textMenuOpen = false;
+        },
+        openTextMenu() {
+            this.textMenuOpen = true;
+        },
+        /**
+         * Callback to show the Syriac text of this document in another font
+         */
+        onSetSyriacFont(value) {
+            this.closeTextMenu();
+            this.setSyriacFont(value);
+        },
         ...mapMutations("document", ["resetEditorPanelSizes"]),
         /**
          * Callback to close the panel layout menu

@@ -1,5 +1,7 @@
 /* Root styles for the entire application. */
 :root {
+    /* family of the Syriac font chosen in the editor, see src/editor/syriacFont.js */
+    --escr-syriac-font: "Noto Sans Syriac";
     /* main colors */
     --primary: #28a696;
     --tertiary: #5869fc;
@@ -235,13 +237,110 @@ main:has(.escr-vue-enabled):not(:has(.escr-page)) {
         /* Ottoman Siyaq Numbers */ U+1ED00-1ED4F,
         /* Arabic Mathematical Alphabetic Symbols */ U+1EE00-1EEFF;
 }
+/* Syriac: Estrangela, Serto (Western) and East Syriac (Eastern) */
+@font-face {
+    font-family: "Noto Sans Syriac";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fonts/NotoSansSyriac-Regular.woff2") format("woff2");
+    /* only the characters of Syriac text, see fonts/README.md */
+    unicode-range:
+        /* combining marks: seyame U+0308, dots, tilde, macron... */
+        U+0303-0304, U+0307-0308, U+030A, U+0320, U+0323-0325, U+032D-032E,
+        U+0330-0331, U+1DF8, U+1DFA,
+        /* tatweel, Arabic vowel signs for Garshuni */ U+0640, U+064B-0655, U+0670,
+        /* Syriac */ U+0700-074F, /* Syriac Supplement */ U+0860-086F,
+        /* joiners, direction marks */ U+200C-200F, /* dotted circle */ U+25CC,
+        /* crosses */ U+2670-2671;
+}
+@font-face {
+    font-family: "Noto Sans Syriac";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("../fonts/NotoSansSyriac-Bold.woff2") format("woff2");
+    /* only the characters of Syriac text, see fonts/README.md */
+    unicode-range:
+        /* combining marks: seyame U+0308, dots, tilde, macron... */
+        U+0303-0304, U+0307-0308, U+030A, U+0320, U+0323-0325, U+032D-032E,
+        U+0330-0331, U+1DF8, U+1DFA,
+        /* tatweel, Arabic vowel signs for Garshuni */ U+0640, U+064B-0655, U+0670,
+        /* Syriac */ U+0700-074F, /* Syriac Supplement */ U+0860-086F,
+        /* joiners, direction marks */ U+200C-200F, /* dotted circle */ U+25CC,
+        /* crosses */ U+2670-2671;
+}
+@font-face {
+    font-family: "Noto Sans Syriac Western";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fonts/NotoSansSyriacWestern-Regular.woff2") format("woff2");
+    /* only the characters of Syriac text, see fonts/README.md */
+    unicode-range:
+        /* combining marks: seyame U+0308, dots, tilde, macron... */
+        U+0303-0304, U+0307-0308, U+030A, U+0320, U+0323-0325, U+032D-032E,
+        U+0330-0331, U+1DF8, U+1DFA,
+        /* tatweel, Arabic vowel signs for Garshuni */ U+0640, U+064B-0655, U+0670,
+        /* Syriac */ U+0700-074F, /* Syriac Supplement */ U+0860-086F,
+        /* joiners, direction marks */ U+200C-200F, /* dotted circle */ U+25CC,
+        /* crosses */ U+2670-2671;
+}
+@font-face {
+    font-family: "Noto Sans Syriac Western";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("../fonts/NotoSansSyriacWestern-Bold.woff2") format("woff2");
+    /* only the characters of Syriac text, see fonts/README.md */
+    unicode-range:
+        /* combining marks: seyame U+0308, dots, tilde, macron... */
+        U+0303-0304, U+0307-0308, U+030A, U+0320, U+0323-0325, U+032D-032E,
+        U+0330-0331, U+1DF8, U+1DFA,
+        /* tatweel, Arabic vowel signs for Garshuni */ U+0640, U+064B-0655, U+0670,
+        /* Syriac */ U+0700-074F, /* Syriac Supplement */ U+0860-086F,
+        /* joiners, direction marks */ U+200C-200F, /* dotted circle */ U+25CC,
+        /* crosses */ U+2670-2671;
+}
+@font-face {
+    font-family: "Noto Sans Syriac Eastern";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fonts/NotoSansSyriacEastern-Regular.woff2") format("woff2");
+    /* only the characters of Syriac text, see fonts/README.md */
+    unicode-range:
+        /* combining marks: seyame U+0308, dots, tilde, macron... */
+        U+0303-0304, U+0307-0308, U+030A, U+0320, U+0323-0325, U+032D-032E,
+        U+0330-0331, U+1DF8, U+1DFA,
+        /* tatweel, Arabic vowel signs for Garshuni */ U+0640, U+064B-0655, U+0670,
+        /* Syriac */ U+0700-074F, /* Syriac Supplement */ U+0860-086F,
+        /* joiners, direction marks */ U+200C-200F, /* dotted circle */ U+25CC,
+        /* crosses */ U+2670-2671;
+}
+@font-face {
+    font-family: "Noto Sans Syriac Eastern";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("../fonts/NotoSansSyriacEastern-Bold.woff2") format("woff2");
+    /* only the characters of Syriac text, see fonts/README.md */
+    unicode-range:
+        /* combining marks: seyame U+0308, dots, tilde, macron... */
+        U+0303-0304, U+0307-0308, U+030A, U+0320, U+0323-0325, U+032D-032E,
+        U+0330-0331, U+1DF8, U+1DFA,
+        /* tatweel, Arabic vowel signs for Garshuni */ U+0640, U+064B-0655, U+0670,
+        /* Syriac */ U+0700-074F, /* Syriac Supplement */ U+0860-086F,
+        /* joiners, direction marks */ U+200C-200F, /* dotted circle */ U+25CC,
+        /* crosses */ U+2670-2671;
+}
 /* reset default fonts to 14px normal noto sans, weight 400 */
 .escr-vue-enabled .escr-page-container,
 .escr-page input[type="text"],
 .escr-sidebar-container input[type="text"],
 .escr-global-nav,
 .v-popper__inner {
-    font-family: "Noto Sans", "Resized Arabic", sans-serif;
+    font-family: "Noto Sans", "Resized Arabic", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     font-size: 14px;
     font-weight: 400;
     color: var(--text1);
@@ -445,7 +544,7 @@ nav.escr-editor-nav .new-section.with-separator {
     right: auto;
 }
 .alert {
-    font-family: "Noto Sans", "Resized Arabic", sans-serif;
+    font-family: "Noto Sans", "Resized Arabic", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     font-weight: 600;
     font-size: 14px;
     background-color: var(--background2);

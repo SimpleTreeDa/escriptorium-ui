@@ -837,7 +837,7 @@ main:has(.escr-vue-enabled):not(:has(.escr-page)) .text-muted {
 main:has(.escr-vue-enabled):not(:has(.escr-page)) small {
     font-weight: 400;
     font-size: 12px !important;
-    font-family: 'Noto Sans';
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac");
     font-style: normal;
 }
 main:has(.escr-vue-enabled):not(:has(.escr-page)) a:not(.btn) {
@@ -862,7 +862,7 @@ main:has(.escr-vue-enabled):not(:has(.escr-page)) .container {
     background-color: var(--background1);
     color: var(--text1);
     border-radius: 15px;
-    font-family: "Noto Sans", sans-serif;
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     font-size: 14px;
 }
 main:has(.escr-vue-enabled):not(:has(.escr-page)) table tr {
@@ -882,7 +882,7 @@ main:has(.escr-vue-enabled):not(:has(.escr-page)) table td {
 
 /* buttons */
 main:has(.escr-vue-enabled):not(:has(.escr-page)) .btn:not(.fas) {
-    font-family: "Noto Sans", sans-serif;
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
 }
 main:has(.escr-vue-enabled):not(:has(.escr-page)) .btn {
     vertical-align: middle;
@@ -968,7 +968,7 @@ main:has(.escr-vue-enabled):not(:has(.escr-page)) .btn-danger:active {
 
 /* forms */
 main:has(.escr-vue-enabled):not(:has(.escr-page)) .form-group * {
-    font-family: "Noto Sans", sans-serif;
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     font-size: 14px;
 }
 main:has(.escr-vue-enabled):not(:has(.escr-page)) label {
@@ -978,7 +978,7 @@ main:has(.escr-vue-enabled):not(:has(.escr-page)) label {
 main:has(.escr-vue-enabled):not(:has(.escr-page)) select {
     border-radius: 4px;
     min-height: 32px;
-    font-family: "Noto Sans";
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac");
     font-style: normal;
     font-weight: 400;
     font-size: 14px;
@@ -1019,7 +1019,7 @@ main:has(.escr-vue-enabled):not(:has(.escr-page)) .pagination li select {
     color: var(--secondary);
     transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
         border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    font-family: "Noto Sans", sans-serif;
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     font-size: 14px;
     min-height: 38px;
     max-height: 38px;
@@ -1030,7 +1030,7 @@ main:has(.escr-vue-enabled):not(:has(.escr-page)) .pagination li select {
 
 /* cards */
 main:has(.escr-vue-enabled):not(:has(.escr-page)) .card {
-    font-family: "Noto Sans", sans-serif;
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     font-size: 14px;
     border: none;
     border-radius: 15px;
@@ -1062,7 +1062,7 @@ main:has(.escr-vue-enabled):not(:has(.escr-page)) .page-link {
 main:has(.escr-vue-enabled):not(:has(.escr-page)) .alert {
     padding: 8px;
     border-radius: 5px;
-    font-family: "Noto Sans";
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac");
     font-size: 12px;
     font-weight: 400;
     line-height: 16px;
