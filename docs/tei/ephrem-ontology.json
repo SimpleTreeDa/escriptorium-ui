@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "region_types": [
+    "MainZone",
+    "MainZone:left",
+    "MainZone:right",
+    "Main",
+    "Title",
+    "MarginTextZone",
+    "Commentary",
+    "RunningTitleZone",
+    "NumberingZone",
+    "QuireMarksZone",
+    "Illustration",
+    "GraphicZone",
+    "DecorationZone"
+  ],
+  "line_types": [
+    "DefaultLine",
+    "Main",
+    "HeadingLine",
+    "ParagraphStart",
+    "InterlinearLine",
+    "Correction",
+    "Numbering",
+    "Signature"
+  ],
+  "part_types": [],
+  "annotation_components": [
+    {
+      "name": "reason",
+      "allowed_values": null
+    },
+    {
+      "name": "extent",
+      "allowed_values": null
+    },
+    {
+      "name": "unit",
+      "allowed_values": null
+    },
+    {
+      "name": "place",
+      "allowed_values": [
+        "above",
+        "below",
+        "margin",
+        "inline",
+        "top",
+        "bottom"
+      ]
+    }
+  ],
+  "taxonomy": [
+    {
+      "name": "unclear",
+      "typology": "TEI",
+      "has_comments": false,
+      "abbreviation": "UNC",
+      "marker_type": 3,
+      "marker_color": "#f2c94c",
+      "components": [
+        "reason"
+      ]
+    },
+    {
+      "name": "gap",
+      "typology": "TEI",
+      "has_comments": false,
+      "abbreviation": "GAP",
+      "marker_type": 3,
+      "marker_color": "#eb5757",
+      "components": [
+        "reason",
+        "extent",
+        "unit"
+      ]
+    },
+    {
+      "name": "add",
+      "typology": "TEI",
+      "has_comments": false,
+      "abbreviation": "ADD",
+      "marker_type": 3,
+      "marker_color": "#6fcf97",
+      "components": [
+        "place"
+      ]
+    }
+  ]
+}
