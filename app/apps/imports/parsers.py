@@ -1072,6 +1072,30 @@ The PAGE file should contain an attribute imageFilename in Page tag for matching
         return mean(confidences) if confidences else None
 
 
+def iiif_text(value, join=None):
+    """
+    The text of a IIIF label or metadata value: a string, {"@value": ...}, a list of these,
+    or a IIIF 3 language map {"en": [...]}. The first text, or all of them joined with join.
+    """
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, dict):
+        if "@value" in value:
+            return iiif_text(value["@value"], join)
+        texts = [iiif_text(item, join) for items in value.values() for item in
+                 (items if isinstance(items, list) else [items])]
+    elif isinstance(value, list):
+        texts = [iiif_text(item, join) for item in value]
+    else:
+        return str(value).strip()
+    texts = [text for text in texts if text]
+    if not texts:
+        return ""
+    return join.join(texts) if join else texts[0]
+
+
 class IIIFManifestParser(ParserDocument):
     @cached_property
     def manifest(self):
@@ -1152,11 +1176,13 @@ class IIIFManifestParser(ParserDocument):
 
         try:
             for metadata in self.manifest["metadata"]:
-                if metadata["value"]:
-                    name = str(metadata["label"])[:128]
-                    md, created = Metadata.objects.get_or_create(name=name)
+                value = iiif_text(metadata["value"], join="; ")
+                name = iiif_text(metadata["label"])[:128]
+                if value and name:
+                    # "Shelfmark" goes under an existing "shelfmark" key rather than a new one
+                    md, created = Metadata.get_or_create_by_name(name)
                     DocumentMetadata.objects.get_or_create(
-                        document=self.document, key=md, value=str(metadata["value"])[:512]
+                        document=self.document, key=md, value=value[:512]
                     )
         except KeyError:
             pass
@@ -1197,8 +1223,10 @@ class IIIFManifestParser(ParserDocument):
                     part = DocumentPart(
                         document=self.document,
                         source=url)
-                if "label" in resource:
-                    part.name = resource["label"]
+                # the canvas label is the page's label in IIIF, e.g. "f. 1r"
+                label = iiif_text(canvas.get("label")) or iiif_text(resource.get("label"))
+                if label:
+                    part.name = label[:512]
                 # iiif file names are always default.jpg or close to
                 name = "%d_%s_%s" % (i, uuid.uuid4().hex[:5], url.split("/")[-1])
                 part.original_filename = name
