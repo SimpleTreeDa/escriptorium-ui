@@ -26,3 +26,6 @@ yarn.lock
 wsl-dev*
 wsl_dev*
 test_media/
+
+# root package.json has no dependencies, so there is nothing to lock
+/package-lock.json

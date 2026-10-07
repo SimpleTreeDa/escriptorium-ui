@@ -1,0 +1,15 @@
+{
+  "name": "escriptorium-ui",
+  "private": true,
+  "description": "Developer scripts for the eScriptorium docker stack. The frontend lives in front/, the backend in app/.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "rebuild": "node scripts/rebuild.mjs",
+    "rebuild:clean": "node scripts/rebuild.mjs --no-cache",
+    "ui": "node scripts/refresh-ui.mjs",
+    "ui:watch": "node scripts/refresh-ui.mjs --watch"
+  }
+}
