@@ -30,6 +30,7 @@ from core.models import (
     OcrModelDocument,
     OcrModelRight,
     Project,
+    Role,
     TextualWitness,
     Transcription,
 )
@@ -41,7 +42,7 @@ from core.search import (
     search_content_psql_word,
 )
 from reporting.models import TaskGroup
-from users.models import User
+from users.models import Group, User
 
 logger = logging.getLogger(__name__)
 
@@ -261,7 +262,29 @@ class ShareForm(BootstrapFormMixin, forms.ModelForm):
             | Q(pk__in=self.instance.shared_with_users.values_list('pk', flat=True))
         ).exclude(pk=self.request.user.pk)).distinct()
         self.fields['shared_with_groups'].widget = forms.CheckboxSelectMultiple()
-        self.fields['shared_with_groups'].queryset = self.request.user.groups
+        # the teams already shared with stay listed, otherwise saving would unshare them
+        self.fields['shared_with_groups'].queryset = Group.objects.filter(
+            Q(pk__in=self.request.user.groups.all())
+            | Q(pk__in=self.instance.shared_with_groups.values_list('pk', flat=True))
+        ).distinct()
+
+    def _save_m2m(self):
+        # Shares are added and removed one by one rather than replaced, so existing ones keep their role
+        # and status, and only the owner can revoke an admin.
+        target = self._meta.model._meta.model_name
+        for name, other in (('shared_with_users', 'user'), ('shared_with_groups', 'group')):
+            relation = getattr(self.instance, name)
+            selected = self.cleaned_data[name]
+            relation.add(*selected, through_defaults={'invited_by': self.request.user})
+            removed = (relation.through.objects
+                       .filter(**{target: self.instance})
+                       .exclude(**{f'{other}__in': selected}))
+            if other == 'user':
+                # the person sharing isn't listed in the choices, they leave a share from the lists
+                removed = removed.exclude(user=self.request.user)
+            if self.instance.owner != self.request.user:
+                removed = removed.filter(role__lt=Role.ADMIN)
+            removed.delete()
 
     def clean_username(self):
         username = self.cleaned_data['username']
@@ -280,7 +303,8 @@ class ProjectShareForm(ShareForm):
     def save(self, commit=True):
         proj = super().save(commit=commit)
         if self.cleaned_data['username']:
-            proj.shared_with_users.add(self.cleaned_data['username'])
+            proj.shared_with_users.add(self.cleaned_data['username'],
+                                       through_defaults={'invited_by': self.request.user})
         return proj
 
 
@@ -292,7 +316,8 @@ class DocumentShareForm(ShareForm):
     def save(self, commit=True):
         doc = super().save(commit=commit)
         if self.cleaned_data['username']:
-            doc.shared_with_users.add(self.cleaned_data['username'])
+            doc.shared_with_users.add(self.cleaned_data['username'],
+                                      through_defaults={'invited_by': self.request.user})
         return doc
 
 

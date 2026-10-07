@@ -36,6 +36,7 @@ from core.models import (
     OcrModelDocument,
     Project,
     ProjectTag,
+    Role,
     Script,
     TextAnnotation,
     TextAnnotationComponentValue,
@@ -130,12 +131,30 @@ class ProjectTagSerializer(serializers.ModelSerializer):
         return super().create(data)
 
 
+class MyRoleField(serializers.ReadOnlyField):
+    """
+    The Role of the current user on a project or a document, as 'owner', 'admin', 'editor' or 'viewer',
+    null when they only see a project through some of its documents.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(source='*', **kwargs)
+
+    def to_representation(self, obj):
+        role = getattr(obj, 'my_role', None)  # annotated by the viewsets querysets
+        if role is None:
+            user = self.context.get('user') or getattr(self.context.get('request'), 'user', None)
+            role = obj.get_role(user) if user else None
+        return Role(role).slug if role else None
+
+
 class ProjectSerializer(serializers.ModelSerializer):
     owner = serializers.ReadOnlyField(source='owner.username')
     slug = serializers.ReadOnlyField()
     documents_count = serializers.ReadOnlyField()
     shared_with_users = UserSerializer(many=True, read_only=True)
     shared_with_groups = GroupSerializer(many=True, read_only=True)
+    my_role = MyRoleField()
 
     class Meta:
         model = Project
@@ -419,6 +438,7 @@ class DocumentSerializer(serializers.ModelSerializer):
     shared_with_users = UserSerializer(many=True, read_only=True)
     shared_with_groups = GroupSerializer(many=True, read_only=True)
     transcriptions = TranscriptionSerializer(many=True, read_only=True)
+    my_role = MyRoleField()
 
     class Meta:
         model = Document
@@ -426,7 +446,7 @@ class DocumentSerializer(serializers.ModelSerializer):
                   'main_script', 'read_direction', 'line_offset', 'show_confidence_viz',
                   'valid_block_types', 'valid_line_types', 'valid_part_types',
                   'parts_count', 'tags', 'created_at', 'updated_at', 'project_name', 'project_id',
-                  'shared_with_users', 'shared_with_groups')
+                  'shared_with_users', 'shared_with_groups', 'my_role')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
