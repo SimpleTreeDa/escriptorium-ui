@@ -19,6 +19,22 @@ export const setPartsEditorialStatus = async (documentId, partIds, status) =>
         status,
     });
 
+// set the TEI work ("work") or work URI ("work_uri") of one or several elements of a document;
+// an empty value removes it
+export const setPartsMetadata = async (documentId, partIds, key, value) =>
+    await axios.post(`/documents/${documentId}/parts/set_metadata/`, {
+        parts: partIds,
+        key,
+        value,
+    });
+
+// name one or several elements of a document by folio, in their order: 1r, 1v, 2r, 2v... from start
+export const numberFolios = async (documentId, partIds, start) =>
+    await axios.post(`/documents/${documentId}/parts/number_folios/`, {
+        parts: partIds,
+        start,
+    });
+
 export const updatePart = async (documentId, partId, data) =>
     await axios.patch(`/documents/${documentId}/parts/${partId}/`, data);
 

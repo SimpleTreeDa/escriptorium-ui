@@ -337,6 +337,38 @@
                                 </ul>
                             </template>
                         </VMenu>
+                        <VMenu
+                            placement="bottom-start"
+                            :triggers="['click']"
+                            theme="vertical-menu"
+                        >
+                            <EscrButton
+                                color="secondary"
+                                class="context-menu-button"
+                                label="TEI"
+                                size="small"
+                                :disabled="loading && loading.images"
+                                :on-click="() => {}"
+                            >
+                                <template #button-icon-right>
+                                    <ChevronDownIcon />
+                                </template>
+                            </EscrButton>
+                            <template #popper="{ hide }">
+                                <ul class="escr-vertical-menu">
+                                    <li
+                                        v-for="(action, key) in pageActions"
+                                        :key="key"
+                                    >
+                                        <button
+                                            @click="() => { hide(); openPageAction(key); }"
+                                        >
+                                            <span>{{ action.menu }}</span>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </template>
+                        </VMenu>
                         <EscrButton
                             color="secondary"
                             label="Export"
@@ -658,6 +690,29 @@
                         class="escr-delete-parts-confirm"
                     />
                 </ConfirmModal>
+                <!-- TEI page actions: set work, set work URI, number folios -->
+                <ConfirmModal
+                    v-if="pageAction"
+                    :title="pageActions[pageAction].title"
+                    :body-text="`${pageActions[pageAction].help} (${selectedParts.length} `
+                        + `${selectedParts.length === 1 ? 'image' : 'images'})`"
+                    :confirm-verb="pageActions[pageAction].verb"
+                    color="primary"
+                    :icon="null"
+                    :cannot-undo="false"
+                    :disabled="loading && loading.images"
+                    :confirm-disabled="!pageActionValid"
+                    :on-cancel="closePageAction"
+                    :on-confirm="submitPageAction"
+                >
+                    <TextField
+                        :label="pageActions[pageAction].label"
+                        :placeholder="pageActions[pageAction].placeholder"
+                        :value="pageActionValue"
+                        :disabled="loading && loading.images"
+                        :on-input="(e) => pageActionValue = e.target.value"
+                    />
+                </ConfirmModal>
             </div>
         </template>
     </EscrPage>
@@ -711,8 +766,9 @@ import TranscribeIcon from "../../components/Icons/TranscribeIcon/TranscribeIcon
 import TranscribeModal from "../../components/TranscribeModal/TranscribeModal.vue";
 import TrashIcon from "../../components/Icons/TrashIcon/TrashIcon.vue";
 import XCircleFilledIcon from "../../components/Icons/XCircleFilledIcon/XCircleFilledIcon.vue";
-import { setPartsEditorialStatus } from "../../../src/api";
+import { numberFolios, setPartsEditorialStatus, setPartsMetadata } from "../../../src/api";
 import { partWorkflowUpdates } from "../../../src/taskGroups";
+import { PAGE_ACTIONS } from "../../../src/tei";
 import { EDITORIAL_STATUSES, editorialStatusLabel } from "../../store/util/editorialStatus";
 import "../../components/EditorialStatus/EditorialStatus.css";
 import "../../components/VerticalMenu/VerticalMenu.css";
@@ -823,6 +879,10 @@ export default {
             rangeRegex: /^\d+((,|-)\d+)*$/g,
             redrawModalOpen: false,
             editorialStatuses: EDITORIAL_STATUSES,
+            // the TEI page action whose modal is open ("work", "work_uri", "folios"), and its value
+            pageAction: null,
+            pageActions: PAGE_ACTIONS,
+            pageActionValue: "",
             statusFilter: "all",
             textFilter: "",
             textFilterValue: "",
@@ -872,6 +932,13 @@ export default {
         deleteCountConfirmed() {
             return !this.deleteNeedsTypedCount ||
                 this.deleteConfirmation.trim() === String(this.selectedParts.length);
+        },
+        /**
+         * Whether the value of the open TEI page action can be submitted
+         */
+        pageActionValid() {
+            return !!this.pageAction
+                && this.pageActions[this.pageAction].valid(this.pageActionValue);
         },
         /**
          * Links and titles for the breadcrumbs above the page.
@@ -1321,6 +1388,49 @@ export default {
         /**
          * Set the editorial status of the selected images
          */
+        openPageAction(key) {
+            this.pageActionValue = "";
+            this.pageAction = key;
+        },
+        closePageAction() {
+            this.pageAction = null;
+        },
+        /**
+         * Set the work or the work URI of the selected images, or name them by folio
+         */
+        async submitPageAction() {
+            const action = this.pageAction;
+            const value = this.pageActionValue.trim();
+            this.setLoading({ key: "images", loading: true });
+            try {
+                let message;
+                if (action === "folios") {
+                    const { data } = await numberFolios(this.id, [...this.selectedParts], value);
+                    data.forEach((changed) => {
+                        const part = this.parts.find((p) => p.pk === changed.pk);
+                        if (part) {
+                            this.$store.commit("document/updatePart", {
+                                ...part, name: changed.name, title: changed.name,
+                            });
+                        }
+                    });
+                    message = `${data.length} ${data.length === 1 ? "image" : "images"} named `
+                        + `${data[0].name}–${data[data.length - 1].name}`;
+                } else {
+                    const { data } = await setPartsMetadata(
+                        this.id, [...this.selectedParts], action, value,
+                    );
+                    const images = `${data.length} ${data.length === 1 ? "image" : "images"}`;
+                    const what = this.pageActions[action].label;
+                    message = value ? `${what} set on ${images}` : `${what} removed from ${images}`;
+                }
+                this.pageAction = null;
+                this.$store.dispatch("alerts/add", { color: "success", message });
+            } catch (err) {
+                this.addError(err);
+            }
+            this.setLoading({ key: "images", loading: false });
+        },
         async setSelectedStatus(status) {
             try {
                 const { data } = await setPartsEditorialStatus(

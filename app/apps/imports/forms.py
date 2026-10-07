@@ -13,10 +13,11 @@ from django.utils.translation import gettext as _
 
 from core.forms import RegionTypesFormMixin
 from core.models import DocumentPart, Transcription
-from imports.export import ALTO_FORMAT, ENABLED_EXPORTERS
+from imports.export import ALTO_FORMAT, ENABLED_EXPORTERS, EPHREM_TEI_FORMAT
 from imports.models import DocumentImport
 from imports.parsers import ParseError, make_parser
 from imports.tasks import document_export, document_import
+from imports.tei import check_document
 from users.consumers import send_event
 
 
@@ -258,6 +259,28 @@ class ExportForm(RegionTypesFormMixin, BootstrapFormMixin, forms.Form):
                               include_characters=self.cleaned_data['include_characters'],
                               user_pk=self.user.pk,
                               report_label=_('Export %(document_name)s') % {'document_name': self.document.name})
+
+
+class TEIReadinessForm(ExportForm):
+    """
+    The choices of a "TEI (Ephrem)" export (transcription layer, pages, region types), for the
+    "Check TEI readiness" report. It exports nothing, so it doesn't count against the CPU quota.
+    """
+    schema = forms.BooleanField(required=False)
+
+    def __init__(self, document, user, data, *args, **kwargs):
+        data = data.copy()
+        data['file_format'] = EPHREM_TEI_FORMAT
+        super().__init__(document, user, data, *args, **kwargs)
+
+    def clean(self):
+        return forms.Form.clean(self)
+
+    def check(self):
+        parts = self.cleaned_data['parts'] or self.document.parts.all()
+        return check_document(self.document, list(parts.values_list('pk', flat=True)),
+                              self.cleaned_data['transcription'], self.cleaned_data['region_types'],
+                              schema=self.cleaned_data['schema'])
 
 
 class DocumentOntologyImportForm(BootstrapFormMixin, forms.Form):

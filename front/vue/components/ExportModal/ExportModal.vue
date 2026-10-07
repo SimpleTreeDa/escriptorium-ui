@@ -29,6 +29,46 @@
                 :on-change="handleFileFormatChange"
                 required
             />
+            <div
+                v-if="fileFormat === 'ephremtei'"
+                class="escr-form-field escr-tei-check"
+            >
+                <span class="escr-help-text">
+                    One TEI file (.xml) for the document, or for the selected images;
+                    a .zip when images are included. Check first what is missing.
+                </span>
+                <EscrButton
+                    color="outline-primary"
+                    size="small"
+                    :label="checking ? 'Checking…' : 'Check TEI readiness'"
+                    :disabled="disabled || invalid || checking"
+                    :on-click="onCheck"
+                />
+                <div
+                    v-if="readiness"
+                    :class="['escr-tei-readiness', readiness.ready ? 'ready' : 'not-ready']"
+                >
+                    <strong>{{ readiness.title }}</strong>
+                    <span
+                        v-if="readiness.counts.length"
+                        class="escr-tei-readiness-counts"
+                    >
+                        {{ readinessCounts }}
+                    </span>
+                    <ul>
+                        <li
+                            v-for="(message, index) in readiness.messages"
+                            :key="index"
+                            :class="message.level"
+                        >
+                            {{ message.text }}
+                        </li>
+                        <li v-if="readiness.more">
+                            …and {{ readiness.more }} more
+                        </li>
+                    </ul>
+                </div>
+            </div>
             <div class="escr-form-field escr-include-images-field escr-checkbox-field">
                 <label>
                     <input
@@ -86,6 +126,8 @@
 </template>
 <script>
 import { mapActions, mapState } from "vuex";
+import { checkTEIReadiness } from "../../../src/api";
+import { summarizeReadiness } from "../../../src/tei";
 import ArrayField from "../ArrayField/ArrayField.vue";
 import DropdownField from "../Dropdown/DropdownField.vue";
 import EscrButton from "../Button/Button.vue";
@@ -162,15 +204,31 @@ export default {
             required: true,
         },
     },
+    data() {
+        return {
+            checking: false,
+            // the summary of the last readiness check, until the choices change
+            readiness: null,
+        };
+    },
     computed: {
         ...mapState({
             documentId: (state) => state.document.id,
+            selectedParts: (state) => (state.images && state.images.selectedParts) || [],
             fileFormat: (state) => state.forms.export.fileFormat,
             formRegionTypes: (state) => state.forms.export.regionTypes,
             includeImages: (state) => state.forms.export.includeImages,
             includeCharacters: (state) => state.forms.export.includeCharacters,
             transcriptionLayer: (state) => state.forms.export.transcription,
         }),
+        /**
+         * The categories of the readiness check's problems, with how many each has
+         */
+        readinessCounts() {
+            return this.readiness.counts
+                .map((count) => `${count.label}: ${count.errors + count.warnings}`)
+                .join(" · ");
+        },
         /**
          * this form is invalid and cannot be submitted if it is missing layer or file format
          */
@@ -217,6 +275,11 @@ export default {
                     value: "alto",
                     selected: this.fileFormat === "alto",
                 },
+                {
+                    label: "TEI (Ephrem)",
+                    value: "ephremtei",
+                    selected: this.fileFormat === "ephremtei",
+                },
             ];
             if (this.markdownEnabled) {
                 formatOptions.push({
@@ -262,7 +325,27 @@ export default {
             "handleCheckboxArrayInput",
             "handleGenericInput",
         ]),
+        /**
+         * Run the TEI export's checks on the current choices, without exporting.
+         */
+        async onCheck() {
+            this.checking = true;
+            this.readiness = null;
+            try {
+                const { data } = await checkTEIReadiness({
+                    documentId: this.documentId,
+                    regionTypes: this.formRegionTypes,
+                    transcription: this.transcriptionLayer,
+                    parts: this.selectedParts,
+                });
+                this.readiness = summarizeReadiness(data);
+            } catch (err) {
+                this.$store.dispatch("alerts/addError", err);
+            }
+            this.checking = false;
+        },
         handleFileFormatChange(e) {
+            this.readiness = null;
             this.handleGenericInput({
                 form: "export", field: "fileFormat", value: e.target.value,
             });
@@ -289,6 +372,7 @@ export default {
             });
         },
         handleRegionTypesChange(e) {
+            this.readiness = null;
             this.handleCheckboxArrayInput({
                 form: "export",
                 field: "regionTypes",
@@ -297,6 +381,7 @@ export default {
             });
         },
         handleTranscriptionChange(e) {
+            this.readiness = null;
             this.handleGenericInput({
                 form: "export", field: "transcription", value: e.target.value,
             });

@@ -1201,12 +1201,47 @@ class DocumentMetadataTestCase(CoreFactoryTestCase):
         self.client.force_login(self.doc.owner)
         uri = reverse('api:metadata-list',
                       kwargs={'document_pk': self.doc.pk})
-        with self.assertNumQueries(12):
+        with self.assertNumQueries(11):
             resp = self.client.post(uri, {
                 'key': {'name': 'testnewkey'},
                 'value': 'testnewval'
             }, content_type='application/json')
         self.assertEqual(resp.status_code, 201, resp.content)
+
+    def detail_uri(self, metadata):
+        return reverse('api:metadata-detail', kwargs={'document_pk': metadata.document.pk, 'pk': metadata.pk})
+
+    def test_rename_key_on_one_document(self):
+        # the other document uses the same key: renaming it here must not rename it there
+        other = DocumentMetadata.objects.create(document=self.factory.make_document(), key=self.dm1.key,
+                                                value='otherval')
+        self.client.force_login(self.doc.owner)
+        resp = self.client.patch(self.detail_uri(self.dm1), {'key': {'name': 'repository'}},
+                                 content_type='application/json')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.dm1.refresh_from_db()
+        other.refresh_from_db()
+        self.assertEqual((self.dm1.key.name, self.dm1.value), ('repository', 'testval1'))
+        self.assertEqual((other.key.name, other.value), ('testmeta1', 'otherval'))
+        self.assertTrue(Metadata.objects.filter(name='testmeta1').exists())
+
+    def test_rename_key_to_an_existing_key(self):
+        self.client.force_login(self.doc.owner)
+        resp = self.client.put(self.detail_uri(self.dm1), {'key': {'name': 'TestMeta2'}, 'value': 'testval1'},
+                               content_type='application/json')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.dm1.refresh_from_db()
+        self.assertEqual(self.dm1.key, self.dm2.key)
+        self.assertEqual(Metadata.objects.filter(name__iexact='testmeta2').count(), 1)
+
+    def test_create_with_a_key_in_another_case(self):
+        self.client.force_login(self.doc.owner)
+        uri = reverse('api:metadata-list', kwargs={'document_pk': self.doc.pk})
+        resp = self.client.post(uri, {'key': {'name': ' TESTMETA1 '}, 'value': 'testval3'},
+                                content_type='application/json')
+        self.assertEqual(resp.status_code, 201, resp.content)
+        self.assertEqual(resp.json()['key']['name'], 'testmeta1')
+        self.assertEqual(Metadata.objects.filter(name__iexact='testmeta1').count(), 1)
 
 
 class BlockViewSetTestCase(CoreFactoryTestCase):
@@ -1884,7 +1919,7 @@ class DocumentPartMetadataTestCase(CoreFactoryTestCase):
         self.client.force_login(self.user)
         uri = reverse('api:partmetadata-list',
                       kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk})
-        with self.assertNumQueries(16):
+        with self.assertNumQueries(15):
             resp = self.client.post(uri, {'key': {'name': 'testname', 'cidoc': 'testcidoc'},
                                           'value': 'testvalue'},
                                     content_type='application/json')
@@ -1917,7 +1952,7 @@ class DocumentPartMetadataTestCase(CoreFactoryTestCase):
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk,
                               'pk': md.pk})
-        with self.assertNumQueries(15):
+        with self.assertNumQueries(16):
             resp = self.client.patch(uri, {'key': {'name': 'testname2'}},
                                      content_type='application/json')
         self.assertEqual(resp.status_code, 200, resp.content)
@@ -1949,3 +1984,17 @@ class DocumentPartMetadataTestCase(CoreFactoryTestCase):
             resp = self.client.delete(uri)
         self.assertEqual(resp.status_code, 204, resp.content)
         self.assertEqual(self.part.metadata.count(), 0)
+
+    def test_rename_key_on_one_page(self):
+        md = self.factory.make_part_metadata(self.part)
+        other_part = self.factory.make_part(document=self.part.document)
+        other = other_part.metadata.create(key=md.key, value='othervalue')
+        self.client.force_login(self.user)
+        uri = reverse('api:partmetadata-detail',
+                      kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk, 'pk': md.pk})
+        resp = self.client.patch(uri, {'key': {'name': 'work'}}, content_type='application/json')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        md.refresh_from_db()
+        other.refresh_from_db()
+        self.assertEqual(md.key.name, 'work')
+        self.assertEqual(other.key.name, 'testmd')

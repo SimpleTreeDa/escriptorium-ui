@@ -45,6 +45,7 @@ from core.utils import normalize_text
 from imports.forms import FileImportError, clean_import_uri, clean_upload_file
 from imports.models import DocumentImport
 from imports.tasks import document_import
+from imports.tei.profile import BULK_PAGE_KEYS, folio_sequence, is_web_address
 from reporting.models import TaskGroup, TaskReport
 from users.consumers import send_event
 from users.models import Group, User
@@ -538,7 +539,8 @@ class MetadataSerializer(serializers.ModelSerializer):
         fields = ('name', 'cidoc_id')
 
     def create(self, validated_data):
-        instance, _ = Metadata.objects.get_or_create(**validated_data)
+        instance, _ = Metadata.get_or_create_by_name(validated_data['name'],
+                                                     cidoc_id=validated_data.get('cidoc_id'))
         return instance
 
 
@@ -551,7 +553,7 @@ class DocumentMetadataSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         key_data = validated_data.pop('key')
-        md, _created = Metadata.objects.get_or_create(**key_data)
+        md = self.fields['key'].create(key_data)
         dmd = DocumentMetadata.objects.create(document=self.context['document'],
                                               key=md,
                                               **validated_data)
@@ -559,14 +561,11 @@ class DocumentMetadataSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         instance.value = validated_data.get('value', instance.value)
-        instance.save()
-
         if "key" in validated_data:
-            new_key = validated_data.get('key')
-            nested_serializer = self.fields['key']
-            nested_instance = instance.key
-            nested_serializer.update(nested_instance, new_key)
-
+            # point this value to the key with the new name; renaming the key itself
+            # would rename it on every document and page that uses it
+            instance.key = self.fields['key'].create(validated_data['key'])
+        instance.save()
         return instance
 
 
@@ -588,14 +587,11 @@ class DocumentPartMetadataSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         instance.value = validated_data.get('value', instance.value)
-        instance.save()
-
         if "key" in validated_data:
-            new_key = validated_data.get('key')
-            nested_serializer = self.fields['key']
-            nested_instance = instance.key
-            nested_serializer.update(nested_instance, new_key)
-
+            # point this value to the key with the new name; renaming the key itself
+            # would rename it on every document and page that uses it
+            instance.key = self.fields['key'].create(validated_data['key'])
+        instance.save()
         return instance
 
 
@@ -617,6 +613,31 @@ class PartEditorialStatusSerializer(serializers.ModelSerializer):
 class SetEditorialStatusSerializer(serializers.Serializer):
     parts = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
     status = serializers.ChoiceField(choices=DocumentPart.EDITORIAL_STATUS_CHOICES)
+
+
+class SetPartsMetadataSerializer(serializers.Serializer):
+    """A TEI page metadata value for several elements; an empty value removes it."""
+    parts = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
+    key = serializers.ChoiceField(choices=BULK_PAGE_KEYS)
+    value = serializers.CharField(allow_blank=True, max_length=512)
+
+    def validate(self, data):
+        if data['key'] == 'work_uri' and data['value'] and not is_web_address(data['value']):
+            raise serializers.ValidationError(
+                {'value': [_("A work URI is a web address that starts with http:// or https://, without spaces.")]})
+        return data
+
+
+class NumberFoliosSerializer(serializers.Serializer):
+    """Folio names for several elements, from the first one: 1r gives 1r, 1v, 2r, 2v..."""
+    parts = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
+    start = serializers.CharField()
+
+    def validate_start(self, start):
+        try:
+            return folio_sequence(start, 1)[0]
+        except ValueError:
+            raise serializers.ValidationError(_("Give the first folio as a number and r or v, e.g. 1r or 23v."))
 
 
 class PartSerializer(serializers.ModelSerializer):

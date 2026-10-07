@@ -6,3 +6,34 @@
     margin: 8px 30px 0 10px;
     font-style: italic;
 }
+.escr-export-modal .escr-tei-check {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+.escr-export-modal .escr-tei-check .escr-help-text {
+    font-style: italic;
+}
+.escr-export-modal .escr-tei-readiness {
+    border-left: 4px solid var(--primary);
+    padding: 4px 10px;
+    max-width: 100%;
+}
+.escr-export-modal .escr-tei-readiness.not-ready {
+    border-left-color: var(--alert);
+}
+.escr-export-modal .escr-tei-readiness-counts {
+    display: block;
+    color: var(--foreground-secondary);
+}
+.escr-export-modal .escr-tei-readiness ul {
+    margin: 4px 0 0;
+    padding-left: 18px;
+    /* line text in messages may be Syriac */
+    unicode-bidi: plaintext;
+}
+.escr-export-modal .escr-tei-readiness li.error {
+    /* readable on the light and the dark theme */
+    color: var(--alert);
+}

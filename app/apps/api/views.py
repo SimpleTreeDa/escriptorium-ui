@@ -47,6 +47,7 @@ from api.serializers import (
     LineSerializer,
     LineTranscriptionSerializer,
     LineTypeSerializer,
+    NumberFoliosSerializer,
     OcrModelSerializer,
     PartBulkMoveSerializer,
     PartDetailSerializer,
@@ -60,6 +61,7 @@ from api.serializers import (
     SegmentSerializer,
     SegTrainSerializer,
     SetEditorialStatusSerializer,
+    SetPartsMetadataSerializer,
     TaskGroupSerializer,
     TaskReportSerializer,
     TextAnnotationSerializer,
@@ -97,8 +99,9 @@ from core.models import (
     Transcription,
 )
 from core.tasks import recalculate_masks
-from imports.forms import ExportForm, ImportForm
+from imports.forms import ExportForm, ImportForm, TEIReadinessForm
 from imports.parsers import ParseError
+from imports.tei.profile import folio_sequence, key_names
 from reporting.models import TaskGroup, TaskReport
 from users.consumers import send_event
 from users.models import Group, User
@@ -565,6 +568,20 @@ class DocumentViewSet(ModelViewSet):
         else:
             return self.form_error(json.dumps(form.errors))
 
+    @action(detail=True, methods=['post'])
+    def tei_check(self, request, pk=None):
+        """
+        What a "TEI (Ephrem)" export of the document would find, without exporting anything.
+        Takes the export's choices (transcription, region_types, parts; schema to also validate
+        against tei_all.rng) and returns the readiness report:
+        {"ready", "errors", "warnings", "summary", "pages", "record_id"}.
+        """
+        document = self.get_object()
+        form = TEIReadinessForm(document, request.user, request.data)
+        if not form.is_valid():
+            return self.form_error(json.dumps(form.errors))
+        return Response(form.check())
+
     def get_process_response(self, request, serializer_class):
         context = self.get_serializer_context()
         context['document'] = self.get_object()
@@ -985,6 +1002,50 @@ class PartViewSet(DocumentPermissionMixin, ModelViewSet):
                             status=status.HTTP_400_BAD_REQUEST)
         DocumentPart.set_editorial_status(parts, serializer.validated_data['status'], request.user)
         return Response(PartEditorialStatusSerializer(parts.order_by('order'), many=True).data)
+
+    def selected_parts(self, pks):
+        """The elements of the document with these pks, or None if some are not in it."""
+        pks = set(pks)
+        parts = self.get_queryset().filter(pk__in=pks)
+        return parts if parts.count() == len(pks) else None
+
+    @action(detail=False, methods=['post'])
+    def set_metadata(self, request, document_pk=None):
+        """
+        Set the TEI metadata "work" or "work_uri" of one or several elements of the document,
+        replacing the value they had: {"parts": [pk, ...], "key": "work", "value": "Hymns on Faith"}.
+        An empty value removes it.
+        """
+        serializer = SetPartsMetadataSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        parts = self.selected_parts(serializer.validated_data['parts'])
+        if parts is None:
+            return Response({'parts': [_("Some elements do not belong to this document.")]},
+                            status=status.HTTP_400_BAD_REQUEST)
+        key = serializer.validated_data['key']
+        DocumentPart.set_metadata(parts, key, serializer.validated_data['value'].strip(), names=key_names(key))
+        parts = parts.order_by('order').prefetch_related('metadata__key')
+        return Response([{'pk': part.pk,
+                          'metadata': DocumentPartMetadataSerializer(part.metadata.all(), many=True).data}
+                         for part in parts])
+
+    @action(detail=False, methods=['post'])
+    def number_folios(self, request, document_pk=None):
+        """
+        Name one or several elements of the document by folio, in their order, from a first folio:
+        {"parts": [pk, ...], "start": "1r"} names them 1r, 1v, 2r, 2v...
+        """
+        serializer = NumberFoliosSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        parts = self.selected_parts(serializer.validated_data['parts'])
+        if parts is None:
+            return Response({'parts': [_("Some elements do not belong to this document.")]},
+                            status=status.HTTP_400_BAD_REQUEST)
+        parts = list(parts.order_by('order'))
+        for part, name in zip(parts, folio_sequence(serializer.validated_data['start'], len(parts))):
+            part.name = name
+        DocumentPart.objects.bulk_update(parts, ['name'])
+        return Response([{'pk': part.pk, 'name': part.name} for part in parts])
 
     @action(detail=False, methods=['get'])
     def navigation(self, request, document_pk=None):

@@ -12,7 +12,7 @@ from django.template import loader
 from django.utils.text import slugify
 
 from core.models import Block
-from imports.ephrem_tei import EphremTEI, validate
+from imports.tei import export_document as export_ephrem_tei
 
 TEXT_FORMAT = "text"
 PAGEXML_FORMAT = "pagexml"
@@ -269,27 +269,31 @@ class TEIXMLExporter(OpenITIMARkdownExporter):
 
 class EphremTEIExporter(BaseExporter):
     """
-    TEI for the Ephrem Project website, as defined in docs/tei/ephrem-tei-profile.md:
-    one file for the whole document, validated against TEI P5 (tei_all.rng).
+    TEI for the Ephrem Project website, as defined in docs/tei/ephrem-tei-profile.md: one file for
+    the whole document, validated against TEI P5 (tei_all.rng). It is a plain .xml file, or a .zip
+    with the images when they are included.
     Nothing is written if the document lacks data the profile requires: the error lists every problem.
     """
     file_format = EPHREM_TEI_FORMAT
-    file_extension = "zip"
-    template_path = "export/ephrem_tei.xml"
+
+    @property
+    def file_extension(self):
+        return "zip" if self.include_images else "xml"
 
     def render(self):
-        context = EphremTEI(self.document, self.part_pks, self.transcription, self.region_types).context()
-        tei = loader.get_template(self.template_path).render(context)
-        # Remove empty lines from XML output.
-        tei = re.sub(r'\n[ \t]*(?=\n)', '', tei)
-        validate(tei.encode("utf-8"))
-
-        with EsZipFile(self.filepath, "w") as zip_:
-            if self.include_images:
+        result = export_ephrem_tei(self.document, self.part_pks, self.transcription, self.region_types)
+        if self.report is not None:
+            for warning in result.report.warnings:
+                self.report.append(f"[WARNING] {warning.message}")
+        if self.include_images:
+            with EsZipFile(self.filepath, "w") as zip_:
                 # the same names as the graphic/@url of the TEI file, before percent-encoding
-                for page in context["pages"]:
-                    zip_.write(page["part"].image.path, page["image_name"])
-            zip_.writestr("%s.xml" % context["record_id"], tei)
+                for page in result.snapshot.pages:
+                    zip_.write(page.image_path, page.filename)
+                zip_.writestr("%s.xml" % result.plan.record_id, result.content)
+        else:
+            with open(self.filepath, "wb") as fh:
+                fh.write(result.content)
 
 
 ENABLED_EXPORTERS = {

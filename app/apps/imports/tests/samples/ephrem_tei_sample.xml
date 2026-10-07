@@ -1,20 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-model href="https://www.tei-c.org/Vault/P5/4.12.0/xml/tei/custom/schema/relaxng/tei_all.rng" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>
 <!--
-  Canonical sample for the Ephrem TEI profile, version 1 (docs/tei/ephrem-tei-profile.md).
+  Canonical sample for the Ephrem TEI profile, version 1.1 (docs/tei/ephrem-tei-profile.md).
   Source: eScriptorium document 15 (Sachau 176 - Training Data), pages 179r, 179v,
   transcription layer "kraken:syr_41transcribathon_docs_d_3", read on 2026-10-07.
-  Text, polygons, credits and statuses are the real data. Page names and the document
-  metadata (repository, settlement, shelfmark, work, author) are the values editors will enter.
+  Text, polygons, credits and statuses are the real data. Page names, the record id and the document
+  metadata (repository, settlement, shelfmark, work, author) are the values editors will enter;
+  the person id depends on the instance's user ids.
 -->
-<TEI xmlns="http://www.tei-c.org/ns/1.0" xml:id="ephrem-doc-15" xml:lang="en">
+<TEI xmlns="http://www.tei-c.org/ns/1.0" xml:id="sachau-176" xml:lang="en">
   <teiHeader>
     <fileDesc>
       <titleStmt>
         <title>Sachau 176 - Training Data</title>
         <respStmt>
           <resp>Syriac text transcribed by</resp>
-          <persName xml:id="pers-admin">admin</persName>
+          <persName xml:id="pers-1">admin</persName>
         </respStmt>
         <respStmt>
           <resp>Automatic text recognition by</resp>
@@ -23,7 +24,7 @@
       </titleStmt>
       <publicationStmt>
         <authority>Manuscript - Sachau 176</authority>
-        <idno type="ephrem">ephrem-doc-15</idno>
+        <idno type="ephrem">sachau-176</idno>
         <date when="2026-10-07"/>
       </publicationStmt>
       <sourceDesc>
@@ -45,7 +46,7 @@
     </fileDesc>
     <encodingDesc>
       <editorialDecl>
-        <p>Diplomatic transcription made in eScriptorium, from the transcription layer "kraken:syr_41transcribathon_docs_d_3". One lb element per manuscript line and one pb element per page. Line text is as entered: not normalised and not punctuated.</p>
+        <p>Diplomatic transcription made in eScriptorium, from the transcription layer "kraken:syr_41transcribathon_docs_d_3". One lb element per manuscript line, one pb element per page and one cb element per column. Headings (head) and paragraphs (p) are those the editors marked; the rest of the text is in ab elements. Line text is as entered: not normalised and not punctuated.</p>
       </editorialDecl>
     </encodingDesc>
     <profileDesc>
@@ -55,12 +56,12 @@
       </langUsage>
     </profileDesc>
     <revisionDesc status="in_progress">
-      <change status="in_progress" target="#surface-717">179r: In progress</change>
-      <change status="in_progress" target="#surface-718">179v: In progress</change>
+      <change xml:id="status-717" status="in_progress" target="#surface-717">179r: In progress</change>
+      <change xml:id="status-718" status="in_progress" target="#surface-718">179v: In progress</change>
     </revisionDesc>
   </teiHeader>
   <facsimile>
-    <surface xml:id="surface-717" n="179r" ulx="0" uly="0" lrx="3555" lry="5333">
+    <surface xml:id="surface-717" n="179r" ulx="0" uly="0" lrx="3555" lry="5333" change="#status-717">
       <graphic url="Sachau%20176%20-%20179r.tif" width="3555px" height="5333px"/>
       <zone xml:id="zone-r2270" type="main" points="735,675 2950,722 2962,4441 1455,4488 687,4453 687,1481 699,758 735,675">
         <zone xml:id="zone-l7499" type="line" points="2707,716 2677,716 2647,714 2638,714 2612,728 2543,728 2526,711 2499,711 2493,711 2478,722 2457,711 2440,711 2410,711 2386,708 2345,719 2315,708 2291,708 2262,708 2232,705 2214,705 2072,716 2010,702 1995,702 1983,699 1933,728 1850,728 1808,696 1805,696 1802,696 1799,696 1710,699 1707,699 1704,699 1672,722 1618,696 1615,696 1612,696 1500,722 1393,696 1390,696 1254,696 1251,696 1248,696 1171,722 1129,696 1126,696 1123,696 1120,696 1117,696 1040,725 933,725 898,696 895,696 892,696 889,696 886,696 830,722 723,722 723,782 720,820 761,841 764,841 767,841 770,841 812,826 1185,841 1188,841 1802,826 1947,844 1950,844 1953,844 1956,844 1974,829 2007,844 2010,844 2013,844 2016,844 2072,829 2125,844 2128,844 2131,844 2285,829 2864,844 2867,844 2870,844 2935,826 2938,788 2935,728 2760,728 2724,716 2707,716"/>
@@ -92,7 +93,7 @@
         <zone xml:id="zone-l7525" type="line" points="714,4417 714,4458 833,4461 859,4485 862,4485 865,4485 868,4485 981,4467 1079,4485 1082,4485 1274,4482 1277,4482 1328,4458 1449,4482 1452,4482 1577,4456 2066,4476 2069,4476 2072,4476 2075,4476 2096,4458 2185,4467 2188,4467 2191,4467 2232,4453 2253,4467 2256,4467 2259,4467 2262,4467 2265,4467 2306,4450 2371,4450 2401,4473 2404,4473 2407,4473 2410,4473 2413,4473 2472,4450 2612,4470 2615,4470 2618,4470 2689,4447 2801,4470 2804,4470 2941,4444 2944,4399 2938,4346 2787,4319 2784,4319 2781,4319 2778,4319 2751,4340 2564,4349 2217,4322 2214,4322 2211,4322 2111,4352 2036,4331 2033,4331 2031,4331 1936,4352 1903,4325 1900,4325 1897,4325 1829,4325 1826,4325 1823,4325 1820,4325 1776,4355 1687,4355 1639,4328 1636,4328 1633,4328 1532,4346 1473,4337 1470,4337 1467,4337 1464,4337 1429,4361 1346,4361 1304,4331 1301,4331 1298,4331 1227,4331 1224,4331 1221,4331 1218,4331 1177,4361 1005,4361 984,4346 981,4346 978,4346 975,4346 972,4346 942,4361 892,4334 889,4334 886,4334 711,4352 714,4417"/>
       </zone>
     </surface>
-    <surface xml:id="surface-718" n="179v" ulx="0" uly="0" lrx="3555" lry="5333">
+    <surface xml:id="surface-718" n="179v" ulx="0" uly="0" lrx="3555" lry="5333" change="#status-718">
       <graphic url="Sachau%20176%20-%20179v.tif" width="3555px" height="5333px"/>
       <zone xml:id="zone-r2261" type="main" points="628,699 2795,758 2831,1943 2795,4500 592,4595 509,3981 450,3907 438,3543 509,3350 533,3090 521,948 545,722 628,699">
         <zone xml:id="zone-l7255" type="line" points="2766,755 2736,755 2707,755 2677,752 2647,752 2618,752 2594,752 2511,761 2434,746 2410,746 2380,746 2351,743 2324,743 2280,761 2214,740 2202,740 2173,740 2143,740 2114,737 2093,743 2081,737 2054,737 2048,734 2022,758 1885,758 1841,731 1817,731 1787,728 1758,728 1728,728 1710,725 1672,746 1627,725 1609,725 1580,722 1550,722 1521,722 1420,722 1417,722 1414,722 1304,755 1248,731 1245,731 1242,731 1239,731 1188,749 1129,719 1126,719 1037,719 1034,719 1031,719 954,752 907,731 904,731 901,731 806,746 750,719 747,719 744,719 741,719 670,752 572,752 572,817 569,838 821,865 824,865 1016,841 1070,868 1073,868 1076,868 1079,868 1123,856 1144,871 1147,871 1150,871 1153,874 1260,874 1260,871 1263,871 1266,871 1310,844 1417,844 1485,871 1488,871 1491,871 1618,844 1681,874 1684,874 1687,874 1867,847 2146,874 2149,874 2152,874 2238,847 2300,874 2303,874 2463,876 2466,876 2469,876 2505,862 2546,876 2549,876 2552,879 2793,879 2795,829 2795,764 2784,758 2766,755"/>
@@ -130,7 +131,7 @@
     <body>
       <div type="work" n="1" corresp="#work-1">
         <pb n="179r" facs="#surface-717"/>
-        <ab type="main" facs="#zone-r2270">
+        <ab>
           <lb n="1" facs="#zone-l7499"/>ܒܐܸܣܟܸܝܡ ܫܲܝܢܵܐ ܡܲܪܦܸܐ ܠܸܗ: ܠܚܘܼܒܵܐ ܕܲܠܘܵܬ݂ ܒܵܪܘܿܝܵܐ܀
           <lb n="2" facs="#zone-l7500"/>ܒܐܸܣܟܸ݁ܝܡܵܐ ܕܙܲܕܝܼܩܘܼܬ݂ܵܐ: ܪܵܗܛܝܼܢ ܩܕ݂ܵܡܵܘܗܝ ܫܲܡܵܫ̈ܘܗܝ.
           <lb n="3" facs="#zone-l7501"/>ܘܲܣܒܲܪܬ݂ܵܐ ܕܫܲܝܢܵܐ ܡܲܝܬܸ݁ܝܢ: ܕܗܵܐ ܠܲܡ ܡܲܛܝܼ ܦܵܪܘܿܩܵܐ܀
@@ -158,9 +159,7 @@
           <lb n="25" facs="#zone-l7523"/>ܘܐܲܝܟ ܗܲܕܝܼܵܐܐ ܡܲܦܢܸܐ ܒܹܗ: ܠܛܵܥܲܝ̈ܐ ܠܐܘܼܪܚܵܐ ܕܚܲܝܹ̈ܐ܀
           <lb n="26" facs="#zone-l7524"/>ܒܲܒ݂ܢܵܬ݂ ܩܵܠܹ̈ܐ ܕܐܹܠܝܼܵܐ: ܒܵܛܠܝܼܢ ܩܵܠܘܗ̈ܝ ܕܲܢܟ݂ܝܼܠܵܐ.
           <lb n="27" facs="#zone-l7525"/>ܘܦܵܣܩܝܼܢ ܢܸܫܒ݁ܵܘ̈ܗܝ ܐܲܣܝܼܪܹ̈ܐ: ܘܦܵܢܸܝ̇ܢ ܐܵܬܸ̇ܝܢ ܡ̣ܢ ܥܵܘ̣ܠܵܐ܀
-        </ab>
-        <pb n="179v" facs="#surface-718"/>
-        <ab type="main" facs="#zone-r2261">
+          <pb n="179v" facs="#surface-718"/>
           <lb n="1" facs="#zone-l7255"/>ܡܵܣܓܸ݁ܐ ܙܵܪܲܥ ܐܹܠܝܼܵܐ: ܒ̈ܢܵܬ݂ ܩܵܠܹ̈ܐ ܕܲܬ݂ܘܵܬ݂ ܢܲܦܫܵܐ.
           <lb n="2" facs="#zone-l7256"/>ܘܲܡܪܲܒܸ݁ܐ ܒܛܲܠܵܐ ܕܡܸܠܵܘܗ̈ܝ: ܬܝܵܒ݂ܘܼܬ݂ܵܐ ܕܥܲܡܵܐ ܘܥܲܡܡܸ̈ܐ܀
           <lb n="3" facs="#zone-l7257"/>.ܒܛܟܣܐ ܕܫܡܫ ܝܘܝܢܢ: ܩܕܡ ܕܢܚܗ ܬܪܥܢܝܐ
@@ -188,8 +187,6 @@
           <lb n="25" facs="#zone-l7279"/>.ܠܝܬ ܦܚܡܐ ܠܗܝ ܬܫܒܘܝܐ: ܕܡܬܚܘܐ ܒܗ ܢܠܝܢܗ
           <lb n="26" facs="#zone-l7280"/>ܘܠܐ ܕܘܡܝܐ ܠܗܝ ܪܒܘܬܐ: ܕܡܙܕܚܚ ܒܗ̇ ܡܢ ܥܝܪ̈ܬ܀
           <lb n="27" facs="#zone-l7281"/>.ܠܦܐ ܕܟܢܫܐ ܪ̈ܘܚܢܐ: ܬܢܝܢ ܫܘܒܚܐ ܕܪܒܘܬܗ
-        </ab>
-        <ab>
           <lb n="28" facs="#zone-l7282"/>ܣܪ̈ܦܐ
         </ab>
       </div>

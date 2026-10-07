@@ -342,6 +342,19 @@ export const exportDocument = async ({
         parts,
     });
 
+// what a "TEI (Ephrem)" export would find, without exporting: the readiness report
+export const checkTEIReadiness = async ({
+    documentId,
+    regionTypes,
+    transcription,
+    parts,
+}) =>
+    await axios.post(`/documents/${documentId}/tei_check/`, {
+        region_types: regionTypes,
+        transcription,
+        parts,
+    });
+
 // queue the import task for this document
 export const queueImport = async ({ documentId, params }) => {
     if (params["upload_file"]) {

@@ -369,6 +369,18 @@ class Metadata(ExportModelOperationsMixin("Metadata"), models.Model):
     def __str__(self):
         return self.name
 
+    @classmethod
+    def get_or_create_by_name(cls, name, **defaults):
+        """
+        The key named name, ignoring case and surrounding spaces, so that "Shelfmark" and
+        "shelfmark" are one key; a key with exactly that name is preferred. Created if there is none.
+        """
+        name = name.strip()
+        key = cls.objects.filter(name=name).first() or cls.objects.filter(name__iexact=name).order_by("pk").first()
+        if key is not None:
+            return key, False
+        return cls.objects.create(name=name, **defaults), True
+
 
 class Script(ExportModelOperationsMixin("Script"), models.Model):
     TEXT_DIRECTION_HORIZONTAL_LTR = "horizontal-lr"
@@ -1056,6 +1068,22 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), CascadeUpdate, Or
         return (parts.exclude(editorial_status=status)
                 .update(editorial_status=status, editorial_status_by=user,
                         editorial_status_at=timezone.now()))
+
+    @classmethod
+    def set_metadata(cls, parts, key, value, names=()):
+        """
+        Give each of the given parts (a queryset) the value for the metadata key, replacing what
+        it had under that key or any of names (compared ignoring case); an empty value removes it.
+        Doesn't go through save() and its side effects.
+        """
+        query = Q()
+        for name in {key, *names}:
+            query |= Q(key__name__iexact=name.strip())
+        DocumentPartMetadata.objects.filter(query, part__in=parts).delete()
+        if value:
+            metadata_key, _created = Metadata.get_or_create_by_name(key)
+            DocumentPartMetadata.objects.bulk_create(
+                [DocumentPartMetadata(part=part, key=metadata_key, value=value) for part in parts])
 
     def mark_started(self, user):
         """
