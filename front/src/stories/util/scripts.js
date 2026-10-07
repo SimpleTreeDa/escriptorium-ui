@@ -1381,7 +1381,7 @@ export const scripts = [
         name: "Syriac (Eastern variant)",
         name_fr: "syriaque (variante orientale)",
         iso_code: "Syrn",
-        text_direction: "horizontal-lr",
+        text_direction: "horizontal-rl",
         blank_char: " ",
     },
     {
@@ -1389,7 +1389,7 @@ export const scripts = [
         name: "Syriac (Estrangelo variant)",
         name_fr: "syriaque (variante estranghélo)",
         iso_code: "Syre",
-        text_direction: "horizontal-lr",
+        text_direction: "horizontal-rl",
         blank_char: " ",
     },
     {
@@ -1397,7 +1397,7 @@ export const scripts = [
         name: "Syriac (Western variant)",
         name_fr: "syriaque (variante occidentale)",
         iso_code: "Syrj",
-        text_direction: "horizontal-lr",
+        text_direction: "horizontal-rl",
         blank_char: " ",
     },
     {
