@@ -87,12 +87,12 @@
                         >
                             <template #actions="{ item }">
                                 <EscrButton
-                                    v-tooltip.bottom="'Images'"
+                                    v-tooltip.bottom="'Processing'"
                                     size="small"
                                     color="text"
                                     :on-click="() => navigateToImages(item)"
                                     :disabled="loading"
-                                    aria-label="Document images"
+                                    aria-label="Document processing"
                                 >
                                     <template #button-icon>
                                         <ImagesIcon />
@@ -420,7 +420,7 @@ export default {
             if (item?.pk) {
                 window.location = `/document/${item.pk}/images`;
             } else {
-                this.addError({ message: "Error navigating to the images page." });
+                this.addError({ message: "Error navigating to the processing page." });
             }
         },
     },

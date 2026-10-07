@@ -678,7 +678,7 @@ export default {
             if (this.id) {
                 window.location = `/document/${this.id}/images`;
             } else {
-                this.addError({ message: "Error navigating to the images page." });
+                this.addError({ message: "Error navigating to the processing page." });
             }
         },
         navigateToTasks() {

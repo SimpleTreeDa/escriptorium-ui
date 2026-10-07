@@ -13,7 +13,7 @@
                         <h3 :title="documentName">
                             {{ documentName || "Loading..." }}
                         </h3>
-                        <h1>Images</h1>
+                        <h1>Processing</h1>
                     </div>
                     <div class="escr-images-header-actions">
                         <VDropdown
@@ -892,7 +892,7 @@ export default {
             return [
                 { title: "My Projects", href: "/projects/" },
                 ...docBreadcrumbs,
-                { title: "Images" },
+                { title: "Processing" },
             ];
         },
         /**

@@ -281,7 +281,7 @@
             />
             <button
                 id="be-delete-point"
-                title="Delete selected points. (ctrl+suppr)"
+                title="Delete selected points. (suppr)"
                 class="hide btn btn-warning m-1 fas fa-trash"
             />
             <button
@@ -558,7 +558,9 @@ export default Vue.extend({
             function () {
                 this.$store.commit("lines/setAutoOrdering", this.autoOrder);
 
-                this.$parent.zoom.register(this.$refs.segZoomContainer, { map: true });
+                this.zoomTarget = this.$parent.zoom.register(
+                    this.$refs.segZoomContainer, { map: true },
+                );
                 let beSettings =
           userProfile.get("baseline-editor-" + this.$store.state.document.id) ||
           {};
@@ -627,11 +629,11 @@ export default Vue.extend({
                 var zoom = this.$parent.zoom;
                 zoom.events.addEventListener(
                     "wheelzoom.updated",
-                    function (e) {
-                        this.updateZoom(e.detail);
+                    function () {
+                        this.updateZoom();
                     }.bind(this)
                 );
-                this.updateZoom(zoom);
+                this.updateZoom();
 
                 this.segmenter.events.addEventListener(
                     "baseline-editor:settings",
@@ -824,11 +826,15 @@ export default Vue.extend({
                 }.bind(this)
             );
         },
-        updateZoom(zoom) {
+        updateZoom() {
+            // not on the page: closed (the listener stays), or while the next page loads
+            if (!this.$el.isConnected) return;
             // might not be mounted yet
             if (this.segmenter && this.$img.complete) {
-                this.segmenter.canvas.style.top = zoom.pos.y + "px";
-                this.segmenter.canvas.style.left = zoom.pos.x + "px";
+                // the zoom position in this panel's pixels
+                const pos = this.$parent.zoom.pixelPos(this.zoomTarget);
+                this.segmenter.canvas.style.top = pos.y + "px";
+                this.segmenter.canvas.style.left = pos.x + "px";
                 this.segmenter.refresh();
             }
         },
@@ -843,11 +849,25 @@ export default Vue.extend({
             // before trying to refresh the segmenter.
             // If SegPanel is closed, paper.js will try to transform a null canvas and
             // will throw multiple errors in the browser console when the mouse is moving.
+            // (In the new UI, this panel only exists while it is open.)
             if (
                 this.segmenter.loaded &&
-        this.$store.state.document.visible_panels.segmentation
+        (!this.legacyModeEnabled || this.$store.state.document.visible_panels.segmentation)
             ) {
                 this.segmenter.refresh();
+            }
+            if (!this.legacyModeEnabled && this.toolbarDetached) {
+                // the panel may have shrunk
+                const { x, y } = this.clampToolbarPosition(this.toolbarPosition);
+                if (x !== this.toolbarPosition.x || y !== this.toolbarPosition.y) {
+                    this.toolbarPosition = { x, y };
+                }
+            }
+            const toolbar = this.$refs["segmentation-toolbar"]?.$el;
+            const tooltip = this.$el.querySelector("#info-tooltip");
+            if (!this.legacyModeEnabled && toolbar && tooltip) {
+                // keep the line type tooltip under the toolbar, which wraps in a narrow panel
+                tooltip.style.top = `${toolbar.offsetHeight}px`;
             }
         },
         // undo manager helpers
@@ -1219,41 +1239,50 @@ export default Vue.extend({
         dragToolbar(e) {
             if (!this.legacyModeEnabled && this.toolbarDragging) {
                 e.preventDefault();
-                let newX = this.toolbarPosition.x + e.movementX;
-                let newY = this.toolbarPosition.y + e.movementY;
-                // prevent toolbar from going left of (underneath) the global nav bar
-                newX = Math.max(newX, 1);
-                // prevent toolbar from going above the non-detachable segmentation toolbar
                 if (this.$refs["segmentation-toolbar"]?.$el) {
                     const staticToolbar = this.$refs["segmentation-toolbar"].$el;
-                    const staticToolbarRect = staticToolbar.getBoundingClientRect();
-                    newY = Math.max(newY, staticToolbarRect.height + 1);
-                    const minY = staticToolbarRect.bottom;
+                    const minY = staticToolbar.getBoundingClientRect().bottom;
                     // stop dragging if the mouse goes above the bottom of the seg toolbar
                     if (e.clientY < minY) {
                         this.stopDragToolbar();
                     }
                 }
-                if (this.$refs["detachable-toolbar"]?.$el) {
-                    // prevent toolbar from overflowing the segmentation container on the x-axis
-                    const detachableToolbar = this.$refs["detachable-toolbar"].$el;
-                    const width = detachableToolbar.clientWidth;
-                    const height = detachableToolbar.clientHeight;
-                    const containerWidth = this.$el.clientWidth - 1;
-                    if (newX + width >= containerWidth) {
-                        newX = containerWidth - width;
-                    }
-                    // and the y-axis
-                    const containerHeight = this.$el.clientHeight - 1;
-                    if (newY + height >= containerHeight){
-                        newY = containerHeight - height;
-                    }
+                this.toolbarPosition = this.clampToolbarPosition({
+                    x: this.toolbarPosition.x + e.movementX,
+                    y: this.toolbarPosition.y + e.movementY,
+                });
+            }
+        },
+        /**
+         * Keep the detached toolbar inside this panel
+         */
+        clampToolbarPosition({ x, y }) {
+            let newX = x;
+            let newY = y;
+            // prevent toolbar from going left of (underneath) the global nav bar
+            newX = Math.max(newX, 1);
+            // prevent toolbar from going above the non-detachable segmentation toolbar
+            if (this.$refs["segmentation-toolbar"]?.$el) {
+                const staticToolbar = this.$refs["segmentation-toolbar"].$el;
+                const staticToolbarRect = staticToolbar.getBoundingClientRect();
+                newY = Math.max(newY, staticToolbarRect.height + 1);
+            }
+            if (this.$refs["detachable-toolbar"]?.$el) {
+                // prevent toolbar from overflowing the segmentation container on the x-axis
+                const detachableToolbar = this.$refs["detachable-toolbar"].$el;
+                const width = detachableToolbar.clientWidth;
+                const height = detachableToolbar.clientHeight;
+                const containerWidth = this.$el.clientWidth - 1;
+                if (newX + width >= containerWidth) {
+                    newX = containerWidth - width;
                 }
-                this.toolbarPosition = {
-                    x: newX,
-                    y: newY,
+                // and the y-axis
+                const containerHeight = this.$el.clientHeight - 1;
+                if (newY + height >= containerHeight){
+                    newY = containerHeight - height;
                 }
             }
+            return { x: newX, y: newY };
         },
         stopDragToolbar() {
             if (!this.legacyModeEnabled)

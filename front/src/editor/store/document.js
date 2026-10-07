@@ -13,6 +13,24 @@ import {
     updateComponentTaxonomy,
     deleteComponentTaxonomy,
 } from "../../api";
+import {
+    loadLayout,
+    withEqualSizes,
+    withOrientation,
+    withPanelAdded,
+    withPanelRemoved,
+    withSizes,
+} from "../panelLayout";
+
+// "New UI" panels: from userProfile, or by default, [segmentation, visualisation]
+const savedEditorPanels = () => {
+    // eslint-disable-next-line no-undef
+    const saved = userProfile.get("editor-panels");
+    return saved ? saved : ["segmentation", "visualisation"];
+};
+
+// eslint-disable-next-line no-undef
+const saveEditorLayout = (layout) => userProfile.set("editor-layout", layout);
 
 export const initialState = () => ({
     id: null,
@@ -50,10 +68,10 @@ export const initialState = () => ({
     },
 
     // "New UI" version of visible_panels management
-    // get from userProfile, or by default, [segmentation, visualisation]
-    editorPanels: userProfile.get("editor-panels")
-        ? userProfile.get("editor-panels")
-        : ["segmentation", "visualisation"],
+    editorPanels: savedEditorPanels(),
+    // side by side or stacked, and the size of each panel (see panelLayout.js)
+    // eslint-disable-next-line no-undef
+    editorLayout: loadLayout(userProfile.get("editor-layout"), savedEditorPanels().length),
 
     // Confidence overlay visibility (global, from document settings)
     confidenceVisible: false,
@@ -76,8 +94,22 @@ export const mutations = {
         const editorPanels = structuredClone(state.editorPanels);
         editorPanels.push(panel);
         state.editorPanels = editorPanels;
+        state.editorLayout = withPanelAdded(state.editorLayout, editorPanels.length);
         // Persist final value in user profile
         userProfile.set("editor-panels", editorPanels);
+        saveEditorLayout(state.editorLayout);
+    },
+    setEditorLayoutOrientation(state, orientation) {
+        state.editorLayout = withOrientation(state.editorLayout, orientation);
+        saveEditorLayout(state.editorLayout);
+    },
+    setEditorPanelSizes(state, sizes) {
+        state.editorLayout = withSizes(state.editorLayout, sizes);
+        saveEditorLayout(state.editorLayout);
+    },
+    resetEditorPanelSizes(state) {
+        state.editorLayout = withEqualSizes(state.editorLayout);
+        saveEditorLayout(state.editorLayout);
     },
     setId(state, id) {
         state.id = id;
@@ -149,12 +181,19 @@ export const mutations = {
         }
     },
     removeEditorPanel(state, panel) {
+        const index = state.editorPanels.findIndex(
+            (editorPanel) => editorPanel.toString() === panel.toString(),
+        );
         let editorPanels = structuredClone(state.editorPanels).filter(
             (editorPanel) => editorPanel.toString() !== panel.toString(),
         );
         state.editorPanels = editorPanels;
+        if (index !== -1) {
+            state.editorLayout = withPanelRemoved(state.editorLayout, index);
+        }
         // Persist final value in user profile
         userProfile.set("editor-panels", editorPanels);
+        saveEditorLayout(state.editorLayout);
         if (editorPanels.includes("segmentation")) {
             // FIXME: This is a temporary solution until the issue
             // with the segmentation canvas shifting is resolved.
@@ -639,6 +678,13 @@ export const actions = {
                 commit("setSegmentationOpened");
             }
         }
+    },
+
+    /**
+     * Show the panels side by side ("row") or stacked ("column") (new UI)
+     */
+    setEditorLayout({ commit }, orientation) {
+        commit("setEditorLayoutOrientation", orientation);
     },
 
     /**
