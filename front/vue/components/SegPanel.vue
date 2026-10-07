@@ -281,7 +281,7 @@
             />
             <button
                 id="be-delete-point"
-                title="Delete selected points. (ctrl+suppr)"
+                title="Delete selected points. (suppr)"
                 class="hide btn btn-warning m-1 fas fa-trash"
             />
             <button

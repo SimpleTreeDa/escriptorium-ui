@@ -308,7 +308,7 @@
                                     :disabled="disabled"
                                     @mousedown="() => clickDelete(true)"
                                 >
-                                    <span>Delete selected points (Ctrl Del)</span>
+                                    <span>Delete selected points (Del)</span>
                                 </button>
                             </li>
                             <li>
