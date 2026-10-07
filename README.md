@@ -22,6 +22,28 @@ Two options,
 eScriptorium needs either Linux, macOS or Windows (with WSL).
 
 
+## Development scripts
+
+Two helper scripts cover the day-to-day docker workflow. They need Node 18+ and
+can be run through npm from the repository root or directly with node.
+
+| Task | npm | node |
+| --- | --- | --- |
+| Full rebuild: stop, rebuild images, start, wait for healthy | `npm run rebuild` | `node scripts/rebuild.mjs` |
+| Same, but rebuild every layer from scratch | `npm run rebuild:clean` | `node scripts/rebuild.mjs --no-cache` |
+| Refresh only the UI: build `front/` and copy it into the running containers | `npm run ui` | `node scripts/refresh-ui.mjs` |
+| Same, but keep rebuilding and syncing on every file save | `npm run ui:watch` | `node scripts/refresh-ui.mjs --watch` |
+
+The UI refresh takes a few seconds and does not restart anything: the webpack
+bundles are built on the host and copied into the `static` volume that nginx
+serves, so a browser refresh shows the change. Restarting the `web` container
+restores the bundles baked into the image, so run the refresh again (or a full
+rebuild) after that. Backend, template or dependency changes need `npm run rebuild`.
+
+On Linux the scripts fall back to `sudo docker` automatically when the daemon
+is not reachable as the current user; pass `--sudo` to force it. Every script
+accepts `--help`.
+
 ## Contributing
 See [Contributing to eScriptorium](https://gitlab.com/scripta/escriptorium/-/wikis/contributing).
 
