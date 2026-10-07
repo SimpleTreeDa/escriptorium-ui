@@ -979,8 +979,9 @@ class ModelUnbind(LoginRequiredMixin, SuccessMessageMixin, DeleteView):
 
 class ModelDelete(LoginRequiredMixin, SuccessMessageMixin, DeleteView):
     """
-    GET renders a confirmation page naming the model; only a POST actually
-    deletes it, so a single click on the trash icon can't destroy a model.
+    The models list opens a confirmation modal that POSTs here. A GET renders
+    the same confirmation as a page, so a direct visit to this URL (or a
+    browser without JavaScript) still can't delete a model in one step.
     """
     model = OcrModel
     template_name = 'core/models_list/delete.html'

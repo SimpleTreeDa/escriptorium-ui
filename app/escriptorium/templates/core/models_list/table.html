@@ -92,17 +92,28 @@
 
         {% if unbind_model %}
         {% if document.owner == request.user %}
-        <form method="POST" class="inline-form" action="{% url 'model-unbind' model.pk document.pk %}?next={{request.path|urlencode}}" title="{% trans "Unbind model from the document" %}" onsubmit="return confirm('{% blocktrans with name=model.name|escapejs %}Do you really want to unbind the model {{ name }} from this document?{% endblocktrans %}');">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-sm btn-warning">
+        <span title="{% trans "Unbind model from the document" %}">
+          <button type="button" class="btn btn-sm btn-warning"
+                  data-toggle="modal" data-target="#confirm-action-modal"
+                  data-action="{% url 'model-unbind' model.pk document.pk %}?next={{request.path|urlencode}}"
+                  data-title="{% trans "Unbind model" %}"
+                  data-message="{% blocktrans with name=model.name doc=document.name %}Do you really want to unbind the model {{ name }} from the document {{ doc }}? The model itself is not deleted.{% endblocktrans %}"
+                  data-confirm="{% trans "Unbind" %}"
+                  data-confirm-class="btn-warning">
             <i class="fas fa-trash"></i>
           </button>
-        </form>
+        </span>
         {% endif %}
         {% else %}
         {% if model.owner == request.user and not model.training %}
         <span title="{% trans "Delete model" %}">
-          <a href="{% url 'model-delete' model.pk %}?next={{request.path|urlencode}}" class="btn btn-sm btn-danger" role="button">
+          {# Opens the confirmation modal; without JavaScript the link falls back to the confirmation page. #}
+          <a href="{% url 'model-delete' model.pk %}?next={{request.path|urlencode}}" class="btn btn-sm btn-danger" role="button"
+             data-toggle="modal" data-target="#confirm-action-modal"
+             data-title="{% trans "Delete model" %}"
+             data-message="{% blocktrans with name=model.name %}Are you sure you want to delete the model {{ name }}? This permanently removes the model and its trained file and cannot be undone.{% endblocktrans %}"
+             data-confirm="{% trans "Delete" %}"
+             data-confirm-class="btn-danger">
             <i class="fas fa-trash"></i>
           </a>
         </span>
@@ -139,4 +150,5 @@
   {% endfor %}
   {% endfor %}
 </table>
+{% include 'core/models_list/confirm_modal.html' %}
 {% include 'includes/pagination.html' %}

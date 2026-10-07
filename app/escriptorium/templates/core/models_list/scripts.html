@@ -6,5 +6,21 @@ $(document).ready(function() {
   joinDocumentRoom('{{document.pk}}');
   {% endif %}
   bootModels();
+
+  // Fill the shared confirmation modal from the trash button that opened it,
+  // then point its form at that button's action (or href as a fallback).
+  $('#confirm-action-modal').on('show.bs.modal', function(event) {
+    var trigger = $(event.relatedTarget);
+    var modal = $(this);
+    modal.find('.modal-title').text(trigger.data('title'));
+    modal.find('.confirm-action-message').text(trigger.data('message'));
+    modal.find('form').attr('action', trigger.data('action') || trigger.attr('href'));
+    var submit = modal.find('.confirm-action-submit');
+    if (trigger.data('confirm')) {
+      submit.text(trigger.data('confirm'));
+    }
+    submit.removeClass('btn-danger btn-warning')
+          .addClass(trigger.data('confirm-class') || 'btn-danger');
+  });
 });
 </script>

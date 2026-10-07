@@ -440,18 +440,23 @@ class ModelDeleteTestCase(TestCase):
         self.assertIn('login', resp['Location'])
         self.assertTrue(OcrModel.objects.filter(pk=self.model.pk).exists())
 
-    def test_models_list_links_to_confirmation_page(self):
-        # The trash icon must be a link to the confirmation page,
-        # not a form that deletes on click.
+    def test_models_list_delete_button_opens_modal(self):
+        # The trash icon opens the confirmation modal on the page; its href
+        # is the confirmation page as a no-JS fallback. Nothing deletes on
+        # click.
         self.client.force_login(self.user)
         resp = self.client.get(reverse('user-models'))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'href="%s?next=/models/"' % self.uri)
-        self.assertNotContains(resp, 'action="%s' % self.uri)
+        self.assertContains(resp, 'data-target="#confirm-action-modal"')
+        self.assertContains(resp, 'id="confirm-action-modal"')
+        self.assertContains(resp, 'Are you sure you want to delete the model')
+        self.assertNotContains(resp, ' action="%s' % self.uri)
 
-    def test_unbind_button_asks_for_confirmation(self):
+    def test_unbind_button_opens_modal(self):
         # The per-document models table is included with unbind_model=True,
-        # so render it directly and check the unbind form asks first.
+        # so render it directly and check the unbind button goes through the
+        # confirmation modal instead of submitting straight away.
         request = RequestFactory().get(
             reverse('document-models', kwargs={'document_pk': self.doc.pk}))
         request.user = self.user
@@ -461,6 +466,11 @@ class ModelDeleteTestCase(TestCase):
             'document': self.doc,
             'unbind_model': True,
         })
+        unbind_uri = reverse('model-unbind',
+                             kwargs={'pk': self.model.pk, 'docPk': self.doc.pk})
+        self.assertIn('data-action="%s' % unbind_uri, html)
+        self.assertIn('data-target="#confirm-action-modal"', html)
+        self.assertIn('id="confirm-action-modal"', html)
         self.assertIn('Do you really want to unbind the model', html)
-        self.assertIn('return confirm(', html)
+        self.assertNotIn(' action="%s' % unbind_uri, html)
         self.assertNotIn(self.uri, html)
