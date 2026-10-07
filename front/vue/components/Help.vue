@@ -11,7 +11,7 @@
             <br>once a page already has masks new lines will automatically get a mask and updating a line will also recalculate its mask.
             <br><b>Note</b> that the quality of the masks is highly dependent on the quality of the whole segmentation, not only the corresponding line,
             <br>so make sure to draw all the lines before calculating the masks.
-            <br>You can also have the option to calculate the masks <i>en masse</i> in the Images tab -> segment -> choose 'Only masks'.
+            <br>You can also have the option to calculate the masks <i>en masse</i> in the Processing tab -> segment -> choose 'Only masks'.
         </p>
         <p>
             <b>Left click</b> on a line to select it, then you can drag its closest control point.
