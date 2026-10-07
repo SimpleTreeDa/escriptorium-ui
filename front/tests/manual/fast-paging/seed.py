@@ -4,6 +4,7 @@
 # Page n shows "PAGE n" and 5 + (n % 7) grey rules, and has the same number of
 # segmentation lines, so the overlay can be checked against the image shown.
 import io
+import os
 
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
@@ -17,7 +18,7 @@ N = 200
 W, H = 600, 800
 
 # created by the users migration 0004 from DJANGO_SU_* in variables.env
-user = User.objects.get(username="admin")
+user = User.objects.get(username=os.environ.get("DJANGO_SU_NAME", "admin"))
 if user.legacy_mode:
     user.legacy_mode = False  # the new UI
     user.save(update_fields=["legacy_mode"])

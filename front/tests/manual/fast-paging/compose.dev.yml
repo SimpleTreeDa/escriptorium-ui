@@ -29,6 +29,7 @@ services:
       - ./front/dist:/usr/src/app/front
   nginx:
     # !override replaces the base file's 8080 mapping instead of adding to it, so this
-    # stack can run next to another one on 8080.
+    # stack can run next to another one on 8080. Local only: it has the example password.
+    # check.js sets FAST_PAGING_PORT from --port.
     ports: !override
-      - "8081:80"
+      - "127.0.0.1:${FAST_PAGING_PORT:-8081}:80"

@@ -72,6 +72,7 @@ function run(cmd, cmdArgs, opts = {}) {
         encoding: "utf8",
         shell: !!opts.shell, // npm is npm.cmd on Windows and needs a shell
         input: opts.input,
+        env: opts.env ? { ...process.env, ...opts.env } : process.env,
         stdio: [
             opts.input === undefined ? "inherit" : "pipe",
             opts.capture ? "pipe" : "inherit",
@@ -91,7 +92,9 @@ const composeArgs = (o) => [
     "-f", path.join(ROOT, "docker-compose.yml"),
     "-f", path.join(HERE, "compose.dev.yml"),
 ];
-const compose = (o, rest, opts) => run("docker", [...composeArgs(o), ...rest], opts);
+// compose.dev.yml publishes nginx on FAST_PAGING_PORT
+const compose = (o, rest, opts = {}) => run("docker", [...composeArgs(o), ...rest],
+    { ...opts, env: { FAST_PAGING_PORT: String(o.port) } });
 
 function ensureEnvFile(o) {
     const envPath = path.join(ROOT, "variables.env");
@@ -108,6 +111,8 @@ function ensureEnvFile(o) {
     return envPath;
 }
 
+const RESTORE_HINT = "if a control build was interrupted, restore it with "
+    + `"git checkout -- ${SEGPANEL}"`;
 const distHasFix = () => fs.existsSync(DIST_EDITOR)
     && fs.readFileSync(DIST_EDITOR, "utf8").includes(FIX_MARKER);
 
@@ -131,21 +136,34 @@ function ensureBundle(o) {
     if (o.bundle === "control") {
         const status = run("git", ["status", "--porcelain", "--", SEGPANEL], { capture: true });
         const dirty = status.stdout.trim();
-        if (dirty) throw new Error(`${SEGPANEL} has local changes; commit or stash them first`);
+        if (dirty) {
+            throw new Error(`${SEGPANEL} has local changes (${RESTORE_HINT}; `
+                + "otherwise stash your changes first)");
+        }
         const patch = run("git", ["show", FIX_COMMIT, "--", SEGPANEL], { capture: true }).stdout;
         run("git", ["apply", "-R", "--check"], { input: patch, capture: true });
-        run("git", ["apply", "-R"], { input: patch, capture: true });
-        log(`reverse-applied PR #9 (${FIX_COMMIT}) to ${SEGPANEL} for the control build`);
+        // Without a listener, Ctrl+C kills this process before the finally block below can
+        // restore the file. With one, the build (which gets the signal too) stops, run()
+        // throws and the finally block runs.
+        const ignore = () => {};
+        process.on("SIGINT", ignore);
+        process.on("SIGTERM", ignore);
         try {
+            run("git", ["apply", "-R"], { input: patch, capture: true });
+            log(`reverse-applied PR #9 (${FIX_COMMIT}) to ${SEGPANEL} for the control build`);
             build();
         } finally {
             run("git", ["checkout", "--", SEGPANEL]);
             log(`restored ${SEGPANEL}`);
+            process.off("SIGINT", ignore);
+            process.off("SIGTERM", ignore);
         }
     } else {
         build();
     }
-    if (distHasFix() !== wantFix) throw new Error("the built bundle is not the one requested");
+    if (distHasFix() !== wantFix) {
+        throw new Error(`the built bundle is not the one requested (${RESTORE_HINT})`);
+    }
     log(`bundle: ${describe(distHasFix())}`);
 }
 

@@ -39,7 +39,8 @@ Keystrokes were dispatched every 50 ms. "Control" is `main` at 2f7d4311 with onl
 - PgDn presses are ignored while a page is loading (`parts/loadPart` returns early), which is
   why 40 presses give 7 page changes. The page-number box is removed from the DOM while a page
   loads, so only 3–4 of 30 Enter presses at 50 ms reach it.
-- Without added latency the local API answers in under 50 ms and the race does not happen.
+- Without added latency the local API answers in under 50 ms, and the control build only
+  fails at faster pacing (30 ms for PgDn); the proxy makes it fail at 50 ms and 150 ms too.
 
 Conclusion: PR #9 fixed issue #6. No further change to `SegPanel.vue` was needed.
 
@@ -47,8 +48,10 @@ Conclusion: PR #9 fixed issue #6. No further change to `SegPanel.vue` was needed
 
 Needs Docker Desktop running, Node 22, and the images this repository's compose file uses
 already pulled or built once (`base:kraken6`, the nginx image, postgres, redis). Ports 8081
-and 8082 must be free. Everything runs in a throwaway stack named `issue6`; nothing touches an
-existing deployment.
+and 8082 must be free (or pick others with `--port` and `--proxy-port`). Everything runs in a
+throwaway stack named `issue6`, published on 127.0.0.1 only; nothing touches an existing
+deployment. The stack name is shared by every checkout: use `--project` to run two at once,
+and note that `--down` removes the stack of that name whichever checkout started it.
 
 1. **See the bug first** (editor built without PR #9), from the repository root:
 
@@ -58,7 +61,7 @@ existing deployment.
 
    The script creates `variables.env` from the example if needed, builds the control bundle
    (it reverse-applies PR #9's `SegPanel.vue` diff for the build and restores the file right
-   after), starts the stack, seeds a 200-page document, and runs the latency proxy with a
+   after, also on Ctrl+C), starts the stack, seeds a 200-page document, and runs the latency proxy with a
    test panel added to the editor page. When it prints `Ready`, open the URL it shows,
    sign in as the `DJANGO_SU_NAME` account from `variables.env`, keep the Segmentation
    panel open, wait for the page image, and click **Full check** in the box at the bottom
@@ -86,7 +89,8 @@ existing deployment.
    node front/tests/manual/fast-paging/check.js --down
    ```
 
-Options: `--build` forces a rebuild, `--project`, `--port`, `--proxy-port`, `--api-delay`
+Options: `--build` forces a rebuild (needed after switching branches: the script only checks
+which of the two bundles `front/dist` holds, not whether it matches the code), `--project`, `--port`, `--proxy-port`, `--api-delay`
 and `--media-delay` (ms ranges, defaults `120-300` and `100-400`) change the setup.
 
 ### What "Full check" does
