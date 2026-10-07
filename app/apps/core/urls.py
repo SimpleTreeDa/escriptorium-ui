@@ -42,12 +42,13 @@ urlpatterns = [
 
     path('projects/create/', CreateProject.as_view(), name='project-create'),
     path('projects/', ProjectList.as_view(), name='projects-list'),
+    # before project/<str:slug>/, which would match it too
+    path('project/delete_share/', DeleteProjectUserShare.as_view(), name='delete-project-share'),
     path('project/<str:slug>/', ProjectDashboard.as_view(), name='project-dashboard'),
     path('project/<str:slug>/edit/', UpdateProject.as_view(), name='project-update'),
     path('project/<str:slug>/documents/', DocumentsList.as_view(), name='documents-list'),
     path('project/<str:slug>/document/create/', CreateDocument.as_view(), name='document-create'),
     path('project/<int:pk>/share/', ShareProject.as_view(), name='project-share'),
-    path('project/delete_share/', DeleteProjectUserShare.as_view(), name='delete-project-share'),
 
     path('documents/tasks/', DocumentsTasksList.as_view(), name='documents-tasks-list'),
     path('document/<int:pk>/', DocumentDashboard.as_view(), name='document-detail'),

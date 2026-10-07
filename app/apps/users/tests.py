@@ -1,3 +1,6 @@
+import json
+from unittest.mock import AsyncMock, Mock
+
 from django.contrib.auth import get_user, get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.core import mail
@@ -6,6 +9,8 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
 
+from core.tests.factory import CoreFactory
+from users.consumers import NotificationConsumer, get_room_name
 from users.models import GroupOwner, Invitation, ResearchField
 from users.models import User as CustomUser
 
@@ -189,6 +194,65 @@ class NotificationTestCase(TestCase):
     todo https://channels.readthedocs.io/en/latest/topics/testing.html
     """
     pass
+
+
+class JoinRoomTestCase(TestCase):
+    """A socket only joins the room of a document its user can access."""
+
+    def setUp(self):
+        factory = CoreFactory()
+        self.owner = factory.make_user()
+        self.doc = factory.make_document(owner=self.owner, project=factory.make_project(name='room project'))
+        self.other_doc = factory.make_document(owner=self.owner, project=self.doc.project, name='other doc')
+        self.stranger = factory.make_user()
+
+    def connect(self, user):
+        consumer = NotificationConsumer()
+        consumer.scope = {'user': user}
+        consumer.channel_name = 'test-channel'
+        consumer.channel_layer = Mock(group_add=AsyncMock(), group_discard=AsyncMock())
+        consumer.room = None
+        return consumer
+
+    def join(self, consumer, object_pk, object_cls='document'):
+        consumer.receive(json.dumps({'type': 'join-room', 'object_cls': object_cls, 'object_pk': object_pk}))
+
+    def test_owner_joins(self):
+        consumer = self.connect(self.owner)
+        self.join(consumer, self.doc.pk)
+        consumer.channel_layer.group_add.assert_awaited_once_with(get_room_name('document', self.doc.pk),
+                                                                  'test-channel')
+
+    def test_collaborator_joins(self):
+        user = CoreFactory().make_user()
+        self.doc.shared_with_users.add(user)
+        consumer = self.connect(user)
+        self.join(consumer, self.doc.pk)
+        consumer.channel_layer.group_add.assert_awaited_once()
+
+    def test_stranger_is_refused(self):
+        consumer = self.connect(self.stranger)
+        with self.assertLogs('users.consumers', level='WARNING'):
+            self.join(consumer, self.doc.pk)
+        consumer.channel_layer.group_add.assert_not_awaited()
+        self.assertIsNone(consumer.room)
+
+    def test_invalid_rooms_are_refused(self):
+        consumer = self.connect(self.owner)
+        with self.assertLogs('users.consumers', level='WARNING'):
+            self.join(consumer, self.doc.pk, object_cls='project')
+            self.join(consumer, 'not a pk')
+            self.join(consumer, None)
+            self.join(consumer, 0)
+        consumer.channel_layer.group_add.assert_not_awaited()
+
+    def test_joining_another_room_leaves_the_first(self):
+        consumer = self.connect(self.owner)
+        self.join(consumer, self.doc.pk)
+        self.join(consumer, self.other_doc.pk)
+        consumer.channel_layer.group_discard.assert_awaited_once_with(get_room_name('document', self.doc.pk),
+                                                                      'test-channel')
+        self.assertEqual(consumer.room, get_room_name('document', self.other_doc.pk))
 
 
 class TeamTestCase(TestCase):
