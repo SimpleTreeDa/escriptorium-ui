@@ -8,6 +8,7 @@ from django.db.models import Count, F, Prefetch, Q
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
 from django.views.decorators.cache import cache_page
@@ -19,12 +20,13 @@ from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotAuthenticated, NotFound
 from rest_framework.filters import OrderingFilter
-from rest_framework.mixins import CreateModelMixin
+from rest_framework.mixins import CreateModelMixin, ListModelMixin
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import SAFE_METHODS, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.serializers import PrimaryKeyRelatedField, RelatedField
-from rest_framework.viewsets import GenericViewSet, ModelViewSet, ReadOnlyModelViewSet
+from rest_framework.throttling import SimpleRateThrottle
+from rest_framework.viewsets import GenericViewSet, ModelViewSet, ReadOnlyModelViewSet, ViewSet
 
 from api.serializers import (
     AlignSerializer,
@@ -43,10 +45,12 @@ from api.serializers import (
     DocumentTasksSerializer,
     ImageAnnotationSerializer,
     ImportSerializer,
+    IncomingShareSerializer,
     LineOrderSerializer,
     LineSerializer,
     LineTranscriptionSerializer,
     LineTypeSerializer,
+    NotificationSerializer,
     OcrModelSerializer,
     PartBulkMoveSerializer,
     PartDetailSerializer,
@@ -60,6 +64,7 @@ from api.serializers import (
     SegmentSerializer,
     SegTrainSerializer,
     SetEditorialStatusSerializer,
+    ShareSerializer,
     TaskGroupSerializer,
     TaskReportSerializer,
     TextAnnotationSerializer,
@@ -67,6 +72,7 @@ from api.serializers import (
     TrainSerializer,
     TranscribeSerializer,
     TranscriptionSerializer,
+    UserSearchSerializer,
     UserSerializer,
 )
 from core.merger import MAX_MERGE_SIZE, merge_lines
@@ -78,31 +84,37 @@ from core.models import (
     Block,
     BlockType,
     Document,
+    DocumentGroupShare,
     DocumentMetadata,
     DocumentPart,
     DocumentPartMetadata,
     DocumentPartType,
     DocumentTag,
+    DocumentUserShare,
     ImageAnnotation,
     Line,
     LineTranscription,
     LineType,
     OcrModel,
     Project,
+    ProjectGroupShare,
     ProjectTag,
+    ProjectUserShare,
     ProtectedObjectException,
     Role,
     Script,
     TextAnnotation,
     TextualWitness,
     Transcription,
+    UserShare,
 )
 from core.tasks import recalculate_masks
+from escriptorium.utils import send_email
 from imports.forms import ExportForm, ImportForm
 from imports.parsers import ParseError
 from reporting.models import TaskGroup, TaskReport
 from users.consumers import send_event
-from users.models import Group, User
+from users.models import Group, Notification, User
 from versioning.models import NoChangeException
 
 logger = logging.getLogger(__name__)
@@ -201,6 +213,15 @@ class ExtraLargeResultsSetPagination(PageNumberPagination):
     page_size = 500
 
 
+class UserSearchRateThrottle(SimpleRateThrottle):
+    scope = 'user-search'
+
+    def get_cache_key(self, request, view):
+        if not request.user.is_authenticated:
+            return None
+        return self.cache_format % {'scope': self.scope, 'ident': request.user.pk}
+
+
 class UserViewSet(ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -230,6 +251,26 @@ class UserViewSet(ModelViewSet):
             data=json,
         )
 
+    @action(detail=False, methods=['get'], throttle_classes=[UserSearchRateThrottle])
+    def search(self, request):
+        """Look up users to share a project or a document with, by username, name or email prefix."""
+        query = request.query_params.get('q', '').strip()
+        if len(query) < 2:
+            return Response({'error': 'q must be at least 2 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+        scope = request.query_params.get('scope', 'teammates')
+
+        qs = User.objects.filter(is_active=True).exclude(pk=request.user.pk)
+        if scope != 'all':
+            qs = qs.filter(groups__in=request.user.groups.all())
+        qs = qs.filter(
+            Q(username__icontains=query)
+            | Q(first_name__icontains=query)
+            | Q(last_name__icontains=query)
+            | Q(email__istartswith=query)
+        ).distinct().order_by('username')[:10]
+
+        return Response(UserSearchSerializer(qs, many=True).data)
+
 
 class GroupViewSet(ModelViewSet):
     queryset = Group.objects.all()
@@ -237,6 +278,101 @@ class GroupViewSet(ModelViewSet):
 
     def get_queryset(self):
         return self.request.user.groups.all()
+
+
+class NotificationViewSet(ListModelMixin, GenericViewSet):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = self.request.user.notifications.all()
+        if self.request.query_params.get('status') == 'unread':
+            qs = qs.filter(read_at__isnull=True)
+        return qs
+
+    @action(detail=True, methods=['post'])
+    def read(self, request, pk=None):
+        notification = get_object_or_404(self.get_queryset(), pk=pk)
+        notification.mark_read()
+        return Response(NotificationSerializer(notification).data)
+
+    @action(detail=False, methods=['post'], url_path='mark-all-read')
+    def mark_all_read(self, request):
+        self.get_queryset().filter(read_at__isnull=True).update(read_at=timezone.now())
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class IncomingShareViewSet(ViewSet):
+    """
+    The current user's own shares, of a project or a document, whatever is their status.
+    Mounted at /api/shares/.
+    """
+    permission_classes = [IsAuthenticated]
+    lookup_value_regex = r'[pd]\d+'
+
+    def get_share(self, sid):
+        kind, raw_pk = sid[0], sid[1:]
+        model = {'p': ProjectUserShare, 'd': DocumentUserShare}.get(kind)
+        if model is None or not raw_pk.isdigit():
+            raise NotFound
+        return get_object_or_404(model, pk=int(raw_pk), user=self.request.user)
+
+    def target_of(self, share):
+        return share.project if isinstance(share, ProjectUserShare) else share.document
+
+    def scope_of(self, share):
+        return 'project' if isinstance(share, ProjectUserShare) else 'document'
+
+    def affected_documents(self, share):
+        target = self.target_of(share)
+        return target.documents.all() if self.scope_of(share) == 'project' else [target]
+
+    @action(detail=False, methods=['get'])
+    def incoming(self, request):
+        status_param = request.query_params.get('status')
+        project_shares = ProjectUserShare.objects.filter(user=request.user).select_related('project', 'invited_by')
+        document_shares = DocumentUserShare.objects.filter(user=request.user).select_related('document', 'invited_by')
+        if status_param in (UserShare.STATUS_PENDING, UserShare.STATUS_ACCEPTED, UserShare.STATUS_DECLINED):
+            project_shares = project_shares.filter(status=status_param)
+            document_shares = document_shares.filter(status=status_param)
+        shares = list(project_shares) + list(document_shares)
+        return Response(IncomingShareSerializer(shares, many=True).data)
+
+    def retrieve(self, request, pk=None):
+        return Response(IncomingShareSerializer(self.get_share(pk)).data)
+
+    def destroy(self, request, pk=None):
+        """Leave a share: works whatever its status, pending, accepted or declined."""
+        share = self.get_share(pk)
+        was_accepted = share.status == UserShare.STATUS_ACCEPTED
+        share.delete()
+        if was_accepted:
+            for document in self.affected_documents(share):
+                send_event('document', document.pk, 'share:revoked', {'user': request.user.pk})
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def respond(self, request, pk, new_status, kind, verb):
+        share = self.get_share(pk)
+        if share.status != UserShare.STATUS_PENDING:
+            return Response({'error': 'This invitation was already responded to.'}, status=status.HTTP_400_BAD_REQUEST)
+        share.status = new_status
+        share.responded_at = timezone.now()
+        share.save(update_fields=['status', 'responded_at'])
+        if share.invited_by:
+            target = self.target_of(share)
+            message = _('%(user)s %(verb)s your invitation to the %(scope)s "%(name)s".') % {
+                'user': request.user.get_full_name(), 'verb': verb, 'scope': self.scope_of(share), 'name': target.name,
+            }
+            Notification.push(share.invited_by, kind, message, payload={'scope': self.scope_of(share), 'id': target.pk})
+        return Response(IncomingShareSerializer(share).data)
+
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        return self.respond(request, pk, UserShare.STATUS_ACCEPTED, Notification.KIND_SHARE_ACCEPTED, _('accepted'))
+
+    @action(detail=True, methods=['post'])
+    def decline(self, request, pk=None):
+        return self.respond(request, pk, UserShare.STATUS_DECLINED, Notification.KIND_SHARE_DECLINED, _('declined'))
 
 
 class ScriptViewSet(ReadOnlyModelViewSet):
@@ -267,6 +403,7 @@ class ProjectViewSet(ModelViewSet):
         'partial_update': Role.ADMIN,
         'share': Role.ADMIN,
         'destroy': Role.OWNER,
+        'transfer': Role.OWNER,
     }
 
     def get_queryset(self):
@@ -309,6 +446,245 @@ class ProjectViewSet(ModelViewSet):
         # re-instantiate serializer to use updated data
         serializer = ProjectSerializer(project)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def transfer(self, request, pk=None):
+        """Give project ownership to another user; the previous owner becomes an Admin."""
+        project = self.get_object()
+        try:
+            target = User.objects.get(username__iexact=request.data.get('user', ''))
+        except User.DoesNotExist:
+            return Response({'error': 'invalid username.'}, status=status.HTTP_400_BAD_REQUEST)
+        previous_owner = project.owner
+        if target == previous_owner:
+            return Response({'error': 'This user already owns it.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            project.owner = target
+            project.save(update_fields=['owner'])
+            ProjectUserShare.objects.filter(project=project, user=target).delete()
+            if previous_owner is not None:
+                ProjectUserShare.objects.update_or_create(
+                    project=project, user=previous_owner,
+                    defaults={
+                        'role': Role.ADMIN,
+                        'status': UserShare.STATUS_ACCEPTED,
+                        'invited_by': request.user,
+                        'responded_at': timezone.now(),
+                    },
+                )
+
+        message = _('%(user)s transferred ownership of the project "%(name)s" to you.') % {
+            'user': request.user.get_full_name(), 'name': project.name,
+        }
+        Notification.push(target, Notification.KIND_OWNERSHIP_TRANSFERRED, message,
+                          payload={'id': project.pk, 'name': project.name})
+
+        project = Project.objects.annotate_role(request.user).get(pk=project.pk)
+        return Response(ProjectSerializer(project).data)
+
+
+class ShareViewSet(ViewSet):
+    """
+    Invite, change the role of, or remove whoever a project or a document is shared with.
+    Reading needs the Editor role, managing shares needs Admin, and granting or revoking
+    Admin itself needs Owner. Mounted at /api/projects/{project_pk}/shares/ and
+    /api/documents/{document_pk}/shares/.
+    """
+    permission_classes = [IsAuthenticated]
+    lookup_value_regex = r'[ug]\d+'
+
+    parent_model = None
+    parent_lookup_kwarg = None
+    parent_field = None
+    user_share_model = None
+    group_share_model = None
+
+    def get_base_queryset(self):
+        raise NotImplementedError
+
+    def affected_documents(self, parent):
+        raise NotImplementedError
+
+    def get_parent(self):
+        try:
+            parent = self.get_base_queryset().annotate_role(self.request.user).get(
+                pk=self.kwargs[self.parent_lookup_kwarg])
+        except (self.parent_model.DoesNotExist, ValueError):
+            raise NotFound
+        role = Role(parent.my_role) if parent.my_role else None
+        if not role or role < Role.EDITOR:
+            raise PermissionDenied
+        return parent, role
+
+    def get_share(self, parent, sid):
+        kind, raw_pk = sid[0], sid[1:]
+        model = self.user_share_model if kind == 'u' else self.group_share_model
+        if not raw_pk.isdigit():
+            raise NotFound
+        return get_object_or_404(model, **{self.parent_field: parent, 'pk': int(raw_pk)})
+
+    def check_manage_role(self, role, target_role=None):
+        if role < Role.ADMIN:
+            raise PermissionDenied('The Admin role is needed to manage shares.')
+        if target_role == Role.ADMIN and role < Role.OWNER:
+            raise PermissionDenied('Only the owner can grant or revoke the Admin role.')
+
+    def parse_role(self, request):
+        try:
+            role = Role[str(request.data.get('role', '')).upper()]
+        except KeyError:
+            return None
+        return role if role != Role.OWNER else None
+
+    def list(self, request, **kwargs):
+        parent, role = self.get_parent()
+        shares = (
+            list(parent.user_shares.select_related('user', 'invited_by').all())
+            + list(parent.group_shares.select_related('group', 'invited_by').all())
+        )
+        return Response(ShareSerializer(shares, many=True).data)
+
+    def create(self, request, **kwargs):
+        parent, role = self.get_parent()
+        new_role = self.parse_role(request)
+        if new_role is None:
+            return Response({'error': 'role must be one of viewer, editor or admin.'}, status=status.HTTP_400_BAD_REQUEST)
+        self.check_manage_role(role, new_role)
+        if new_role > role:
+            return Response({'error': 'You cannot grant a role higher than your own.'}, status=status.HTTP_400_BAD_REQUEST)
+        note = (request.data.get('message') or '').strip()
+
+        if 'user' in request.data:
+            try:
+                target = User.objects.get(username__iexact=request.data['user'])
+            except User.DoesNotExist:
+                return Response({'error': 'invalid username.'}, status=status.HTTP_400_BAD_REQUEST)
+            if target == getattr(parent, 'owner', None):
+                return Response({'error': 'This user already owns it.'}, status=status.HTTP_400_BAD_REQUEST)
+            share, created = self.user_share_model.objects.get_or_create(
+                **{self.parent_field: parent, 'user': target},
+                defaults={'role': new_role, 'status': UserShare.STATUS_PENDING, 'invited_by': request.user},
+            )
+            if not created:
+                if share.status != UserShare.STATUS_DECLINED:
+                    return Response({'error': 'Already shared with this user.'}, status=status.HTTP_400_BAD_REQUEST)
+                share.role = new_role
+                share.status = UserShare.STATUS_PENDING
+                share.invited_by = request.user
+                share.responded_at = None
+                share.save()
+            self.notify_invited(parent, target, share, note)
+        elif 'group' in request.data:
+            try:
+                target = Group.objects.filter(user=request.user).get(pk=request.data['group'])
+            except (Group.DoesNotExist, ValueError, TypeError):
+                return Response({'error': 'invalid group.'}, status=status.HTTP_400_BAD_REQUEST)
+            share, created = self.group_share_model.objects.get_or_create(
+                **{self.parent_field: parent, 'group': target},
+                defaults={'role': new_role, 'invited_by': request.user},
+            )
+            if not created:
+                return Response({'error': 'Already shared with this team.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({'error': 'Please provide either a group(pk) or user(username).'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(ShareSerializer(share).data, status=status.HTTP_201_CREATED)
+
+    def partial_update(self, request, pk=None, **kwargs):
+        parent, role = self.get_parent()
+        share = self.get_share(parent, pk)
+        new_role = self.parse_role(request)
+        if new_role is None:
+            return Response({'error': 'role must be one of viewer, editor or admin.'}, status=status.HTTP_400_BAD_REQUEST)
+        touches_admin = new_role == Role.ADMIN or share.role == Role.ADMIN
+        self.check_manage_role(role, Role.ADMIN if touches_admin else new_role)
+        if new_role > role:
+            return Response({'error': 'You cannot grant a role higher than your own.'}, status=status.HTTP_400_BAD_REQUEST)
+        share.role = new_role
+        share.save(update_fields=['role'])
+        return Response(ShareSerializer(share).data)
+
+    def destroy(self, request, pk=None, **kwargs):
+        """
+        Remove a share. Only an Admin (Owner for an Admin share) can do this; a member
+        leaving by their own choice instead uses DELETE /api/shares/{sid}/.
+        """
+        parent, role = self.get_parent()
+        share = self.get_share(parent, pk)
+        self.check_manage_role(role, Role.ADMIN if share.role == Role.ADMIN else None)
+        was_accepted = isinstance(share, UserShare) and share.status == UserShare.STATUS_ACCEPTED
+        removed_user = share.user if isinstance(share, UserShare) else None
+        share.delete()
+        if was_accepted:
+            for document in self.affected_documents(parent):
+                send_event('document', document.pk, 'share:revoked', {'user': removed_user.pk})
+            self.notify_revoked(parent, removed_user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def notify_invited(self, parent, target, share, note=''):
+        scope = self.parent_model.__name__.lower()
+        message = _('%(user)s invited you to collaborate on the %(scope)s "%(name)s".') % {
+            'user': self.request.user.get_full_name(), 'scope': scope, 'name': parent.name,
+        }
+        Notification.push(target, Notification.KIND_SHARE_INVITED, message, payload={
+            'scope': scope, 'id': parent.pk, 'name': parent.name, 'role': Role(share.role).slug,
+        })
+        if target.notify_by_email:
+            send_share_invitation_email(self.request, target, parent, scope, Role(share.role), note)
+
+    def notify_revoked(self, parent, user):
+        scope = self.parent_model.__name__.lower()
+        message = _('Your access to the %(scope)s "%(name)s" was removed.') % {'scope': scope, 'name': parent.name}
+        Notification.push(user, Notification.KIND_SHARE_REVOKED, message, payload={'scope': scope, 'id': parent.pk})
+
+
+class ProjectShareViewSet(ShareViewSet):
+    parent_model = Project
+    parent_lookup_kwarg = 'project_pk'
+    parent_field = 'project'
+    user_share_model = ProjectUserShare
+    group_share_model = ProjectGroupShare
+
+    def get_base_queryset(self):
+        return Project.objects.for_user_read(self.request.user)
+
+    def affected_documents(self, parent):
+        return parent.documents.all()
+
+
+class DocumentShareViewSet(ShareViewSet):
+    parent_model = Document
+    parent_lookup_kwarg = 'document_pk'
+    parent_field = 'document'
+    user_share_model = DocumentUserShare
+    group_share_model = DocumentGroupShare
+
+    def get_base_queryset(self):
+        return Document.objects.for_user(self.request.user)
+
+    def affected_documents(self, parent):
+        return [parent]
+
+
+def send_share_invitation_email(request, target, parent, scope, role, note):
+    context = {
+        'recipient_first_name': target.first_name or target.username,
+        'inviter': request.user.get_full_name(),
+        'kind': scope,
+        'name': parent.name,
+        'role': role.label,
+        'note': note,
+        'link': request.build_absolute_uri('/'),
+    }
+    send_email(
+        'users/email/share_invitation_subject.txt',
+        'users/email/share_invitation_message.txt',
+        'users/email/share_invitation_html.html',
+        (target.email,),
+        context=context,
+    )
 
 
 class ProjectTagViewSet(ModelViewSet):

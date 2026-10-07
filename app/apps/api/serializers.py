@@ -42,6 +42,7 @@ from core.models import (
     TextAnnotationComponentValue,
     TextualWitness,
     Transcription,
+    UserShare,
 )
 from core.tasks import _chunks, segment, segtrain, train, transcribe
 from imports.forms import FileImportError, clean_import_uri, clean_upload_file
@@ -49,7 +50,7 @@ from imports.models import DocumentImport
 from imports.tasks import document_import
 from reporting.models import TaskGroup, TaskReport
 from users.consumers import send_event
-from users.models import Group, User
+from users.models import Group, Notification, User
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,70 @@ class MyRoleField(serializers.ReadOnlyField):
             user = self.context.get('user') or getattr(self.context.get('request'), 'user', None)
             role = obj.get_role(user) if user else None
         return Role(role).slug if role else None
+
+
+class UserSearchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('pk', 'username', 'first_name', 'last_name')
+
+
+class ShareSerializer(serializers.Serializer):
+    """
+    A ProjectUserShare, ProjectGroupShare, DocumentUserShare or DocumentGroupShare, as one shape.
+    Read-only: shares are created and changed directly by the view, not through this serializer.
+    """
+    id = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
+    user = UserSerializer(read_only=True, required=False)
+    group = GroupSerializer(read_only=True, required=False)
+    role = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+    invited_by = UserSerializer(read_only=True, required=False)
+    created_at = serializers.DateTimeField(read_only=True)
+    responded_at = serializers.DateTimeField(read_only=True, required=False)
+
+    def get_id(self, obj):
+        return '%s%d' % ('u' if isinstance(obj, UserShare) else 'g', obj.pk)
+
+    def get_type(self, obj):
+        return 'user' if isinstance(obj, UserShare) else 'group'
+
+    def get_role(self, obj):
+        return Role(obj.role).slug
+
+    def get_status(self, obj):
+        return obj.status if isinstance(obj, UserShare) else UserShare.STATUS_ACCEPTED
+
+
+class IncomingShareSerializer(ShareSerializer):
+    """A UserShare addressed to the current user, naming the project or document it is on."""
+    scope = serializers.SerializerMethodField()
+    target = serializers.SerializerMethodField()
+
+    def get_id(self, obj):
+        return '%s%d' % ('p' if hasattr(obj, 'project_id') else 'd', obj.pk)
+
+    def get_type(self, obj):
+        return 'user'
+
+    def get_scope(self, obj):
+        return 'project' if hasattr(obj, 'project_id') else 'document'
+
+    def get_target(self, obj):
+        target = obj.project if hasattr(obj, 'project_id') else obj.document
+        return {'pk': target.pk, 'name': target.name}
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    is_read = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Notification
+        fields = ('pk', 'kind', 'message', 'payload', 'created_at', 'read_at', 'is_read')
+
+    def get_is_read(self, obj):
+        return obj.read_at is not None
 
 
 class ProjectSerializer(serializers.ModelSerializer):
