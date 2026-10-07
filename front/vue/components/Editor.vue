@@ -16,6 +16,10 @@
             v-else
             :disabled="!partsLoaded"
         />
+        <ThumbnailStrip
+            v-if="!legacyModeEnabled"
+            :disabled="!partsLoaded"
+        />
 
         <TabContent :legacy-mode-enabled="legacyModeEnabled" />
 
@@ -66,8 +70,10 @@ import ExtraInfo from "./ExtraInfo.vue";
 import ExtraNav from "./ExtraNav.vue";
 import OntologyModal from "./OntologyModal/OntologyModal.vue";
 import TabContent from "./TabContent.vue";
+import ThumbnailStrip from "./ThumbnailStrip/ThumbnailStrip.vue";
 import TranscriptionManagement from "./TranscriptionManagement.vue";
 import TranscriptionsModal from "./TranscriptionsModal/TranscriptionsModal.vue";
+import { pageShortcut, targetOrder } from "../../src/editor/pageShortcuts";
 import { trackSaves } from "../../src/editor/saveTracking";
 import { isTaskEvent } from "../../src/editor/taskStatus";
 import "./Editor.css";
@@ -83,6 +89,7 @@ export default {
         ExtraNav,
         OntologyModal,
         TabContent,
+        ThumbnailStrip,
         TranscriptionManagement,
         TranscriptionsModal,
     },
@@ -225,18 +232,25 @@ export default {
             console.log("couldn't fetch part data!", err);
         }
 
+        // PageUp / PageDown or Ctrl+arrows: previous and next page; Home / End: first and
+        // last page. Not while typing in a field or a line.
         document.addEventListener("keydown", async function(event) {
-            if (this.$store.state.document.blockShortcuts) return;
-            if (event.keyCode == 33 ||  // page up
-                (event.keyCode == (this.readDirection == "rtl"?39:37) && event.ctrlKey)) {  // arrow left
-
-                await this.$store.dispatch("parts/loadPart", "previous");
-                event.preventDefault();
-            } else if (event.keyCode == 34 ||   // page down
-                       (event.keyCode == (this.readDirection == "rtl"?37:39) &&
-                       event.ctrlKey)) {  // arrow right
-                await this.$store.dispatch("parts/loadPart", "next");
-                event.preventDefault();
+            const action = pageShortcut(event, {
+                readDirection: this.readDirection,
+                blockShortcuts: this.$store.state.document.blockShortcuts,
+            });
+            if (!action) return;
+            event.preventDefault();
+            if (action === "previous" || action === "next") {
+                await this.$store.dispatch("parts/loadPart", action);
+            } else {
+                const order = targetOrder(action, {
+                    order: this.$store.state.parts.order,
+                    partsCount: this.$store.state.document.partsCount,
+                });
+                if (order !== null) {
+                    await this.$store.dispatch("parts/loadPartByOrder", order);
+                }
             }
         }.bind(this));
 

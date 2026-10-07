@@ -7,13 +7,19 @@ main:has(#escr-editor) {
 #escr-editor {
     display: flex;
     flex-flow: column;
+    /* the thumbnail strip (ThumbnailStrip.vue) under the navigation bar: the panels
+    give it this much of their height, nothing when it is collapsed */
+    --escr-thumbnail-strip-height: 0px;
+}
+#escr-editor:has(.escr-thumbnail-strip:not(.collapsed)) {
+    --escr-thumbnail-strip-height: 96px;
 }
 
 /* generic panel styling */
 div.escr-editor-tabcontent,
 div.escr-editor-tabcontent .marginless.row {
-    min-height: calc(100vh - 126px);
-    max-height: calc(100vh - 126px);
+    min-height: calc(100vh - 126px - var(--escr-thumbnail-strip-height, 0px));
+    max-height: calc(100vh - 126px - var(--escr-thumbnail-strip-height, 0px));
 }
 div.escr-editor-tabcontent .marginless.row {
     margin: 0;
@@ -49,7 +55,7 @@ div.escr-editor-tabcontent .escr-panel-layout-row > .escr-panel-slot {
     min-width: min(320px, 30%);
 }
 div.escr-editor-tabcontent .escr-panel-layout-column > .escr-panel-slot {
-    min-height: min(160px, calc((100vh - 126px) * 0.3));
+    min-height: min(160px, calc((100vh - 126px - var(--escr-thumbnail-strip-height, 0px)) * 0.3));
 }
 /* each panel fills its slot: toolbars on top, content in the rest */
 div.escr-editor-tabcontent .escr-panel-slot > .col.panel {
