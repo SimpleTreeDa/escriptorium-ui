@@ -5,6 +5,9 @@ const state = () => ({
      *  cut - splitting tool (segmentation)
      *  add-lines - drawing lines tool (segmentation)
      *  add-regions - drawing regions tool (segmentation)
+     *  add-points - adding control points tool (segmentation)
+     *  box-select - box selection of lines/regions tool (segmentation)
+     *  box-select-points - box selection of control points tool (segmentation)
      */
     activeTool: "select",
     modalOpen: {
