@@ -2,7 +2,7 @@
 
 **Version:** 1.0, for review ([#12](https://github.com/SimpleTreeDa/escriptorium-ui/issues/12)).
 **Requirements:** the project brief *Syriac Project TEI File Requirements*, and its eleven items of required information.
-**Used by:** the "TEI (Ephrem)" exporter, format key `ephremtei` ([#50](https://github.com/SimpleTreeDa/escriptorium-ui/issues/50), [#13](https://github.com/SimpleTreeDa/escriptorium-ui/issues/13)).
+**Used by:** the "TEI (Ephrem)" exporter, format key `ephremtei` ([#50](https://github.com/SimpleTreeDa/escriptorium-ui/issues/50), [#13](https://github.com/SimpleTreeDa/escriptorium-ui/issues/13)). Editors: see [How to export TEI](how-to-export.md).
 
 This document defines the TEI that eScriptorium exports for the Ephrem Project website.
 It is a profile of standard TEI P5, not a new schema: the files are validated against the official `tei_all` schema, and this document fixes which parts of TEI we use and how eScriptorium data fills them.
