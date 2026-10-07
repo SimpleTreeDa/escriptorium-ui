@@ -1,0 +1,791 @@
+/*
+ * Site administration (Django admin) restyled to match the rest of
+ * eScriptorium. Loaded after Django's own stylesheets and globalNavigation.css
+ * (which brings the theme tokens and Noto Sans from index.css), see
+ * app/escriptorium/templates/admin/base_site.html.
+ */
+
+/* Django admin variables, mapped onto the eScriptorium theme tokens */
+:root {
+    --escr-admin-font: "Noto Sans", "Resized Arabic", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
+    --escr-admin-radius: 15px;
+    --escr-admin-gutter: 32px;
+    --escr-admin-link: var(--secondary);
+    --escr-admin-link-hover: var(--secondary-dark);
+
+    --font-family-primary: var(--escr-admin-font);
+
+    --primary-fg: var(--button-text);
+    --body-fg: var(--text1);
+    --body-bg: var(--background1);
+    --body-quiet-color: var(--text2);
+    --body-loud-color: var(--text1);
+
+    --header-color: var(--text2);
+    --header-branding-color: var(--text1);
+    --header-bg: transparent;
+    --header-link-color: var(--text1);
+
+    --breadcrumbs-fg: var(--text2);
+    --breadcrumbs-link-fg: var(--escr-admin-link);
+    --breadcrumbs-bg: transparent;
+
+    --link-fg: var(--escr-admin-link);
+    --link-hover-color: var(--escr-admin-link-hover);
+    --link-selected-fg: var(--escr-admin-link-hover);
+
+    --hairline-color: var(--background2);
+    --border-color: var(--background2-dark);
+
+    --error-fg: var(--alert);
+
+    --message-success-bg: rgb(40 166 150 / 15%);
+    --message-warning-bg: rgb(255 171 0 / 18%);
+    --message-error-bg: rgb(232 79 79 / 15%);
+
+    --darkened-bg: var(--background);
+    --selected-bg: var(--selected-background);
+    --selected-row: var(--selected-background);
+
+    --button-fg: var(--button-text);
+    --button-bg: var(--secondary);
+    --button-hover-bg: var(--secondary-dark);
+    --default-button-bg: var(--primary);
+    --default-button-hover-bg: var(--primary-dark);
+    --close-button-bg: var(--background2-darker);
+    --close-button-hover-bg: var(--text2);
+    --delete-button-bg: var(--alert);
+    --delete-button-hover-bg: var(--alert-dark);
+
+    --object-tools-fg: var(--button-text);
+    --object-tools-bg: var(--primary);
+    --object-tools-hover-bg: var(--primary-dark);
+}
+/* the blue used for links is too dark to read on dark backgrounds */
+:root.dark-mode {
+    --escr-admin-link: #7fb1ec;
+    --escr-admin-link-hover: #a9cbf3;
+    color-scheme: dark;
+}
+
+/* Page */
+body.escr-admin {
+    background: var(--background);
+    color: var(--text1);
+    font-family: var(--escr-admin-font);
+    font-size: 14px;
+}
+body.escr-admin:has(#vue-global-nav) {
+    padding-left: 64px;
+}
+body.escr-admin #container {
+    background: var(--background);
+}
+body.escr-admin #vue-global-nav {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    height: auto;
+    z-index: 1000;
+}
+body.escr-admin #vue-global-nav .escr-global-nav {
+    height: 100%;
+    box-sizing: border-box;
+}
+body.escr-admin h1,
+body.escr-admin h2,
+body.escr-admin h3,
+body.escr-admin h4,
+body.escr-admin h5 {
+    color: var(--text1);
+}
+body.escr-admin h1 {
+    font-size: 20px;
+    font-weight: 700;
+}
+body.escr-admin a:focus-visible,
+body.escr-admin button:focus-visible {
+    outline: 2px solid var(--secondary);
+    outline-offset: 2px;
+}
+
+/* Header: a page title like "Welcome back" on the projects page */
+body.escr-admin #header {
+    background: transparent;
+    color: var(--text1);
+    padding: 24px var(--escr-admin-gutter) 0;
+    min-height: 0;
+}
+body.escr-admin #branding h1,
+body.escr-admin #site-name {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0;
+}
+body.escr-admin #site-name a:link,
+body.escr-admin #site-name a:visited {
+    color: var(--text1);
+}
+/* the global navigation already holds the profile menu, logout and theme switch */
+body.escr-admin:has(#vue-global-nav) #user-tools {
+    display: none;
+}
+body.escr-admin #user-tools {
+    color: var(--text2);
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 13px;
+}
+body.escr-admin #user-tools a,
+body.escr-admin #logout-form button {
+    color: var(--escr-admin-link);
+    border-bottom: none;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+/* Breadcrumbs */
+body.escr-admin div.breadcrumbs {
+    background: transparent;
+    color: var(--text2);
+    padding: 6px var(--escr-admin-gutter) 0;
+    font-size: 13px;
+}
+body.escr-admin div.breadcrumbs a:link,
+body.escr-admin div.breadcrumbs a:visited {
+    color: var(--escr-admin-link);
+}
+body.escr-admin div.breadcrumbs a:hover {
+    color: var(--escr-admin-link-hover);
+    text-decoration: underline;
+}
+/* the dashboard has nothing to go back to, and its title repeats the header */
+body.escr-admin.dashboard div.breadcrumbs,
+body.escr-admin.dashboard #content > h1 {
+    display: none;
+}
+
+/* Content area */
+body.escr-admin .main {
+    background: var(--background);
+}
+body.escr-admin #content {
+    padding: 24px var(--escr-admin-gutter) 32px;
+}
+/* let wide change lists scroll inside their card instead of the whole page */
+body.escr-admin .main > .content {
+    min-width: 0;
+}
+body.escr-admin #content > h1,
+body.escr-admin #content > h2 {
+    margin: 0 0 16px;
+}
+body.escr-admin #footer {
+    padding: 0;
+}
+
+/* Cards: every admin module sits in its own white box */
+body.escr-admin .module {
+    background: var(--background1);
+    border: none;
+    border-radius: var(--escr-admin-radius);
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+body.escr-admin .module h2,
+body.escr-admin .module caption,
+body.escr-admin .inline-group h2 {
+    background: transparent;
+    color: var(--text1);
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: normal;
+    text-align: left;
+    padding: 16px 16px 8px;
+    border-bottom: none;
+}
+body.escr-admin .module caption a.section:link,
+body.escr-admin .module caption a.section:visited,
+body.escr-admin .module h2 a.section:link,
+body.escr-admin .module h2 a.section:visited {
+    color: var(--text1);
+}
+body.escr-admin .module caption a.section:hover,
+body.escr-admin .module h2 a.section:hover {
+    color: var(--escr-admin-link);
+}
+
+/* Tables: flat rows like the projects list */
+body.escr-admin table {
+    border-color: var(--hairline-color);
+}
+body.escr-admin tr:nth-child(odd),
+body.escr-admin tr:nth-child(even),
+body.escr-admin tr:nth-child(odd) .errorlist,
+body.escr-admin tr:nth-child(even) .errorlist {
+    background: transparent;
+}
+body.escr-admin td,
+body.escr-admin th {
+    border-bottom: 1px solid var(--hairline-color);
+    font-size: 14px;
+    line-height: 20px;
+    padding: 10px 16px;
+    vertical-align: middle;
+}
+body.escr-admin tbody tr:last-child td,
+body.escr-admin tbody tr:last-child th {
+    border-bottom: none;
+}
+body.escr-admin thead th,
+body.escr-admin tfoot td {
+    background: transparent;
+    color: var(--text1);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: none;
+    border-top: none;
+    border-bottom: 1px solid var(--background2);
+}
+body.escr-admin thead th a:link,
+body.escr-admin thead th a:visited {
+    color: var(--text1);
+}
+body.escr-admin tbody tr:hover {
+    background: var(--background);
+}
+
+/* Small buttons, like "Tags" on the projects page */
+body.escr-admin.dashboard .module td a.addlink,
+body.escr-admin.dashboard .module td a.changelink,
+body.escr-admin.dashboard .module td a.viewlink,
+body.escr-admin #nav-sidebar a.addlink {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 5px;
+    background: var(--background2);
+    background-image: none;
+    color: var(--text1);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    transition: background-color 0.15s ease-in-out;
+}
+body.escr-admin.dashboard .module td a.addlink:hover,
+body.escr-admin.dashboard .module td a.changelink:hover,
+body.escr-admin.dashboard .module td a.viewlink:hover,
+body.escr-admin #nav-sidebar a.addlink:hover {
+    background: var(--secondary-hover);
+    color: var(--text1);
+    text-decoration: none;
+}
+
+/* Dashboard: app modules as cards flowing in columns, recent actions on the right */
+body.escr-admin.dashboard #content {
+    width: auto;
+    max-width: 1440px;
+}
+body.escr-admin.dashboard #content-main {
+    column-width: 380px;
+    column-gap: 24px;
+}
+body.escr-admin.dashboard #content-main .module {
+    break-inside: avoid;
+}
+body.escr-admin.dashboard .module table {
+    width: 100%;
+}
+body.escr-admin.dashboard .module th[scope="row"] a:link,
+body.escr-admin.dashboard .module th[scope="row"] a:visited {
+    color: var(--text1);
+    font-weight: 400;
+}
+body.escr-admin.dashboard .module th[scope="row"] a:hover {
+    color: var(--escr-admin-link);
+}
+body.escr-admin.dashboard .module td {
+    white-space: nowrap;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+body.escr-admin.dashboard .module td:last-child {
+    padding-right: 16px;
+}
+body.escr-admin .colMS {
+    margin-right: 324px;
+}
+body.escr-admin #content-related {
+    background: transparent;
+    width: 300px;
+    margin-right: -324px;
+}
+body.escr-admin #content-related .module {
+    background: var(--background1);
+    padding-bottom: 8px;
+}
+body.escr-admin #content-related .module h2 {
+    padding: 16px 16px 8px;
+    margin: 0;
+    border-bottom: 1px solid var(--hairline-color);
+    font-size: 16px;
+}
+body.escr-admin #content-related h3 {
+    color: var(--text2);
+    font-size: 13px;
+    font-weight: 600;
+    margin: 16px 0 8px;
+}
+body.escr-admin #content-related .actionlist {
+    margin: 8px 16px;
+}
+
+/* Object tools ("Add document"), styled like the "Create New" button */
+body.escr-admin .object-tools {
+    margin-top: -48px;
+}
+body.escr-admin .object-tools a:link,
+body.escr-admin .object-tools a:visited {
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: normal;
+    text-transform: none;
+    line-height: 20px;
+    padding: 9px 16px;
+}
+body.escr-admin .object-tools a.addlink {
+    padding-right: 34px;
+    background-position: right 12px center;
+}
+
+/* Form controls */
+body.escr-admin input[type="text"],
+body.escr-admin input[type="password"],
+body.escr-admin input[type="email"],
+body.escr-admin input[type="url"],
+body.escr-admin input[type="number"],
+body.escr-admin input[type="tel"],
+body.escr-admin input[type="search"],
+body.escr-admin textarea,
+body.escr-admin select,
+body.escr-admin .vTextField {
+    background-color: var(--background1);
+    color: var(--text1);
+    border: 1px solid var(--background2-dark);
+    border-radius: 5px;
+    font-family: var(--escr-admin-font);
+    font-size: 14px;
+    padding: 7px 10px;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+body.escr-admin select {
+    height: auto;
+    min-height: 36px;
+}
+body.escr-admin select[multiple] {
+    min-height: 150px;
+}
+body.escr-admin input:focus,
+body.escr-admin textarea:focus,
+body.escr-admin select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem var(--primary-focus);
+    outline: none;
+}
+
+/* Buttons */
+body.escr-admin .button,
+body.escr-admin input[type="submit"],
+body.escr-admin input[type="button"],
+body.escr-admin .submit-row input,
+body.escr-admin a.button {
+    border-radius: 5px;
+    font-family: var(--escr-admin-font);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 9px 16px;
+    line-height: 20px;
+    height: auto;
+    text-transform: none;
+    transition: background-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+body.escr-admin .button:focus,
+body.escr-admin input[type="submit"]:focus,
+body.escr-admin input[type="button"]:focus {
+    box-shadow: 0 0 0 0.2rem var(--secondary-focus);
+}
+body.escr-admin .button.default:focus,
+body.escr-admin input[type="submit"].default:focus {
+    box-shadow: 0 0 0 0.2rem var(--primary-focus);
+}
+body.escr-admin .submit-row a.deletelink,
+body.escr-admin .submit-row a.closelink {
+    border-radius: 5px;
+    font-weight: 600;
+    line-height: 20px;
+    padding: 9px 16px;
+    height: auto;
+}
+
+/* Change list: the list and its filters are two separate cards */
+body.escr-admin #changelist.module {
+    background: transparent;
+    border-radius: 0;
+    overflow: visible;
+    gap: 24px;
+}
+body.escr-admin #changelist .changelist-form-container {
+    background: var(--background1);
+    border-radius: var(--escr-admin-radius);
+    overflow: hidden;
+}
+body.escr-admin #changelist #toolbar {
+    background: transparent;
+    border-bottom: 1px solid var(--hairline-color);
+    padding: 16px;
+    margin-bottom: 0;
+    color: var(--text2);
+}
+body.escr-admin #changelist #toolbar form input[type="text"] {
+    min-width: 260px;
+    padding: 7px 10px;
+}
+body.escr-admin #changelist #toolbar form #searchbar {
+    height: auto;
+}
+body.escr-admin #changelist #toolbar form input[type="submit"] {
+    background: var(--background2);
+    color: var(--text1);
+    border: none;
+    padding: 8px 14px;
+}
+body.escr-admin #changelist #toolbar form input[type="submit"]:hover {
+    background: var(--background2-dark);
+}
+body.escr-admin #changelist .actions {
+    background: transparent;
+    border-bottom: 1px solid var(--hairline-color);
+    color: var(--text2);
+    padding: 12px 16px;
+    line-height: 36px;
+}
+body.escr-admin #changelist .actions .button {
+    background: var(--background2);
+    color: var(--text1);
+    border: none;
+    padding: 7px 14px;
+}
+body.escr-admin #changelist .actions .button:hover {
+    background: var(--background2-dark);
+}
+body.escr-admin #changelist .actions.selected {
+    background: var(--selected-background);
+}
+body.escr-admin #changelist .results {
+    overflow-x: auto;
+}
+body.escr-admin #changelist table thead th {
+    padding: 0;
+}
+body.escr-admin #changelist table thead th .text > a,
+body.escr-admin #changelist table thead th .text > span {
+    padding: 12px 16px;
+}
+body.escr-admin #changelist table thead th.action-checkbox-column {
+    padding: 12px 16px;
+}
+body.escr-admin #changelist table tbody tr.selected {
+    background: var(--selected-background);
+}
+body.escr-admin #changelist .paginator {
+    background: transparent;
+    border-top: 1px solid var(--hairline-color);
+    color: var(--text2);
+    padding: 12px 16px;
+    margin: 0;
+    line-height: 36px;
+}
+body.escr-admin .paginator a:link,
+body.escr-admin .paginator a:visited {
+    border-radius: 5px;
+    background: var(--background2);
+    color: var(--text1);
+}
+body.escr-admin .paginator a:hover {
+    background: var(--secondary-hover);
+}
+body.escr-admin .paginator .this-page {
+    color: var(--text1);
+    font-weight: 700;
+}
+body.escr-admin .paginator a.showall:link,
+body.escr-admin .paginator a.showall:visited {
+    background: transparent;
+    color: var(--escr-admin-link);
+}
+
+/* Change list: filters card */
+body.escr-admin #changelist-filter {
+    background: var(--background1);
+    border-radius: var(--escr-admin-radius);
+    flex: 0 0 260px;
+    margin: 0;
+    padding-bottom: 8px;
+    align-self: flex-start;
+}
+body.escr-admin #changelist-filter h2 {
+    background: transparent;
+    color: var(--text1);
+    font-size: 16px;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: normal;
+    padding: 16px 16px 8px;
+    border-bottom: 1px solid var(--hairline-color);
+}
+body.escr-admin #changelist-filter h3,
+body.escr-admin #changelist-filter summary {
+    color: var(--text1);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 0 16px;
+}
+body.escr-admin #changelist-filter ul {
+    border-bottom: 1px solid var(--hairline-color);
+    padding-left: 16px;
+}
+body.escr-admin #changelist-filter li.selected a {
+    color: var(--escr-admin-link);
+    font-weight: 600;
+}
+body.escr-admin #changelist-filter a:link,
+body.escr-admin #changelist-filter a:visited {
+    color: var(--text2);
+}
+body.escr-admin #changelist-filter a:hover {
+    color: var(--escr-admin-link);
+}
+body.escr-admin #changelist-filter #changelist-filter-clear a {
+    border-bottom: 1px solid var(--hairline-color);
+}
+
+/* Date hierarchy */
+body.escr-admin .xfull,
+body.escr-admin #changelist .xfull {
+    background: transparent;
+}
+body.escr-admin #changelist .changelist-form-container > .xfull,
+body.escr-admin .changelist-form-container .toplinks {
+    border-bottom: 1px solid var(--hairline-color);
+    padding: 8px 16px;
+}
+
+/* Change form */
+body.escr-admin fieldset.module {
+    padding-bottom: 8px;
+}
+body.escr-admin .form-row {
+    border-bottom: 1px solid var(--hairline-color);
+    padding: 12px 16px;
+}
+body.escr-admin fieldset.module .form-row:last-child {
+    border-bottom: none;
+}
+body.escr-admin .aligned label,
+body.escr-admin label.required {
+    color: var(--text1);
+    font-weight: 600;
+}
+body.escr-admin .help,
+body.escr-admin p.help,
+body.escr-admin div.help {
+    color: var(--text2);
+    font-size: 12px;
+}
+body.escr-admin fieldset.collapsed h2,
+body.escr-admin fieldset.collapse summary {
+    background: transparent;
+    color: var(--text1);
+}
+body.escr-admin .submit-row {
+    background: var(--background1);
+    border: none;
+    border-radius: var(--escr-admin-radius);
+    padding: 16px;
+    margin: 0 0 24px;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Inline groups */
+body.escr-admin .inline-group {
+    background: var(--background1);
+    border-radius: var(--escr-admin-radius);
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+body.escr-admin .inline-group .module {
+    margin-bottom: 0;
+}
+body.escr-admin .inline-group .tabular tr.add-row td,
+body.escr-admin .inline-group div.add-row {
+    background: transparent;
+    border-top: 1px solid var(--hairline-color);
+    padding: 12px 16px;
+}
+body.escr-admin .inline-related h3 {
+    background: var(--background);
+    color: var(--text1);
+    border: none;
+    padding: 8px 16px;
+}
+
+/* Many-to-many selector */
+body.escr-admin .selector-available h2,
+body.escr-admin .selector-chosen h2 {
+    border-radius: 5px 5px 0 0;
+    font-size: 13px;
+    padding: 8px;
+}
+body.escr-admin .selector-chosen h2 {
+    background: var(--primary);
+    color: var(--button-text);
+}
+body.escr-admin .selector-available h2 {
+    background: var(--background2);
+    color: var(--text1);
+}
+body.escr-admin .selector .selector-filter {
+    border-color: var(--background2-dark);
+    color: var(--text2);
+}
+
+/* Messages */
+body.escr-admin ul.messagelist {
+    padding: 0 var(--escr-admin-gutter);
+    margin-top: 16px;
+}
+body.escr-admin ul.messagelist li {
+    border-radius: 10px;
+    color: var(--text1);
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+body.escr-admin .errornote {
+    background-color: var(--message-error-bg);
+    border: none;
+    border-radius: 10px;
+    color: var(--text1);
+}
+body.escr-admin ul.errorlist li {
+    color: var(--alert);
+}
+
+/* Delete confirmation */
+body.escr-admin.delete-confirmation #content form,
+body.escr-admin.delete-confirmation #content > ul,
+body.escr-admin.delete-confirmation #content > p {
+    max-width: 960px;
+}
+body.escr-admin.delete-confirmation #content > ul {
+    background: var(--background1);
+    border-radius: var(--escr-admin-radius);
+    padding: 16px 16px 16px 36px;
+}
+
+/* Collapsible app list on model pages */
+body.escr-admin #nav-sidebar {
+    background: transparent;
+    border-right: none;
+    padding: 24px 0 24px var(--escr-admin-gutter);
+    flex: 0 0 300px;
+    box-sizing: border-box;
+}
+body.escr-admin #nav-sidebar .module {
+    margin-bottom: 16px;
+}
+body.escr-admin #nav-sidebar .module th {
+    width: 100%;
+    padding: 8px 16px;
+}
+body.escr-admin #nav-sidebar .module td {
+    padding: 8px 16px 8px 0;
+}
+body.escr-admin #nav-sidebar th a:link,
+body.escr-admin #nav-sidebar th a:visited {
+    color: var(--text1);
+    font-weight: 400;
+}
+body.escr-admin #nav-sidebar th a:hover {
+    color: var(--escr-admin-link);
+}
+body.escr-admin #nav-sidebar .current-model th a:link,
+body.escr-admin #nav-sidebar .current-model th a:visited {
+    font-weight: 600;
+}
+body.escr-admin #nav-sidebar .current-app .section:link,
+body.escr-admin #nav-sidebar .current-app .section:visited {
+    color: var(--escr-admin-link);
+}
+body.escr-admin #nav-sidebar .current-model {
+    background: var(--selected-background);
+}
+body.escr-admin #nav-filter {
+    background: var(--background1);
+    color: var(--text1);
+    border: 1px solid var(--background2-dark);
+    border-radius: 5px;
+    margin: 0 0 16px;
+    padding: 7px 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
+body.escr-admin .toggle-nav-sidebar {
+    background: transparent;
+    border: none;
+    color: var(--text2);
+    flex: 0 0 24px;
+}
+body.escr-admin .toggle-nav-sidebar:hover,
+body.escr-admin .toggle-nav-sidebar:focus {
+    background: var(--background2);
+}
+body.escr-admin .main.shifted > #nav-sidebar {
+    padding-left: var(--escr-admin-gutter);
+}
+
+/* Login page (only reached when signed out) */
+body.escr-admin.login #container {
+    background: var(--background1);
+    border: none;
+    border-radius: var(--escr-admin-radius);
+    box-shadow: 0px 4px 4px var(--drop-shadow);
+}
+body.escr-admin.login #header {
+    padding: 24px 24px 0;
+}
+body.escr-admin.login #header h1,
+body.escr-admin.login #header h1 a {
+    color: var(--text1);
+}
+body.escr-admin.login #content {
+    padding: 16px 24px 24px;
+}
+body.escr-admin.login .main {
+    background: transparent;
+}
+
+/* Checkbox fields: keep the label next to its box */
+body.escr-admin .aligned .checkbox-row .form-check {
+    width: auto;
+}
+body.escr-admin .aligned .checkbox-row .form-check-label:empty {
+    display: none;
+}
+body.escr-admin .aligned .checkbox-row label.vCheckboxLabel {
+    width: auto;
+    min-width: 0;
+    padding-left: 6px;
+}
