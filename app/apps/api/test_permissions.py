@@ -4,8 +4,9 @@ from django.contrib.auth.models import Group
 from django.urls import reverse
 from rest_framework.authtoken.models import Token
 
-from core.models import Block, DocumentMetadata, Line, LineTranscription
+from core.models import Block, Document, DocumentMetadata, DocumentTag, Line, LineTranscription, Project
 from core.tests.factory import CoreFactoryTestCase
+from reporting.models import TaskGroup
 
 
 class DocumentFixtureMixin:
@@ -301,3 +302,156 @@ class CollaboratorAccessTestCase(DocumentFixtureMixin, CoreFactoryTestCase):
         self.assertIn(resp.status_code, (401, 403))
         self.victim_lt.refresh_from_db()
         self.assertEqual(self.victim_lt.content, 'original')
+
+
+class OwnerOnlyActionsTestCase(CoreFactoryTestCase):
+    """
+    Collaborators can use a shared project or document,
+    but changing, deleting or sharing it again is reserved to its owner.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.owner = self.factory.make_user()
+        self.collaborator = self.factory.make_user()
+        self.stranger = self.factory.make_user()
+        self.project = self.factory.make_project(owner=self.owner, name='owned project')
+        self.doc = self.factory.make_document(owner=self.owner, project=self.project)
+        self.project.shared_with_users.add(self.collaborator)
+        self.doc.shared_with_users.add(self.collaborator)
+        self.project_url = reverse('api:project-detail', kwargs={'pk': self.project.pk})
+        self.doc_url = reverse('api:document-detail', kwargs={'pk': self.doc.pk})
+
+    def test_collaborator_can_read(self):
+        self.client.force_login(self.collaborator)
+        self.assertEqual(self.client.get(self.project_url).status_code, 200)
+        self.assertEqual(self.client.get(self.doc_url).status_code, 200)
+
+    def test_collaborator_cannot_change_project(self):
+        self.client.force_login(self.collaborator)
+        resp = self.client.patch(self.project_url, {'name': 'hijacked'}, content_type='application/json')
+        self.assertEqual(resp.status_code, 403)
+        resp = self.client.put(self.project_url, {'name': 'hijacked'}, content_type='application/json')
+        self.assertEqual(resp.status_code, 403)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.name, 'owned project')
+
+    def test_collaborator_cannot_delete(self):
+        self.client.force_login(self.collaborator)
+        self.assertEqual(self.client.delete(self.doc_url).status_code, 403)
+        self.assertEqual(self.client.delete(self.project_url).status_code, 403)
+        self.assertTrue(Document.objects.filter(pk=self.doc.pk).exists())
+        self.assertTrue(Project.objects.filter(pk=self.project.pk).exists())
+
+    def test_collaborator_cannot_share(self):
+        self.client.force_login(self.collaborator)
+        for url in (self.project_url, self.doc_url):
+            with self.subTest(url):
+                resp = self.client.post(url + 'share/', {'user': self.stranger.username},
+                                        content_type='application/json')
+                self.assertEqual(resp.status_code, 403)
+        self.assertFalse(self.project.shared_with_users.filter(pk=self.stranger.pk).exists())
+        self.assertFalse(self.doc.shared_with_users.filter(pk=self.stranger.pk).exists())
+
+    def test_document_only_collaborator_cannot_touch_project(self):
+        # sharing a single document makes its project readable, nothing more
+        self.project.shared_with_users.remove(self.collaborator)
+        self.client.force_login(self.collaborator)
+        self.assertEqual(self.client.get(self.project_url).status_code, 200)
+        resp = self.client.patch(self.project_url, {'name': 'hijacked'}, content_type='application/json')
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(self.client.delete(self.project_url).status_code, 403)
+
+    def test_collaborator_can_edit_document_but_not_move_it(self):
+        own_project = self.factory.make_project(owner=self.collaborator, name='collaborator project')
+        self.client.force_login(self.collaborator)
+        resp = self.client.patch(self.doc_url, {'name': 'renamed'}, content_type='application/json')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        resp = self.client.patch(self.doc_url, {'project': own_project.slug}, content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+        self.doc.refresh_from_db()
+        self.assertEqual(self.doc.name, 'renamed')
+        self.assertEqual(self.doc.project, self.project)
+
+    def test_owner_can_do_everything(self):
+        other_project = self.factory.make_project(owner=self.owner, name='other project')
+        self.client.force_login(self.owner)
+        resp = self.client.patch(self.project_url, {'name': 'renamed'}, content_type='application/json')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        for url in (self.project_url, self.doc_url):
+            resp = self.client.post(url + 'share/', {'user': self.stranger.username},
+                                    content_type='application/json')
+            self.assertEqual(resp.status_code, 201, resp.content)
+        resp = self.client.patch(self.doc_url, {'project': other_project.slug}, content_type='application/json')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(self.client.delete(self.doc_url).status_code, 204)
+        self.assertEqual(self.client.delete(self.project_url).status_code, 204)
+
+
+class DocumentTagAccessTestCase(CoreFactoryTestCase):
+    def setUp(self):
+        super().setUp()
+        self.owner = self.factory.make_user()
+        self.project = self.factory.make_project(owner=self.owner, name='tagged project')
+        self.doc = self.factory.make_document(owner=self.owner, project=self.project)
+        self.tag = self.factory.make_document_tag(project=self.project, name='original')
+        self.list_url = reverse('api:document-tag-list', kwargs={'project_pk': self.project.pk})
+        self.detail_url = reverse('api:document-tag-detail', kwargs={'project_pk': self.project.pk,
+                                                                     'pk': self.tag.pk})
+
+    def tag_names(self):
+        return list(DocumentTag.objects.filter(project=self.project).values_list('name', flat=True))
+
+    def test_stranger(self):
+        self.client.force_login(self.factory.make_user())
+        self.assertEqual(self.client.get(self.list_url).status_code, 403)
+        self.assertEqual(self.client.post(self.list_url, {'name': 'spam'},
+                                          content_type='application/json').status_code, 403)
+        self.assertEqual(self.client.patch(self.detail_url, {'name': 'spam'},
+                                           content_type='application/json').status_code, 403)
+        self.assertEqual(self.client.delete(self.detail_url).status_code, 403)
+        self.assertEqual(self.tag_names(), ['original'])
+
+    def test_document_collaborator_reads_only(self):
+        collaborator = self.factory.make_user()
+        self.doc.shared_with_users.add(collaborator)
+        self.client.force_login(collaborator)
+        resp = self.client.get(self.list_url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual([tag['name'] for tag in resp.json()['results']], ['original'])
+        self.assertEqual(self.client.post(self.list_url, {'name': 'spam'},
+                                          content_type='application/json').status_code, 403)
+        self.assertEqual(self.client.delete(self.detail_url).status_code, 403)
+        self.assertEqual(self.tag_names(), ['original'])
+
+    def test_project_collaborator(self):
+        collaborator = self.factory.make_user()
+        self.project.shared_with_users.add(collaborator)
+        self.client.force_login(collaborator)
+        resp = self.client.post(self.list_url, {'name': 'new'}, content_type='application/json')
+        self.assertEqual(resp.status_code, 201, resp.content)
+        self.assertEqual(sorted(self.tag_names()), ['new', 'original'])
+
+
+class TaskGroupAccessTestCase(CoreFactoryTestCase):
+    def setUp(self):
+        super().setUp()
+        self.doc = self.factory.make_document(project=self.factory.make_project(name='task group project'))
+        self.group = TaskGroup.objects.create(document=self.doc, created_by=self.doc.owner, task='segment')
+        self.list_url = reverse('api:task-group-list', kwargs={'document_pk': self.doc.pk})
+        self.detail_url = reverse('api:task-group-detail', kwargs={'document_pk': self.doc.pk,
+                                                                   'pk': self.group.pk})
+
+    def test_stranger(self):
+        self.client.force_login(self.factory.make_user())
+        self.assertEqual(self.client.get(self.list_url).status_code, 403)
+        self.assertEqual(self.client.delete(self.detail_url).status_code, 403)
+        self.assertTrue(TaskGroup.objects.filter(pk=self.group.pk).exists())
+
+    def test_owner_lists_but_cannot_delete(self):
+        self.client.force_login(self.doc.owner)
+        resp = self.client.get(self.list_url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual([group['pk'] for group in resp.json()['results']], [self.group.pk])
+        self.assertEqual(self.client.delete(self.detail_url).status_code, 405)
+        self.assertTrue(TaskGroup.objects.filter(pk=self.group.pk).exists())

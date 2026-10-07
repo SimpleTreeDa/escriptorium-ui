@@ -19,6 +19,7 @@ from django.http import (
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils.functional import cached_property
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
 from django.views.generic import (
     CreateView,
@@ -702,19 +703,23 @@ class DeleteDocumentUserShare(LoginRequiredMixin, View):
     http_method_names = ('post',)
 
     def post(self, *args, **kwargs):
-        try:
-            document = Document.objects.get(pk=self.request.POST['document'])
-        except KeyError:
-            raise HttpResponseBadRequest
+        if 'document' not in self.request.POST:
+            return HttpResponseBadRequest()
+        document = get_object_or_404(Document, pk=self.request.POST['document'],
+                                     shared_with_users=self.request.user)
 
         document.shared_with_users.remove(self.request.user)
         return HttpResponseRedirect(self.get_success_url(document))
 
     def get_success_url(self, document):
-        if 'next' in self.request.GET:
-            return self.request.GET.get('next')
-        else:
+        next_url = self.request.GET.get('next')
+        if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={self.request.get_host()},
+                                                        require_https=self.request.is_secure()):
+            return next_url
+        # the project stays reachable only if it, or another of its documents, is shared too
+        if Project.objects.for_user_read(self.request.user).filter(pk=document.project_id).exists():
             return reverse('documents-list', kwargs={'slug': document.project.slug})
+        return reverse('projects-list')
 
 
 class ShareProject(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
@@ -739,19 +744,20 @@ class DeleteProjectUserShare(LoginRequiredMixin, View):
     http_method_names = ('post',)
 
     def post(self, *args, **kwargs):
-        try:
-            project = Project.objects.get(pk=self.request.POST['project'])
-        except KeyError:
-            raise HttpResponseBadRequest
+        if 'project' not in self.request.POST:
+            return HttpResponseBadRequest()
+        project = get_object_or_404(Project, pk=self.request.POST['project'],
+                                    shared_with_users=self.request.user)
 
         project.shared_with_users.remove(self.request.user)
         return HttpResponseRedirect(self.get_success_url())
 
     def get_success_url(self):
-        if 'next' in self.request.GET:
-            return self.request.GET.get('next')
-        else:
-            return reverse('projects-list')
+        next_url = self.request.GET.get('next')
+        if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts={self.request.get_host()},
+                                                        require_https=self.request.is_secure()):
+            return next_url
+        return reverse('projects-list')
 
 
 class PublishDocument(LoginRequiredMixin, SuccessMessageMixin, UpdateView):

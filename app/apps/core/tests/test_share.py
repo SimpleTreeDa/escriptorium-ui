@@ -80,6 +80,59 @@ class DocumentShareTestCase(TestCase):
         self.assertEqual(self.doc.shared_with_groups.count(), 0)
 
 
+class LeaveShareTestCase(TestCase):
+    def setUp(self):
+        factory = CoreFactory()
+        self.owner = factory.make_user()
+        self.user = factory.make_user()
+        self.project = factory.make_project(owner=self.owner, name='left project')
+        self.doc = factory.make_document(owner=self.owner, project=self.project)
+        self.other_doc = factory.make_document(owner=self.owner, project=self.project, name='other doc')
+        self.client.force_login(self.user)
+
+    def test_leave_project(self):
+        self.project.shared_with_users.add(self.user)
+        resp = self.client.post(reverse('delete-project-share'), {'project': self.project.pk})
+        self.assertRedirects(resp, reverse('projects-list'), fetch_redirect_response=False)
+        self.assertFalse(self.project.shared_with_users.filter(pk=self.user.pk).exists())
+
+    def test_leave_document(self):
+        self.doc.shared_with_users.add(self.user)
+        resp = self.client.post(reverse('delete-document-share'), {'document': self.doc.pk})
+        self.assertRedirects(resp, reverse('projects-list'), fetch_redirect_response=False)
+        self.assertFalse(self.doc.shared_with_users.filter(pk=self.user.pk).exists())
+
+    def test_leave_document_project_still_reachable(self):
+        self.doc.shared_with_users.add(self.user)
+        self.other_doc.shared_with_users.add(self.user)
+        resp = self.client.post(reverse('delete-document-share'), {'document': self.doc.pk})
+        self.assertRedirects(resp, reverse('documents-list', kwargs={'slug': self.project.slug}),
+                             fetch_redirect_response=False)
+
+    def test_missing_or_unknown(self):
+        self.assertEqual(self.client.post(reverse('delete-project-share')).status_code, 400)
+        self.assertEqual(self.client.post(reverse('delete-document-share')).status_code, 400)
+        self.assertEqual(self.client.post(reverse('delete-project-share'), {'project': 0}).status_code, 404)
+        self.assertEqual(self.client.post(reverse('delete-document-share'), {'document': 0}).status_code, 404)
+
+    def test_not_shared(self):
+        self.assertEqual(self.client.post(reverse('delete-project-share'),
+                                          {'project': self.project.pk}).status_code, 404)
+        self.assertEqual(self.client.post(reverse('delete-document-share'),
+                                          {'document': self.doc.pk}).status_code, 404)
+
+    def test_next_url(self):
+        self.project.shared_with_users.add(self.user)
+        resp = self.client.post(reverse('delete-project-share') + '?next=/documents/',
+                                {'project': self.project.pk})
+        self.assertRedirects(resp, '/documents/', fetch_redirect_response=False)
+
+        self.project.shared_with_users.add(self.user)
+        resp = self.client.post(reverse('delete-project-share') + '?next=https://evil.example.com/',
+                                {'project': self.project.pk})
+        self.assertRedirects(resp, reverse('projects-list'), fetch_redirect_response=False)
+
+
 class PerformanceShareTestCase(TestCase):
     def setUp(self):
         factory = CoreFactory()

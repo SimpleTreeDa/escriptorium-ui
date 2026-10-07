@@ -21,7 +21,7 @@ from rest_framework.exceptions import NotAuthenticated, NotFound
 from rest_framework.filters import OrderingFilter
 from rest_framework.mixins import CreateModelMixin
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import SAFE_METHODS, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.serializers import PrimaryKeyRelatedField, RelatedField
 from rest_framework.viewsets import GenericViewSet, ModelViewSet, ReadOnlyModelViewSet
@@ -174,6 +174,17 @@ class IsAdminOrSelfOnly(BasePermission):
                     or request.user.is_staff)
 
 
+class IsOwnerForActions(BasePermission):
+    """
+    Collaborators can use a shared object, but the actions listed
+    in the view's owner_actions are reserved to its owner.
+    """
+
+    def has_object_permission(self, request, view, obj):
+        return bool(view.action not in getattr(view, 'owner_actions', ())
+                    or obj.owner == request.user)
+
+
 class LargeResultsSetPagination(PageNumberPagination):
     page_size = 100
 
@@ -242,6 +253,8 @@ class ProjectViewSet(ModelViewSet):
     filterset_class = TagFilterSet
     filter_backends = [filters.OrderingFilter, DjangoFilterBackend]
     ordering_fields = ['created_at', 'documents_count', 'id', 'name', 'owner', 'updated_at']
+    permission_classes = [IsAuthenticated, IsOwnerForActions]
+    owner_actions = ('update', 'partial_update', 'destroy', 'share')
 
     def get_queryset(self):
         return (Project.objects
@@ -298,12 +311,23 @@ class DocumentTagViewSet(ModelViewSet):
     serializer_class = DocumentTagSerializer
     pagination_class = LargeResultsSetPagination
 
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        # Anyone the project or one of its documents is shared with can read its tags,
+        # changing them requires the project itself to be shared.
+        projects = (Project.objects.for_user_read(request.user)
+                    if request.method in SAFE_METHODS
+                    else Project.objects.for_user_write(request.user))
+        try:
+            self.project = projects.get(pk=self.kwargs.get('project_pk'))
+        except (Project.DoesNotExist, ValueError):
+            raise PermissionDenied
+
     def perform_create(self, serializer):
-        project = Project.objects.get(pk=self.kwargs.get('project_pk'))
-        return serializer.save(project=project)
+        return serializer.save(project=self.project)
 
     def get_queryset(self):
-        return DocumentTag.objects.filter(project__pk=self.kwargs.get('project_pk'))
+        return DocumentTag.objects.filter(project=self.project)
 
 
 class DocumentViewSet(ModelViewSet):
@@ -313,6 +337,8 @@ class DocumentViewSet(ModelViewSet):
     filterset_fields = ['project', 'tags']
     filterset_class = DocumentTagFilterSet
     ordering_fields = ['name', 'parts_count', 'updated_at']
+    permission_classes = [IsAuthenticated, IsOwnerForActions]
+    owner_actions = ('destroy', 'share')
 
     def get_queryset(self):
         qs = Document.objects.for_user(self.request.user).prefetch_related(
@@ -762,16 +788,6 @@ class DocumentViewSet(ModelViewSet):
         })
 
 
-class TaskGroupViewSet(ModelViewSet):
-    queryset = TaskGroup.objects.all().select_related('created_by')
-    serializer_class = TaskGroupSerializer
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        qs = qs.filter(document=self.kwargs.get('document_pk'))
-        return qs
-
-
 class TaskReportViewSet(ModelViewSet):
     queryset = TaskReport.objects.all()
     serializer_class = TaskReportSerializer
@@ -832,6 +848,17 @@ class DocumentPermissionMixin():
             if isinstance(field, RelatedField) and not field.read_only:
                 field.queryset = queryset
         return serializer
+
+
+class TaskGroupViewSet(DocumentPermissionMixin, ReadOnlyModelViewSet):
+    # Task groups are created by the tasks themselves, the api only lists them.
+    queryset = TaskGroup.objects.all().select_related('created_by')
+    serializer_class = TaskGroupSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = qs.filter(document=self.document)
+        return qs
 
 
 class DocumentMetadataViewSet(DocumentPermissionMixin, ModelViewSet):

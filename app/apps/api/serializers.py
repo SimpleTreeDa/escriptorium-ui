@@ -432,6 +432,14 @@ class DocumentSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
         self.fields['project'].queryset = Project.objects.for_user_write(self.context['user'])
 
+    def validate_project(self, value):
+        # moving a document out of its project is reserved to its owner, like the migrate form
+        if (self.instance is not None
+                and value != self.instance.project
+                and self.instance.owner != self.context['user']):
+            raise serializers.ValidationError('Only the owner of the document can move it to another project.')
+        return value
+
     def validate_main_script(self, value):
         try:
             return Script.objects.get(name=value)

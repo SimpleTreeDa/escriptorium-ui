@@ -44,6 +44,17 @@ def send_notification(user_pk, message, id=None, level='info', links=None):
         logger.exception(e)
 
 
+def can_join_room(user, object_cls, object_pk):
+    if object_cls != 'document':
+        return False
+    try:
+        object_pk = int(object_pk)
+    except (TypeError, ValueError):
+        return False
+    from core.models import Document  # core.models imports this module
+    return Document.objects.for_user(user).filter(pk=object_pk).exists()
+
+
 class NotificationConsumer(WebsocketConsumer):
     def connect(self):
         self.room = None
@@ -69,10 +80,23 @@ class NotificationConsumer(WebsocketConsumer):
             if msg['type'] == 'notif' and self.scope['user'].is_superuser:  # DEBUG notifs
                 send_notification(msg['user_pk'], msg['text'], level=getattr(msg, 'level', 'info'))
             elif msg['type'] == 'join-room':
-                self.room = get_room_name(msg['object_cls'], msg['object_pk'])
-                async_to_sync(self.channel_layer.group_add)(
-                    self.room,
-                    self.channel_name)
+                self.join_room(msg.get('object_cls'), msg.get('object_pk'))
+
+    def join_room(self, object_cls, object_pk):
+        # Rooms carry the events of a single object, only let in users who can access it.
+        if not self.scope['user'].is_authenticated or not can_join_room(self.scope['user'], object_cls, object_pk):
+            logger.warning('User %s was refused access to room %s-%s',
+                           self.scope['user'].pk, object_cls, object_pk)
+            return
+        room = get_room_name(object_cls, int(object_pk))
+        if self.room and self.room != room:
+            async_to_sync(self.channel_layer.group_discard)(
+                self.room,
+                self.channel_name)
+        self.room = room
+        async_to_sync(self.channel_layer.group_add)(
+            self.room,
+            self.channel_name)
 
     def notification_message(self, event):
         self.send(json.dumps({'type': 'message',
