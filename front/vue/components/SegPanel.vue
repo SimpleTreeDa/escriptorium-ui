@@ -400,6 +400,9 @@ export default Vue.extend({
             colorMode: "color", //  color - binary - grayscale
             undoManager: new UndoManager(),
             isWorking: false,
+            // history operations run one after the other
+            historyQueue: Promise.resolve(),
+            pendingHistory: null,
             autoOrder: userProfile.get("autoOrder", true),
             toolbarDetached: false,
             toolbarDragging: false,
@@ -648,13 +651,16 @@ export default Vue.extend({
                     "baseline-editor:delete",
                     function (ev) {
                         let data = ev.detail;
-                        this.bulkDelete(data);
+                        const deletion = this.bulkDelete(data);
                         this.pushHistory(
-                            function () {
-                                this.bulkCreate(data, true);
+                            async function () {
+                                // the delete response carries what the undo restores:
+                                // the lines' text and the regions' lines
+                                await deletion;
+                                await this.bulkCreate(data, true);
                             }.bind(this),
                             function () {
-                                this.bulkDelete(data);
+                                return this.bulkDelete(data);
                             }.bind(this)
                         );
                     }.bind(this)
@@ -673,13 +679,13 @@ export default Vue.extend({
                         }
 
                         this.pushHistory(
-                            () => {
-                                this.bulkDelete({ lines: [data.createdLine] });
-                                this.bulkCreate(data, true);
+                            async () => {
+                                await this.bulkDelete({ lines: [data.createdLine] });
+                                await this.bulkCreate(data, true);
                             },
-                            () => {
-                                this.bulkDelete(data);
-                                this.bulkCreate({ lines: [data.createdLine]}, true);
+                            async () => {
+                                await this.bulkDelete(data);
+                                await this.bulkCreate({ lines: [data.createdLine]}, true);
                             }
                         )
 
@@ -712,21 +718,24 @@ export default Vue.extend({
                   data.regions.filter((l) => l.context.pk !== null)) ||
                 [],
                         };
-                        this.bulkCreate(toCreate, false);
-                        this.bulkUpdate(toUpdate);
+                        const change = Promise.all([
+                            this.bulkCreate(toCreate, false),
+                            this.bulkUpdate(toUpdate),
+                        ]);
                         this.pushHistory(
-                            function () {
-                                // undo
-                                this.bulkDelete(toCreate);
-                                this.bulkUpdate({
+                            async function () {
+                                // undo: the created lines only get their pk once saved
+                                await change;
+                                await this.bulkDelete(toCreate);
+                                await this.bulkUpdate({
                                     lines: toUpdate.lines.map((l) => l.previous),
                                     regions: toUpdate.regions.map((r) => r.previous),
                                 });
                             }.bind(this),
-                            function () {
+                            async function () {
                                 // redo
-                                this.bulkCreate(toCreate, true);
-                                this.bulkUpdate(toUpdate);
+                                await this.bulkCreate(toCreate, true);
+                                await this.bulkUpdate(toUpdate);
                             }.bind(this)
                         );
                     }.bind(this)
@@ -750,8 +759,7 @@ export default Vue.extend({
             );
         }
 
-        // when undo or redo completes, turn off isWorking
-        this.undoManager.setCallback(() => this.isWorking = false);
+        this.undoManager.setCallback(() => this.refreshHistoryBtns());
 
         this.$refs.img.addEventListener(
             "load",
@@ -785,9 +793,11 @@ export default Vue.extend({
         },
 
         pushHistory(undo, redo) {
+            // undo and redo return a promise: runHistory waits for it, so that
+            // the next operation only starts once this one is done
             this.undoManager.add({
-                undo: undo,
-                redo: redo,
+                undo: () => { this.pendingHistory = undo(); },
+                redo: () => { this.pendingHistory = redo(); },
             });
             this.refreshHistoryBtns();
         },
@@ -887,6 +897,9 @@ export default Vue.extend({
                         // also update pk in the original data for undo/redo
                         data.regions[i].context.pk = newRegion.pk;
                         this.$store.commit("regions/load", newRegion.pk);
+                        if (data.regions[i].linesForUndelete) {
+                            await this.relinkLines(data.regions[i].linesForUndelete, newRegion.pk);
+                        }
                     } catch (err) {
                         console.log("couldn't create region", err);
                     }
@@ -937,6 +950,16 @@ export default Vue.extend({
                     console.log("couldn't create lines", err);
                 }
             }
+        },
+        async relinkLines(pks, regionPk) {
+            // put the lines a deleted region had back into the recreated one
+            const segRegion = this.segmenter.regions.find((r) => r.context.pk == regionPk);
+            const lines = this.segmenter.lines.filter((l) => pks.includes(l.context.pk));
+            if (!lines.length) return;
+            const region = segRegion ? segRegion.get() : { context: { pk: regionPk } };
+            await this.bulkUpdate({
+                lines: lines.map((l) => ({ ...l.get(), region })),
+            });
         },
         async bulkUpdate(data) {
             if (data.regions && data.regions.length) {
@@ -989,7 +1012,7 @@ export default Vue.extend({
 
         async deleteRegion(region) {
             try {
-                this.$store.dispatch(
+                await this.$store.dispatch(
                     "regions/delete",
                     region.context.pk
                 );
@@ -1008,8 +1031,23 @@ export default Vue.extend({
 
         async bulkDelete(data) {
             if (data.regions && data.regions.length) {
+                const deletedLines = (data.lines || []).map((l) => l.context.pk);
+                for (const region of data.regions) {
+                    // the server unlinks a deleted region's lines: remember them
+                    // so that undoing the deletion puts them back into the region
+                    region.linesForUndelete = this.$store.state.lines.all
+                        .filter((l) => l.region == region.context.pk && !deletedLines.includes(l.pk))
+                        .map((l) => l.pk);
+                }
                 // regions don't have a bulk delete
                 await Promise.all(data.regions.map((r) => this.deleteRegion(r)));
+                for (const region of data.regions) {
+                    for (const pk of region.linesForUndelete) {
+                        if (this.$store.state.lines.all.some((l) => l.pk == pk)) {
+                            this.$store.commit("lines/update", { pk, region: null });
+                        }
+                    }
+                }
             }
             if (data.lines && data.lines.length) {
                 try {
@@ -1138,21 +1176,35 @@ export default Vue.extend({
         },
         /* History */
         undo() {
-            this.isWorking = true;
-            this.undoManager.undo();
-            this.refreshHistoryBtns();
+            return this.runHistory(() => this.undoManager.undo());
         },
         redo() {
-            this.isWorking = true;
-            this.undoManager.redo();
-            this.refreshHistoryBtns();
+            return this.runHistory(() => this.undoManager.redo());
+        },
+        runHistory(step) {
+            // undo and redo are queued: each one waits for the previous to finish,
+            // and the buttons are disabled meanwhile
+            this.historyQueue = this.historyQueue.then(async () => {
+                this.isWorking = true;
+                this.refreshHistoryBtns();
+                try {
+                    this.pendingHistory = null;
+                    step();
+                    await this.pendingHistory;
+                } catch (err) {
+                    console.error("couldn't undo or redo", err);
+                } finally {
+                    this.pendingHistory = null;
+                    this.isWorking = false;
+                    this.refreshHistoryBtns();
+                }
+            });
+            return this.historyQueue;
         },
         refreshHistoryBtns() {
             if (this.$refs.undo) {
-                if (this.undoManager.hasUndo()) this.$refs.undo.disabled = false;
-                else this.$refs.undo.disabled = true;
-                if (this.undoManager.hasRedo()) this.$refs.redo.disabled = false;
-                else this.$refs.redo.disabled = true;
+                this.$refs.undo.disabled = this.isWorking || !this.undoManager.hasUndo();
+                this.$refs.redo.disabled = this.isWorking || !this.undoManager.hasRedo();
             }
         },
         /**
