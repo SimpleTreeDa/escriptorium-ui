@@ -173,3 +173,10 @@ export const deletetag = async (project_id, tag_id) =>
 
 export const updatetag = async (project_id, tag_id, data) =>
     await axios.put(`/projects/${project_id}/tags/${tag_id}/`, data);
+
+// task reports of the document: those not ended first, then by end time, newest first
+// (PostgreSQL sorts null values first in descending order)
+export const retrieveTaskReports = async (document_id, page) =>
+    await axios.get(
+        `/tasks/?document=${document_id}&ordering=-done_at,-queued_at&paginate_by=50&page=${page}`,
+    );
