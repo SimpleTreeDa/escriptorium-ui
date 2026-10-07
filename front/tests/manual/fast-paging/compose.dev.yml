@@ -1,0 +1,34 @@
+# Throwaway stack for the fast-paging check (see README.md). Use together with the
+# root docker-compose.yml, from the repository root:
+#   docker compose -p issue6 -f docker-compose.yml -f front/tests/manual/fast-paging/compose.dev.yml \
+#     up -d --no-build db redis web channelserver nginx
+# Runs the pulled base image with this checkout's app/ and front/dist mounted, so nothing
+# is rebuilt. Paths are relative to the first compose file (the repository root).
+services:
+  web:
+    image: registry.gitlab.com/scripta/escriptorium/base:kraken6
+    working_dir: /usr/src/app
+    entrypoint: ["/usr/src/app/entrypoint.sh"]
+    environment:
+      - FRONTEND_DIR=/usr/src/app/front
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+    volumes:
+      - ./app:/usr/src/app
+      - ./front/dist:/usr/src/app/front
+  channelserver:
+    image: registry.gitlab.com/scripta/escriptorium/base:kraken6
+    working_dir: /usr/src/app
+    entrypoint: ["/usr/src/app/entrypoint.sh"]
+    environment:
+      - FRONTEND_DIR=/usr/src/app/front
+      - LANG=C.UTF-8
+      - LC_ALL=C.UTF-8
+    volumes:
+      - ./app:/usr/src/app
+      - ./front/dist:/usr/src/app/front
+  nginx:
+    # !override replaces the base file's 8080 mapping instead of adding to it, so this
+    # stack can run next to another one on 8080.
+    ports: !override
+      - "8081:80"
