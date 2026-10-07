@@ -1,0 +1,149 @@
+/* the comparison scrolls inside the panel */
+div.escr-editor-tabcontent #compare-panel .content-container {
+    overflow: auto;
+    max-height: none;
+    background-color: var(--background1);
+    color: var(--text1);
+}
+#compare-panel .compare-filter-toggle {
+    margin-left: 12px;
+    white-space: nowrap;
+}
+#compare-panel .compare-message {
+    margin: 16px;
+    font-size: 14px;
+    color: var(--text2);
+}
+
+/* what changed between the columns */
+#compare-panel .compare-bar {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--background2);
+}
+#compare-panel .compare-summaries {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 13px;
+    color: var(--text1);
+}
+#compare-panel .compare-pair {
+    font-weight: 700;
+}
+#compare-panel .compare-cer,
+#compare-panel .compare-skipped {
+    cursor: help;
+}
+#compare-panel .compare-skipped {
+    color: var(--text2);
+}
+
+/* a row per line, a column per version */
+#compare-panel .compare-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+#compare-panel .compare-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 6px 8px;
+    background-color: var(--background2);
+    font-weight: 400;
+    text-align: start;
+}
+#compare-panel .compare-column-heading {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+#compare-panel .compare-column-heading select {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    padding: 2px 4px;
+    border: 1px solid var(--background2-dark);
+    border-radius: 4px;
+    background-color: var(--background1);
+    color: var(--text1);
+    font-size: 13px;
+    text-overflow: ellipsis;
+}
+#compare-panel .compare-remove-column {
+    flex: 0 0 auto;
+    display: inline-flex;
+    padding: 4px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+}
+#compare-panel .compare-remove-column:hover {
+    background-color: var(--secondary-hover);
+}
+#compare-panel .compare-remove-column svg {
+    width: 12px;
+    height: 12px;
+    fill: currentColor;
+}
+#compare-panel .compare-table .compare-line-number {
+    width: 3rem;
+    text-align: end;
+    vertical-align: top;
+}
+#compare-panel .compare-table tbody th.compare-line-number button {
+    padding: 2px 6px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text2);
+    font-size: 12px;
+    cursor: pointer;
+}
+#compare-panel .compare-table tbody th.compare-line-number button:hover {
+    background-color: var(--secondary-hover);
+    color: var(--text1);
+}
+#compare-panel .compare-table tbody tr {
+    border-bottom: 1px solid var(--background2);
+}
+#compare-panel .compare-table tbody td {
+    padding: 4px 8px;
+    vertical-align: top;
+    /* right to left lines on the right, see dir="auto" */
+    text-align: start;
+    /* keep the spaces of the transcription, wrap long lines */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+#compare-panel .compare-table tbody tr.is-edited {
+    background-color: var(--background2);
+    box-shadow: inset 4px 0 0 var(--secondary);
+}
+#compare-panel .compare-note {
+    font-size: 12px;
+    font-style: italic;
+    color: var(--text2);
+}
+
+/* the differences with the column on the left */
+#compare-panel ins.compare-added {
+    text-decoration: none;
+    background-color: rgba(33, 150, 83, 0.25);
+    box-shadow: inset 0 -2px 0 rgba(33, 150, 83, 0.8);
+}
+#compare-panel del.compare-removed {
+    text-decoration: line-through;
+    background-color: rgba(232, 79, 79, 0.2);
+    color: var(--text2);
+}
