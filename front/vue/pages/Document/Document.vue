@@ -689,9 +689,9 @@ export default {
         },
         async websocketTaskListener(e) {
             const data = JSON.parse(e.data);
-            // handle task-related events
+            // handle task-related events; "parts:workflow" is sent when tasks are canceled
             const taskEvents = [
-                "export:", "import:", "part:mask", "part:workflow", "training:"
+                "export:", "import:", "part:mask", "part:workflow", "parts:workflow", "training:"
             ];
             if (
                 data.type === "event" && taskEvents.some((task) => data.name.startsWith(task))

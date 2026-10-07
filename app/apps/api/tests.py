@@ -24,7 +24,8 @@ from core.models import (
     Transcription,
 )
 from core.tests.factory import CoreFactoryTestCase
-from reporting.models import TaskGroup
+from imports.models import DocumentImport
+from reporting.models import TaskGroup, TaskReport
 
 
 class UserViewSetTestCase(CoreFactoryTestCase):
@@ -668,6 +669,112 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
         }])
         model.refresh_from_db()
         self.assertEqual(model.training, False)
+
+    @patch('api.views.send_event')
+    @patch('escriptorium.celery.app.control.revoke')
+    def test_cancel_tasks_of_one_task_group(self, mock_revoke, mock_send_event):
+        # The owner cancels a segmentation while another user trains a model
+        # and imports a file on the same document: only the segmentation stops.
+        other_user = self.factory.make_user()
+        model = self.factory.make_model(self.doc)
+        model.training = True
+        model.save()
+        training_group = TaskGroup.objects.create(created_by=other_user, document=self.doc)
+        training = self.doc.reports.create(user=other_user, label="Fake report", group=training_group,
+                                           task_id="11111", method="core.tasks.train", ocr_model=model)
+        training.start()
+        import_group = TaskGroup.objects.create(created_by=other_user, document=self.doc)
+        import_report = self.doc.reports.create(user=other_user, label="Fake report", group=import_group,
+                                                task_id="33333", method="imports.tasks.document_import")
+        import_report.start()
+        doc_import = DocumentImport.objects.create(document=self.doc, started_by=other_user,
+                                                   report=import_report,
+                                                   workflow_state=DocumentImport.WORKFLOW_STATE_STARTED)
+        segment_group = TaskGroup.objects.create(created_by=self.doc.owner, document=self.doc)
+        segments = [
+            self.doc.reports.create(user=self.doc.owner, label="Fake report", group=segment_group,
+                                    task_id="22222", method="core.tasks.segment", document_part=part)
+            for part in (self.part, self.part2)
+        ]
+        segments[0].start()
+
+        self.client.force_login(self.doc.owner)
+        resp = self.client.post(reverse('api:document-cancel-tasks', kwargs={'pk': self.doc.pk}),
+                                {'task_group': segment_group.pk})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['details'],
+                         f'Canceled 2 pending/running tasks linked to document {self.doc.name}.')
+
+        for report in segments:
+            report.refresh_from_db()
+            self.assertEqual(report.workflow_state, TaskReport.WORKFLOW_STATE_CANCELED)
+        self.assertEqual({call.args[0] for call in mock_revoke.call_args_list}, {"22222"})
+        training.refresh_from_db()
+        self.assertEqual(training.workflow_state, TaskReport.WORKFLOW_STATE_STARTED)
+        model.refresh_from_db()
+        self.assertEqual(model.training, True)
+        import_report.refresh_from_db()
+        self.assertEqual(import_report.workflow_state, TaskReport.WORKFLOW_STATE_STARTED)
+        doc_import.refresh_from_db()
+        self.assertEqual(doc_import.workflow_state, DocumentImport.WORKFLOW_STATE_STARTED)
+
+        self.assertEqual([call.args[2] for call in mock_send_event.call_args_list], ['parts:workflow'])
+        parts = mock_send_event.call_args.args[3]['parts']
+        self.assertEqual(sorted(parts, key=lambda p: p['id']), [
+            {'id': part.pk, 'process': 'segment', 'status': 'canceled', 'reason': 'Canceled.'}
+            for part in sorted((self.part, self.part2), key=lambda p: p.pk)
+        ])
+
+    @patch('escriptorium.celery.app.control.revoke')
+    def test_cancel_tasks_of_a_task_group_of_another_document(self, mock_revoke):
+        group = TaskGroup.objects.create(created_by=self.doc.owner, document=self.doc2)
+        report = self.doc.reports.create(user=self.doc.owner, label="Fake report", group=group,
+                                         task_id="11111", method="core.tasks.segment")
+
+        self.client.force_login(self.doc.owner)
+        resp = self.client.post(reverse('api:document-cancel-tasks', kwargs={'pk': self.doc.pk}),
+                                {'task_group': group.pk})
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['status'], 'error')
+        report.refresh_from_db()
+        self.assertEqual(report.workflow_state, TaskReport.WORKFLOW_STATE_QUEUED)
+        mock_revoke.assert_not_called()
+
+    @patch('escriptorium.celery.app.control.revoke')
+    def test_cancel_tasks_with_an_invalid_task_group(self, mock_revoke):
+        report = self.doc.reports.create(user=self.doc.owner, label="Fake report",
+                                         task_id="11111", method="core.tasks.segment")
+
+        self.client.force_login(self.doc.owner)
+        for value in ('abc', '', '-1'):
+            resp = self.client.post(reverse('api:document-cancel-tasks', kwargs={'pk': self.doc.pk}),
+                                    {'task_group': value})
+            self.assertEqual(resp.status_code, 400, value)
+        report.refresh_from_db()
+        self.assertEqual(report.workflow_state, TaskReport.WORKFLOW_STATE_QUEUED)
+        mock_revoke.assert_not_called()
+
+    @patch('api.views.send_event')
+    @patch('escriptorium.celery.app.control.revoke')
+    def test_cancel_all_tasks_sends_the_canceled_parts(self, mock_revoke, mock_send_event):
+        # A task on a part and a task on the whole document: the parts event
+        # lists only the part, whichever report the loop handles last.
+        self.doc.reports.create(user=self.doc.owner, label="Fake report", task_id="11111",
+                                method="core.tasks.segment", document_part=self.part)
+        self.doc.reports.create(user=self.doc.owner, label="Fake report", task_id="22222",
+                                method="core.tasks.train")
+
+        self.client.force_login(self.doc.owner)
+        resp = self.client.post(reverse('api:document-cancel-tasks', kwargs={'pk': self.doc.pk}))
+        self.assertEqual(resp.status_code, 200)
+
+        events = {call.args[2]: call.args[3] for call in mock_send_event.call_args_list}
+        self.assertEqual(events, {
+            'training: error': {'reason': 'Canceled.'},
+            'parts:workflow': {'parts': [
+                {'id': self.part.pk, 'process': 'segment', 'status': 'canceled', 'reason': 'Canceled.'}
+            ]},
+        })
 
     def test_task_group(self):
         # make fake reports
