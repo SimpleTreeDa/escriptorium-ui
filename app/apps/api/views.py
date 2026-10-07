@@ -99,7 +99,7 @@ from core.models import (
     Transcription,
 )
 from core.tasks import recalculate_masks
-from imports.forms import ExportForm, ImportForm
+from imports.forms import ExportForm, ImportForm, TEIReadinessForm
 from imports.parsers import ParseError
 from imports.tei.profile import folio_sequence, key_names
 from reporting.models import TaskGroup, TaskReport
@@ -533,6 +533,20 @@ class DocumentViewSet(ModelViewSet):
             return Response({'status': 'ok'})
         else:
             return self.form_error(json.dumps(form.errors))
+
+    @action(detail=True, methods=['post'])
+    def tei_check(self, request, pk=None):
+        """
+        What a "TEI (Ephrem)" export of the document would find, without exporting anything.
+        Takes the export's choices (transcription, region_types, parts; schema to also validate
+        against tei_all.rng) and returns the readiness report:
+        {"ready", "errors", "warnings", "summary", "pages", "record_id"}.
+        """
+        document = self.get_object()
+        form = TEIReadinessForm(document, request.user, request.data)
+        if not form.is_valid():
+            return self.form_error(json.dumps(form.errors))
+        return Response(form.check())
 
     def get_process_response(self, request, serializer_class):
         context = self.get_serializer_context()

@@ -8,6 +8,8 @@ The "TEI (Ephrem)" export (docs/tei/ephrem-tei-profile.md), in five stages:
 5. imports.export.EphremTEIExporter: write the .xml file, or a .zip with the images.
 
 check_document() runs stages 1 to 4 without writing anything: the "Check TEI readiness" report.
+It skips the RelaxNG validation unless asked: compiling tei_all.rng takes about 10 seconds and 70 MB
+per process, and with the data checks passed, a schema error can only be a bug in the exporter.
 A PAGE XML → TEI converter would replace stage 1 and reuse the others.
 """
 from dataclasses import dataclass
@@ -30,13 +32,14 @@ class Result:
     report: Report
 
 
-def file_errors(content):
+def file_errors(content, schema=True):
     """Stage 4: what is wrong with a TEI file (bytes), as messages; empty if nothing is."""
     try:
         tree = validation.parse(content)
     except etree.XMLSyntaxError as e:
         return [f"line {e.lineno}: {e.msg}"]
-    return validation.schema_errors(tree) + validation.link_errors(tree) + validation.requirement_errors(tree)
+    errors = validation.schema_errors(tree) if schema else []
+    return errors + validation.link_errors(tree) + validation.requirement_errors(tree)
 
 
 def export_document(document, part_pks, transcription, region_types):
@@ -55,12 +58,12 @@ def export_document(document, part_pks, transcription, region_types):
     return Result(content, plan, collected, report)
 
 
-def check_document(document, part_pks, transcription, region_types):
+def check_document(document, part_pks, transcription, region_types, schema=False):
     """What the export of these pages would find, as a dict for the readiness report. Writes no file."""
     collected = snapshot.collect(document, part_pks, transcription, region_types)
     plan, report = checks.check(collected)
     if plan is not None:
-        for message in file_errors(builder.build(plan)):
+        for message in file_errors(builder.build(plan), schema=schema):
             report.error(LINKS, message)
     result = report.as_dict()
     result["pages"] = len(collected.pages)

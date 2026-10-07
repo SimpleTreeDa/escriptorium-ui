@@ -471,6 +471,10 @@ EXPORT_OPENITI_MARKDOWN_ENABLED = os.getenv('EXPORT_OPENITI_MARKDOWN', "False").
 # Boolean used to enable the OpenITI TEI XML export mode
 EXPORT_TEI_XML_ENABLED = os.getenv('EXPORT_TEI_XML', "False").lower() not in ("false", "0")
 
+# The "TEI (Ephrem)" export (docs/tei/ephrem-tei-profile.md): the start of every record's URI.
+# idno type="URI" is this followed by the document's record_id; it is not written if this is empty.
+EPHREM_TEI_URI_BASE = os.getenv('EPHREM_TEI_URI_BASE', '')
+
 # catch-all exceptions, add them to report and skip the erroring files
 # set to True in a dev environment
 EXPORT_STRICT = False
