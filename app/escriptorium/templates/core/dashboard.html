@@ -1,0 +1,466 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+{% block head_title %}{% trans "Dashboard" %}{% endblock %}
+
+{% block nav-home-class %}active{% endblock %}
+{% block bodyclass %}dashboard{% endblock %}
+
+{% block body %}
+<style>
+/* Colors come from the theme variables so the page follows dark mode;
+   the fallbacks are the Bootstrap 4 defaults for the legacy light UI. */
+.escr-dashboard .card {
+    background-color: var(--background1, #fff);
+    color: var(--text1, inherit);
+    border-color: var(--background2, rgba(0, 0, 0, .125));
+}
+.escr-dashboard .card-header {
+    background-color: var(--background3, rgba(0, 0, 0, .03));
+    border-color: var(--background2, rgba(0, 0, 0, .125));
+}
+.escr-dashboard .card-header h5 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+.escr-dashboard h6.dashboard-subtitle {
+    margin: 0;
+    font-size: .95rem;
+    font-weight: 600;
+}
+.escr-dashboard .table {
+    color: inherit;
+    margin-bottom: 0;
+}
+.escr-dashboard .table td,
+.escr-dashboard .table th {
+    border-color: var(--background2, #dee2e6);
+    vertical-align: middle;
+}
+.escr-dashboard .table-hover tbody tr:hover {
+    background-color: var(--background2-focus, rgba(0, 0, 0, .075));
+    color: inherit;
+}
+.escr-dashboard .list-group-item {
+    background-color: transparent;
+    color: inherit;
+    border-color: var(--background2, rgba(0, 0, 0, .125));
+}
+.escr-dashboard .text-muted {
+    color: var(--text2, #6c757d) !important;
+}
+.escr-dashboard .progress {
+    background-color: var(--background2, #e9ecef);
+}
+.escr-dashboard .dashboard-empty {
+    padding: 1rem;
+    color: var(--text2, #6c757d);
+}
+.escr-dashboard .dashboard-empty .btn {
+    margin-top: .5rem;
+}
+.escr-dashboard .quick-actions .btn {
+    text-align: left;
+}
+.escr-dashboard .quick-actions .btn i {
+    width: 1.5rem;
+    text-align: center;
+}
+.escr-dashboard .task-label {
+    max-width: 18rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+@media (max-width: 575.98px) {
+    .escr-dashboard .task-label {
+        max-width: 10rem;
+    }
+}
+</style>
+
+<div class="escr-dashboard py-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+        <h2 class="mb-2 mr-3">
+            {% if user.get_short_name %}
+                {% blocktrans with name=user.get_short_name %}Welcome back, {{ name }}{% endblocktrans %}
+            {% else %}
+                {% blocktrans with name=user.get_username %}Welcome back, {{ name }}{% endblocktrans %}
+            {% endif %}
+        </h2>
+        <div class="mb-2">
+            <a class="btn btn-outline-secondary btn-sm" href="{% url 'projects-list' %}">{% trans "My Projects" %}</a>
+            <a class="btn btn-outline-secondary btn-sm" href="{% url 'user-models' %}">{% trans "My Models" %}</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            {# ---------------- Continue where you left off ---------------- #}
+            <div class="card mb-3" id="dashboard-recent">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <h5><i class="fas fa-history mr-1"></i> {% trans "Continue where you left off" %}</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="d-flex align-items-center justify-content-between px-3 pt-3 pb-2">
+                        <h6 class="dashboard-subtitle">{% trans "Recent documents" %}</h6>
+                        <a class="small" href="{% url 'projects-list' %}">{% trans "All projects" %}</a>
+                    </div>
+                    {% if recent_documents %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <tbody>
+                                {% for document in recent_documents %}
+                                <tr>
+                                    <td class="pl-3">
+                                        <a href="{% url 'document-images' pk=document.pk %}">{{ document.name }}</a>
+                                        <div class="small text-muted">
+                                            <a class="text-muted" href="{% url 'documents-list' slug=document.project.slug %}">{{ document.project.name }}</a>
+                                        </div>
+                                    </td>
+                                    <td class="text-nowrap">
+                                        {% blocktrans count n=document.parts_count %}1 page{% plural %}{{ n }} pages{% endblocktrans %}
+                                    </td>
+                                    <td class="text-nowrap text-muted small pr-3" title="{{ document.updated_at }}">
+                                        {% blocktrans with when=document.updated_at|timesince %}{{ when }} ago{% endblocktrans %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="dashboard-empty">
+                        {% trans "You do not have any documents yet." %}
+                        {% if quick_action_project %}
+                        <br><a class="btn btn-sm btn-success" href="{% url 'document-create' slug=quick_action_project.slug %}">{% trans "Create a document" %}</a>
+                        {% else %}
+                        <br><a class="btn btn-sm btn-success" href="{% url 'project-create' %}">{% trans "Create your first project" %}</a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <div class="d-flex align-items-center justify-content-between px-3 pt-3 pb-2">
+                        <h6 class="dashboard-subtitle">{% trans "Recent projects" %}</h6>
+                        <a class="small" href="{% url 'projects-list' %}">{% trans "All projects" %}</a>
+                    </div>
+                    {% if recent_projects %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <tbody>
+                                {% for project in recent_projects %}
+                                <tr>
+                                    <td class="pl-3">
+                                        <a href="{% url 'documents-list' slug=project.slug %}">{{ project.name }}</a>
+                                        {% if project.owner_id != user.pk %}
+                                        <div class="small text-muted">{% blocktrans with owner=project.owner.username %}Owned by {{ owner }}{% endblocktrans %}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-nowrap">
+                                        {% blocktrans count n=project.documents_count %}1 document{% plural %}{{ n }} documents{% endblocktrans %}
+                                    </td>
+                                    <td class="text-nowrap text-muted small pr-3" title="{{ project.updated_at }}">
+                                        {% blocktrans with when=project.updated_at|timesince %}{{ when }} ago{% endblocktrans %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="dashboard-empty">
+                        {% trans "You do not have any projects yet." %}
+                        <br><a class="btn btn-sm btn-success" href="{% url 'project-create' %}">{% trans "Create your first project" %}</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# ---------------- Activity and tasks ---------------- #}
+            <div class="card mb-3" id="dashboard-tasks">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <h5><i class="fas fa-tasks mr-1"></i> {% trans "Activity and tasks" %}</h5>
+                    <span class="small">
+                        <a href="{% url 'documents-tasks-list' %}">{% trans "Tasks monitoring" %}</a>
+                        &middot;
+                        <a href="{% url 'report-list' %}">{% trans "Task reports" %}</a>
+                    </span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="px-3 pt-3 pb-2">
+                        <h6 class="dashboard-subtitle">{% trans "Running and queued" %}</h6>
+                    </div>
+                    {% if running_tasks %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <tbody>
+                                {% for task in running_tasks %}
+                                <tr>
+                                    <td class="pl-3">
+                                        <div class="task-label" title="{{ task.label }}">{{ task.label }}</div>
+                                        {% if task.document %}
+                                        <div class="small text-muted">
+                                            <a class="text-muted" href="{% url 'document-detail' pk=task.document.pk %}">{{ task.document.name }}</a>
+                                            {% if task.user_id != user.pk %}&middot; {{ task.user.username }}{% endif %}
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-nowrap">
+                                        {% if task.workflow_state == task.WORKFLOW_STATE_STARTED %}
+                                        <span class="badge badge-primary">{{ task.get_workflow_state_display }}</span>
+                                        {% else %}
+                                        <span class="badge badge-secondary">{{ task.get_workflow_state_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-nowrap text-muted small pr-3" title="{{ task.queued_at }}">
+                                        {% blocktrans with when=task.queued_at|timesince %}queued {{ when }} ago{% endblocktrans %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="dashboard-empty">
+                        {% trans "Nothing is running right now." %}
+                        {% if quick_action_document %}
+                        <br><a class="btn btn-sm btn-outline-primary" href="{% url 'document-images' pk=quick_action_document.pk %}">{% trans "Import images or launch a task" %}</a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <div class="px-3 pt-3 pb-2">
+                        <h6 class="dashboard-subtitle">
+                            {% blocktrans count n=failures_days %}Failures in the last day{% plural %}Failures in the last {{ n }} days{% endblocktrans %}
+                        </h6>
+                    </div>
+                    {% if failed_tasks %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <tbody>
+                                {% for task in failed_tasks %}
+                                <tr>
+                                    <td class="pl-3">
+                                        <div class="task-label" title="{{ task.label }}">
+                                            <i class="fas fa-exclamation-triangle text-danger mr-1"></i>
+                                            {% if task.user_id == user.pk %}
+                                            <a href="{% url 'report-detail' pk=task.pk %}">{{ task.label }}</a>
+                                            {% else %}
+                                            {{ task.label }}
+                                            {% endif %}
+                                        </div>
+                                        {% if task.document %}
+                                        <div class="small text-muted">
+                                            <a class="text-muted" href="{% url 'document-detail' pk=task.document.pk %}">{{ task.document.name }}</a>
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-nowrap text-muted small pr-3" title="{{ task.done_at }}">
+                                        {% blocktrans with when=task.done_at|timesince %}{{ when }} ago{% endblocktrans %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="dashboard-empty pt-0">{% trans "No failed tasks." %}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# ---------------- Shared with me ---------------- #}
+            <div class="card mb-3" id="dashboard-shared">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <h5><i class="fas fa-users mr-1"></i> {% trans "Shared with me" %}</h5>
+                    <a class="small" href="{% url 'projects-list' %}">{% trans "All projects" %}</a>
+                </div>
+                <div class="card-body p-0">
+                    {% if shared_documents or shared_projects %}
+                    <div class="row no-gutters">
+                        <div class="col-md-6">
+                            <div class="px-3 pt-3 pb-2"><h6 class="dashboard-subtitle">{% trans "Projects" %}</h6></div>
+                            {% if shared_projects %}
+                            <ul class="list-group list-group-flush">
+                                {% for project in shared_projects %}
+                                <li class="list-group-item py-2">
+                                    <a href="{% url 'documents-list' slug=project.slug %}">{{ project.name }}</a>
+                                    <div class="small text-muted">{% blocktrans with owner=project.owner.username %}Owned by {{ owner }}{% endblocktrans %}</div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            {% else %}
+                            <div class="dashboard-empty pt-0">{% trans "No project has been shared with you." %}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <div class="px-3 pt-3 pb-2"><h6 class="dashboard-subtitle">{% trans "Documents" %}</h6></div>
+                            {% if shared_documents %}
+                            <ul class="list-group list-group-flush">
+                                {% for document in shared_documents %}
+                                <li class="list-group-item py-2">
+                                    <a href="{% url 'document-images' pk=document.pk %}">{{ document.name }}</a>
+                                    <div class="small text-muted">
+                                        {{ document.project.name }}
+                                        &middot; {% blocktrans with owner=document.owner.username %}Owned by {{ owner }}{% endblocktrans %}
+                                    </div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            {% else %}
+                            <div class="dashboard-empty pt-0">{% trans "No document has been shared with you." %}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="dashboard-empty">
+                        {% trans "Nothing has been shared with you yet. Projects and documents that colleagues share with you, directly or through a team, will show up here." %}
+                        <br><a class="btn btn-sm btn-outline-primary" href="{% url 'profile-team-list' %}">{% trans "Create or join a team" %}</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            {# ---------------- Quick actions ---------------- #}
+            <div class="card mb-3" id="dashboard-quick-actions">
+                <div class="card-header"><h5><i class="fas fa-bolt mr-1"></i> {% trans "Quick actions" %}</h5></div>
+                <div class="card-body quick-actions d-flex flex-column">
+                    <a class="btn btn-success btn-block" href="{% url 'project-create' %}"><i class="fas fa-folder-plus"></i> {% trans "New project" %}</a>
+                    {% if quick_action_project %}
+                    <a class="btn btn-outline-primary btn-block" href="{% url 'document-create' slug=quick_action_project.slug %}" title="{% blocktrans with project=quick_action_project.name %}In project {{ project }}{% endblocktrans %}"><i class="fas fa-file-medical"></i> {% trans "New document" %}</a>
+                    {% else %}
+                    <a class="btn btn-outline-primary btn-block disabled" aria-disabled="true" href="#" title="{% trans "Create a project first" %}"><i class="fas fa-file-medical"></i> {% trans "New document" %}</a>
+                    {% endif %}
+                    {% if quick_action_document %}
+                    <a class="btn btn-outline-primary btn-block" href="{% url 'document-images' pk=quick_action_document.pk %}" title="{% blocktrans with document=quick_action_document.name %}Into {{ document }}{% endblocktrans %}"><i class="fas fa-images"></i> {% trans "Import images" %}</a>
+                    {% else %}
+                    <a class="btn btn-outline-primary btn-block disabled" aria-disabled="true" href="#" title="{% trans "Create a document first" %}"><i class="fas fa-images"></i> {% trans "Import images" %}</a>
+                    {% endif %}
+                    <a class="btn btn-outline-primary btn-block" href="{% url 'model-upload' %}"><i class="fas fa-upload"></i> {% trans "Upload a model" %}</a>
+                    {% if not DISABLE_ELASTICSEARCH %}
+                    <a class="btn btn-outline-primary btn-block" href="{% url 'search' %}"><i class="fas fa-search"></i> {% trans "Search" %}</a>
+                    <a class="btn btn-outline-primary btn-block" href="{% url 'find-replace' %}"><i class="fas fa-sync-alt"></i> {% trans "Find & Replace" %}</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# ---------------- Teams and invitations ---------------- #}
+            <div class="card mb-3" id="dashboard-teams">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <h5><i class="fas fa-user-friends mr-1"></i> {% trans "Teams" %}</h5>
+                    <a class="small" href="{% url 'profile-team-list' %}">{% trans "Manage" %}</a>
+                </div>
+                {% if teams %}
+                <ul class="list-group list-group-flush">
+                    {% for team in teams %}
+                    <li class="list-group-item py-2 d-flex justify-content-between align-items-center">
+                        <span>
+                            {% if team.groupowner.owner_id == user.pk %}
+                            <a href="{% url 'team-detail' pk=team.pk %}">{{ team.name }}</a>
+                            <span class="small text-muted">({% trans "owner" %})</span>
+                            {% else %}
+                            {{ team.name }}
+                            {% endif %}
+                        </span>
+                        <span class="badge badge-secondary badge-pill" title="{% trans "Members" %}">
+                            {% blocktrans count n=team.members_count %}1 member{% plural %}{{ n }} members{% endblocktrans %}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="dashboard-empty">
+                    {% trans "You are not part of any team yet." %}
+                    <br><a class="btn btn-sm btn-outline-primary" href="{% url 'profile-team-list' %}">{% trans "Create a team" %}</a>
+                </div>
+                {% endif %}
+
+                {% if pending_invitations %}
+                <div class="card-body pt-3 pb-2 border-top">
+                    <h6 class="dashboard-subtitle">{% trans "Invitations waiting for you" %}</h6>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for invitation in pending_invitations %}
+                    <li class="list-group-item py-2 d-flex justify-content-between align-items-center">
+                        <span>
+                            {% if invitation.group %}
+                            {% blocktrans with team_name=invitation.group.name sender=invitation.sender.username %}Invited to {{ team_name }} by {{ sender }}{% endblocktrans %}
+                            {% else %}
+                            {% blocktrans with sender=invitation.sender.username %}Invited by {{ sender }}{% endblocktrans %}
+                            {% endif %}
+                        </span>
+                        {% if invitation.group %}
+                        <a class="btn btn-sm btn-success ml-2" href="{% url 'accept-group-invitation' invitation.token %}">{% trans "Accept" %}</a>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+
+                {% if perms.users.can_invite %}
+                <div class="card-body py-2 border-top small">
+                    {% if sent_invitations_count %}
+                    <a href="{% url 'profile-invites-list' %}">
+                        {% blocktrans count n=sent_invitations_count %}1 invitation you sent is pending{% plural %}{{ n }} invitations you sent are pending{% endblocktrans %}
+                    </a>
+                    {% else %}
+                    <a href="{% url 'profile-invites-list' %}">{% trans "Invitations you sent" %}</a>
+                    &middot; <a href="{% url 'send-invitation' %}">{% trans "Invite someone" %}</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            {# ---------------- Quotas ---------------- #}
+            {% if quotas is not None %}
+            <div class="card mb-3" id="dashboard-quotas">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <h5><i class="fas fa-tachometer-alt mr-1"></i> {% trans "Quotas" %}</h5>
+                    <a class="small" href="{% url 'report-list' %}">{% trans "Details" %}</a>
+                </div>
+                <div class="card-body">
+                    {% for quota in quotas %}
+                    <div class="{% if not forloop.last %}mb-3{% endif %}">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span>{{ quota.label }}</span>
+                            <span class="text-muted">
+                                {% if quota.unit == 'bytes' %}
+                                {{ quota.used|filesizeformat }} / {{ quota.limit|filesizeformat }}
+                                {% else %}
+                                {{ quota.used|floatformat:0 }} / {{ quota.limit }} {% trans "min" %}
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="progress" style="height: .6rem;">
+                            <div class="progress-bar{% if quota.exhausted %} bg-danger{% elif quota.percentage > 80 %} bg-warning{% endif %}" role="progressbar" aria-valuenow="{{ quota.percentage }}" aria-valuemin="0" aria-valuemax="100" style="width: {{ quota.percentage }}%;" title="{{ quota.percentage }}%"></div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-muted small">{% trans "No limits apply to your account." %}</div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            {# ---------------- Help ---------------- #}
+            <div class="card mb-3" id="dashboard-help">
+                <div class="card-header"><h5><i class="fas fa-question-circle mr-1"></i> {% trans "Help" %}</h5></div>
+                <div class="card-body py-2">
+                    <ul class="list-unstyled mb-0">
+                        <li><a href="https://escriptorium.readthedocs.io/" target="_blank" rel="noopener">{% trans "Tutorial" %}</a></li>
+                        <li><a href="https://groupes.renater.fr/sympa/subscribe/escriptorium-users" target="_blank" rel="noopener">{% trans "User mailing list" %}</a></li>
+                        <li><a href="https://matrix.to/#/#escripta_escriptorium:gitter.im" target="_blank" rel="noopener">{% trans "Community Chat" %}</a></li>
+                        <li><a href="{% url 'contactus' %}">{% trans "Contact" %}</a></li>
+                    </ul>
+                    <div class="small text-muted mt-2">
+                        <a class="text-muted" href="{% url 'contributors' %}">{% trans "Contributors" %}</a>
+                        &middot; <a class="text-muted" href="{% url 'credits' %}">{% trans "Credits" %}</a>
+                        &middot; {% trans "Version" %} {{ VERSION_DATE }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

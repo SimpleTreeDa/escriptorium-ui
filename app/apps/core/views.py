@@ -1,10 +1,12 @@
 import json
 import logging
+from datetime import timedelta
 from math import ceil
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.models import Group
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Page, Paginator
@@ -18,6 +20,7 @@ from django.http import (
 )
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.functional import cached_property
 from django.utils.translation import gettext as _
 from django.views.generic import (
@@ -68,7 +71,7 @@ from core.tasks import replace_line_transcriptions_text
 from imports.forms import DocumentOntologyImportForm, ExportForm, ImportForm
 from imports.serializers import OntologyImportSerializer
 from reporting.models import TaskReport
-from users.models import User
+from users.models import Invitation, User
 
 logger = logging.getLogger(__name__)
 
@@ -92,13 +95,158 @@ class PerPageMixin():
 
 
 class Home(TemplateView):
+    """
+    Public landing page for anonymous visitors,
+    personal dashboard for authenticated users.
+    """
     template_name = 'core/home.html'
+    dashboard_template_name = 'core/dashboard.html'
+
+    # how many items each dashboard list shows before linking to the full page
+    RECENT_LIMIT = 5
+    TASKS_LIMIT = 10
+    FAILURES_DAYS = 7
+
+    def get_template_names(self):
+        if self.request.user.is_authenticated:
+            return [self.dashboard_template_name]
+        return [self.template_name]
 
     def get_context_data(self, *args, **kwargs):
         context = super().get_context_data(*args, **kwargs)
         context['VERSION_DATE'] = settings.VERSION_DATE
         context['KRAKEN_VERSION'] = settings.KRAKEN_VERSION
+        if self.request.user.is_authenticated:
+            context.update(self.get_dashboard_context(self.request.user))
         return context
+
+    def get_dashboard_context(self, user):
+        accessible_documents = Document.objects.for_user(user)
+
+        recent_documents = list(
+            accessible_documents
+            .select_related('project')
+            .annotate(parts_count=Count('parts', distinct=True))
+            .order_by('-updated_at')[:self.RECENT_LIMIT]
+        )
+        recent_projects = list(
+            Project.objects.for_user_read(user)
+            .select_related('owner')
+            .annotate(documents_count=Count(
+                'documents',
+                filter=~Q(documents__workflow_state=Document.WORKFLOW_STATE_ARCHIVED),
+                distinct=True))
+            .order_by('-updated_at')[:self.RECENT_LIMIT]
+        )
+
+        # Items the user can access without owning them (directly or through a team).
+        shared_documents = list(
+            accessible_documents
+            .exclude(owner=user)
+            .exclude(project__owner=user)
+            .select_related('project')
+            .order_by('-updated_at')[:self.RECENT_LIMIT]
+        )
+        shared_projects = list(
+            Project.objects.for_user_read(user)
+            .exclude(owner=user)
+            .select_related('owner')
+            .order_by('-updated_at')[:self.RECENT_LIMIT]
+        )
+
+        # Tasks launched by the user, or running on documents the user can see.
+        visible_tasks = TaskReport.objects.filter(
+            Q(user=user) | Q(document__in=accessible_documents.values('pk'))
+        ).select_related('document', 'user')
+        running_tasks = list(
+            visible_tasks
+            .filter(workflow_state__in=[TaskReport.WORKFLOW_STATE_QUEUED,
+                                        TaskReport.WORKFLOW_STATE_STARTED])
+            .order_by('-queued_at')[:self.TASKS_LIMIT]
+        )
+        failed_tasks = list(
+            visible_tasks
+            .filter(workflow_state=TaskReport.WORKFLOW_STATE_ERROR,
+                    done_at__gte=timezone.now() - timedelta(days=self.FAILURES_DAYS))
+            .order_by('-done_at')[:self.RECENT_LIMIT]
+        )
+
+        teams = list(
+            Group.objects.filter(user=user)
+            .select_related('groupowner__owner')
+            .annotate(members_count=Count('user', distinct=True))
+            .order_by('name')
+        )
+        pending_invitations = list(
+            Invitation.objects.filter(recipient=user,
+                                      workflow_state__lt=Invitation.STATE_ACCEPTED)
+            .select_related('group', 'sender')
+            .order_by('-created_at')[:self.RECENT_LIMIT]
+        )
+        sent_invitations_count = (
+            user.invitations_sent.filter(workflow_state__lt=Invitation.STATE_ACCEPTED).count()
+            if user.has_perm('users.can_invite') else 0
+        )
+
+        # Target project/document for the quick actions that need one.
+        quick_action_project = (
+            Project.objects.for_user_write(user)
+            .only('name', 'slug')
+            .order_by('-updated_at')
+            .first()
+        )
+        quick_action_document = recent_documents[0] if recent_documents else None
+
+        return {
+            'recent_documents': recent_documents,
+            'recent_projects': recent_projects,
+            'shared_documents': shared_documents,
+            'shared_projects': shared_projects,
+            'running_tasks': running_tasks,
+            'failed_tasks': failed_tasks,
+            'failures_days': self.FAILURES_DAYS,
+            'teams': teams,
+            'pending_invitations': pending_invitations,
+            'sent_invitations_count': sent_invitations_count,
+            'quick_action_project': quick_action_project,
+            'quick_action_document': quick_action_document,
+            'quotas': self.get_quotas(user),
+        }
+
+    def get_quotas(self, user):
+        """
+        Usage against limits for each enforced quota, or None when quotas are disabled.
+        Mirrors the calculation done on the task reports page.
+        """
+        if settings.DISABLE_QUOTAS:
+            return None
+
+        quotas = []
+        disk_limit = user.disk_storage_limit()
+        if disk_limit is not None:
+            quotas.append(self._quota_entry(
+                _("Disk storage"), user.calc_disk_usage(), disk_limit, 'bytes'))
+        cpu_limit = user.cpu_minutes_limit()
+        if cpu_limit is not None:
+            quotas.append(self._quota_entry(
+                _("CPU minutes (last week)"), user.calc_cpu_usage(), cpu_limit, 'minutes'))
+        gpu_limit = user.gpu_minutes_limit()
+        if gpu_limit is not None:
+            quotas.append(self._quota_entry(
+                _("GPU minutes (last week)"), user.calc_gpu_usage(), gpu_limit, 'minutes'))
+        return quotas
+
+    @staticmethod
+    def _quota_entry(label, used, limit, unit):
+        percentage = min(round(used * 100 / limit, 2), 100) if limit else 100
+        return {
+            'label': label,
+            'used': used,
+            'limit': limit,
+            'unit': unit,
+            'percentage': percentage,
+            'exhausted': used >= limit,
+        }
 
 
 class BaseSearch(LoginRequiredMixin, PerPageMixin, FormView, TemplateView):
