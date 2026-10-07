@@ -94,6 +94,36 @@ def normalize_key_name(name):
     return re.sub(r"\s+", " ", (name or "").strip().lower())
 
 
+WEB_ADDRESS = re.compile(r"^https?://\S+$")
+
+
+def is_web_address(value):
+    """True for an http(s) URL without spaces, such as a Syriaca.org work URI."""
+    return bool(WEB_ADDRESS.match(value or ""))
+
+
+# The page Name is the folio: a number and r (recto) or v (verso), e.g. 23r.
+FOLIO = re.compile(r"^\s*(\d+)\s*([rv])\s*$", re.IGNORECASE)
+
+
+def folio_sequence(start, count):
+    """
+    count folios from start, recto then verso: folio_sequence("1r", 4) is 1r, 1v, 2r, 2v.
+    Raises ValueError if start is not a folio.
+    """
+    match = FOLIO.match(start or "")
+    if not match or int(match.group(1)) < 1:
+        raise ValueError(start)
+    number, side = int(match.group(1)), match.group(2).lower()
+    folios = []
+    for _ in range(count):
+        folios.append(f"{number}{side}")
+        if side == "v":
+            number += 1
+        side = "v" if side == "r" else "r"
+    return folios
+
+
 # A record id becomes TEI/@xml:id, the end of the record's URI and the file name.
 RECORD_ID = re.compile(r"^[A-Za-z_][A-Za-z0-9._-]*$")
 # prefixes of the other ids in the file, which a record id must not start with

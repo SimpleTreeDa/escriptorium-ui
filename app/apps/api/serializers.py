@@ -47,6 +47,7 @@ from core.utils import normalize_text
 from imports.forms import FileImportError, clean_import_uri, clean_upload_file
 from imports.models import DocumentImport
 from imports.tasks import document_import
+from imports.tei.profile import BULK_PAGE_KEYS, folio_sequence, is_web_address
 from reporting.models import TaskGroup, TaskReport
 from users.consumers import send_event
 from users.models import Group, User
@@ -614,6 +615,31 @@ class PartEditorialStatusSerializer(serializers.ModelSerializer):
 class SetEditorialStatusSerializer(serializers.Serializer):
     parts = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
     status = serializers.ChoiceField(choices=DocumentPart.EDITORIAL_STATUS_CHOICES)
+
+
+class SetPartsMetadataSerializer(serializers.Serializer):
+    """A TEI page metadata value for several elements; an empty value removes it."""
+    parts = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
+    key = serializers.ChoiceField(choices=BULK_PAGE_KEYS)
+    value = serializers.CharField(allow_blank=True, max_length=512)
+
+    def validate(self, data):
+        if data['key'] == 'work_uri' and data['value'] and not is_web_address(data['value']):
+            raise serializers.ValidationError(
+                {'value': [_("A work URI is a web address that starts with http:// or https://, without spaces.")]})
+        return data
+
+
+class NumberFoliosSerializer(serializers.Serializer):
+    """Folio names for several elements, from the first one: 1r gives 1r, 1v, 2r, 2v..."""
+    parts = serializers.ListField(child=serializers.IntegerField(), allow_empty=False)
+    start = serializers.CharField()
+
+    def validate_start(self, start):
+        try:
+            return folio_sequence(start, 1)[0]
+        except ValueError:
+            raise serializers.ValidationError(_("Give the first folio as a number and r or v, e.g. 1r or 23v."))
 
 
 class PartSerializer(serializers.ModelSerializer):
