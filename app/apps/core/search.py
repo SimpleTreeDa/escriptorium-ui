@@ -4,6 +4,8 @@ from urllib.parse import unquote_plus
 from django.conf import settings
 from django.contrib.postgres.search import SearchHeadline, SearchQuery
 from django.db.models import CharField, F, Func, Value
+from django.utils.html import escape
+from django.utils.safestring import mark_safe
 from elasticsearch import Elasticsearch
 
 EXTRACT_EXACT_TERMS_REGEXP = '"[^"]+"'
@@ -146,3 +148,19 @@ def build_highlighted_replacement_psql(mode, find_terms, replace_term, highlight
         extra = {"flags": re.IGNORECASE}
 
     return re.sub(r'<strong class="text-danger">%s</strong>' % find_terms, r'<strong class="text-success">%s</strong>' % replace_term, highlighted_content, **extra)
+
+
+# the tags marking the matches in a highlighted result (see highlight_class and pre_tags)
+HIGHLIGHT_TAGS_REGEXP = re.compile(r'(<strong class="text-(?:danger|success)">|</strong>)')
+
+
+def escape_highlighted(highlighted):
+    """
+    Escape the text of a highlighted result (line content, replacement term) for HTML,
+    keeping only the tags marking the matches: the text is never rendered as markup.
+    """
+    if not highlighted:
+        return highlighted
+    # with a capturing group, split() puts the tags at the odd indexes
+    parts = HIGHLIGHT_TAGS_REGEXP.split(highlighted)
+    return mark_safe("".join(part if i % 2 else escape(part) for i, part in enumerate(parts)))

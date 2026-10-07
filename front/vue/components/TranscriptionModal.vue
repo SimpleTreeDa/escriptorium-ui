@@ -225,7 +225,7 @@
                                     @keyup.right="editLine('next')"
                                     @keyup.left="editLine('previous')"
                                     @keyup.enter="cleanHTMLTags();recomputeInputCharsScaleY();editLine('next')"
-                                    v-html="localTranscription"
+                                    v-text="localTranscription"
                                 />
                             </div>
                         </div>
@@ -263,10 +263,13 @@
                                     :key="'TrC' + trans.pk"
                                     class="d-table-row"
                                 >
-                                    <div
-                                        class="d-table-cell col"
-                                        v-html="comparedContent(trans.content)"
-                                    />
+                                    <div class="d-table-cell col">
+                                        <TextDiff
+                                            v-if="line.currentTrans"
+                                            :before="line.currentTrans.content"
+                                            :after="trans.content"
+                                        />
+                                    </div>
                                     <div
                                         class="d-table-cell text-muted text-nowrap col"
                                         title="Transcription name"
@@ -327,10 +330,13 @@
                                     :key="'TrC' + trans.pk"
                                     class="d-table-row"
                                 >
-                                    <div
-                                        class="d-table-cell col"
-                                        v-html="comparedContent(trans.content)"
-                                    />
+                                    <div class="d-table-cell col">
+                                        <TextDiff
+                                            v-if="line.currentTrans"
+                                            :before="line.currentTrans.content"
+                                            :after="trans.content"
+                                        />
+                                    </div>
                                     <div
                                         class="d-table-cell text-muted text-nowrap col"
                                         title="Transcription name"
@@ -438,6 +444,7 @@ import SaveStatus from "./SaveStatus/SaveStatus.vue";
 import HelpVersions from "./HelpVersions.vue";
 import HelpCompareTranscriptions from "./HelpCompareTranscriptions.vue";
 import ToggleButton from "./ToggleButton/ToggleButton.vue";
+import TextDiff from "./TextDiff.vue";
 import TranscriptionSelector from "./TranscriptionSelector/TranscriptionSelector.vue";
 import XIcon from "./Icons/XIcon/XIcon.vue";
 import { normalizeText, sameText } from "../../src/editor/text";
@@ -453,6 +460,7 @@ export default Vue.extend({
         HelpVersions,
         SaveStatus,
         HelpCompareTranscriptions,
+        TextDiff,
         ToggleButton,
         TranscriptionSelector,
         XIcon,
@@ -587,7 +595,7 @@ export default Vue.extend({
 
                 // get text representation of clipboard
                 var text = (e.originalEvent || e).clipboardData.getData("text/plain");
-                this.innerHTML = text;
+                this.textContent = text;
                 modele.recomputeInputCharsScaleY();
 
             }, false);
@@ -622,7 +630,10 @@ export default Vue.extend({
         },
 
         cleanHTMLTags(){
-            document.getElementById("vertical_text_input").innerHTML = document.getElementById("vertical_text_input").textContent;
+            // keep only the text (never parse it as HTML: it can contain tags as text)
+            let input = document.getElementById("vertical_text_input");
+            const text = input.textContent;
+            input.textContent = text;
         },
         recomputeInputCharsScaleY(){
 
@@ -633,19 +644,6 @@ export default Vue.extend({
             // to avoid input text outside the border box:
             if(inputHeight > wrapperHeight)
                 document.getElementById("vertical_text_input").style.transform = "scaleY("+textScaleY+")";
-        },
-        comparedContent(content) {
-            if (!this.line.currentTrans) return;
-            let diff = Diff.diffChars(this.line.currentTrans.content, content);
-            return diff.map(function(part){
-                if (part.removed) {
-                    return '<span class="cmp-del">'+part.value+"</span>";
-                } else if (part.added) {
-                    return '<span class="cmp-add">'+part.value+"</span>";
-                } else {
-                    return part.value;
-                }
-            }.bind(this)).join("");
         },
 
         getLineAngle() {

@@ -1,8 +1,6 @@
-import html
 import logging
 import os.path
 
-import bleach
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db.models import Count, Max, Min, Q
@@ -706,18 +704,15 @@ class BlockSerializer(serializers.ModelSerializer):
 
 
 class LineTranscriptionSerializer(serializers.ModelSerializer):
+    # content is plain text ('&', '<abc>'...), stored as typed apart from its Unicode
+    # normalization: it is escaped wherever it is displayed, never rendered as HTML
     class Meta:
         model = LineTranscription
         fields = ('pk', 'line', 'transcription', 'content', 'graphs', 'avg_confidence',
                   'versions', 'version_author', 'version_source', 'version_updated_at')
 
-    def cleanup(self, data):
-        cleaned_data = bleach.clean(data, tags=['em', 'strong', 's', 'u'], strip=False)
-        cleaned_data = html.unescape(cleaned_data)
-        return cleaned_data
-
     def validate_content(self, content):
-        return normalize_text(self.cleanup(content))
+        return normalize_text(content)
 
 
 class LineListSerializer(serializers.ListSerializer):
