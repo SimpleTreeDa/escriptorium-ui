@@ -71,6 +71,17 @@
                                 <span>Image Annotation</span>
                             </button>
                         </li>
+                        <li>
+                            <button
+                                type="button"
+                                @mousedown="() => onSwitchPanel({
+                                    index: panelIndex, panel: 'comparison'
+                                })"
+                            >
+                                <HistoryIcon />
+                                <span>Comparison</span>
+                            </button>
+                        </li>
                     </ul>
                 </template>
             </VMenu>
@@ -104,6 +115,7 @@
 <script>
 import ChevronDownIcon from "../Icons/ChevronDownIcon/ChevronDownIcon.vue";
 import EscrButton from "../Button/Button.vue";
+import HistoryIcon from "../Icons/HistoryIcon/HistoryIcon.vue";
 import ImageAnnotationIcon from "../Icons/ImageAnnotationIcon/ImageAnnotationIcon.vue";
 import RemovePanelIcon from "../Icons/RemovePanelIcon/RemovePanelIcon.vue";
 import SegmentIcon from "../Icons/SegmentIcon/SegmentIcon.vue";
@@ -118,6 +130,7 @@ export default {
     components: {
         ChevronDownIcon,
         EscrButton,
+        HistoryIcon,
         ImageAnnotationIcon,
         RemovePanelIcon,
         SegmentIcon,
@@ -168,6 +181,8 @@ export default {
                     return TextPanelIcon;
                 case "source":
                     return ImageAnnotationIcon;
+                case "comparison":
+                    return HistoryIcon;
                 default:
                     return null;
             }
@@ -182,6 +197,8 @@ export default {
                     return "text/line ordering";
                 case "source":
                     return "text annotation";
+                case "comparison":
+                    return "comparison";
                 default:
                     return null;
             }

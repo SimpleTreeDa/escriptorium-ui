@@ -185,6 +185,7 @@ import { mapActions, mapMutations, mapState } from "vuex";
 import EditorGlobalToolbar from "../components/EditorGlobalToolbar/EditorGlobalToolbar.vue";
 import PanelResizer from "./PanelResizer/PanelResizer.vue";
 import SourcePanel from "./SourcePanel.vue";
+import ComparePanel from "./ComparePanel/ComparePanel.vue";
 import SegPanel from "./SegPanel.vue";
 import VisuPanel from "./VisuPanel.vue";
 import DiploPanel from "./DiploPanel.vue";
@@ -197,6 +198,7 @@ const MIN_PANEL_SIZE = { row: 320, column: 160 };
 
 export default {
     components: {
+        ComparePanel,
         DiploPanel,
         EditorGlobalToolbar,
         PanelResizer,
@@ -230,6 +232,7 @@ export default {
                 visualisation: "Transcription",
                 diplomatic: "Text / Line Ordering",
                 source: "Image Annotation",
+                comparison: "Comparison",
             },
         };
     },
@@ -425,6 +428,8 @@ export default {
                     return DiploPanel;
                 case "source":
                     return SourcePanel;
+                case "comparison":
+                    return ComparePanel;
             }
         }
     }
