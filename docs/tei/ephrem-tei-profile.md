@@ -399,7 +399,9 @@ Text annotations become TEI elements when their taxonomy's name, ignoring case, 
 
 ### 6.6 Characters
 
-- Line text is exported exactly as stored: no Unicode normalisation. Right-to-left marks and zero-width characters are kept.
+- Line text is exported exactly as stored. eScriptorium stores it in Unicode NFC ([#70](https://github.com/SimpleTreeDa/escriptorium-ui/pull/70)), and the exporter normalises nothing further.
+  "Not normalised" in the `editorialDecl` means no editorial normalisation of spelling, vocalisation or punctuation.
+- Right-to-left marks and zero-width characters are kept.
 - `&`, `<` and `>` are escaped. Text is never read as markup.
 - Characters that XML 1.0 forbids (control characters other than tab and newline) are reported as errors, because the file would be unreadable.
 
