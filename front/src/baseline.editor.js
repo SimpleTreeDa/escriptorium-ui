@@ -843,7 +843,7 @@ export class Segmenter {
                     segment.path.segments.length > 2)
             ) {
                 this.selection.segments[i].remove();
-                this.selection.segments.pop();
+                this.selection.segments.splice(i, 1);
             }
         }
 
@@ -1028,8 +1028,9 @@ export class Segmenter {
                 const { ctrlKey, key } = event;
                 switch (key.toLowerCase()) {
                     case "delete":
-                        // delete points or entire selection
-                        if (ctrlKey) {
+                        // delete highlighted points if there are any, otherwise
+                        // the entire selection (ctrl forces points only)
+                        if (ctrlKey || this.selection.segments.length) {
                             this.deleteSelectedSegments();
                         } else {
                             this.deleteSelection();
