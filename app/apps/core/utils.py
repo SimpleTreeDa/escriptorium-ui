@@ -1,11 +1,16 @@
 import random
 
+import bleach
 from django.db.models import CharField
 from django.forms.widgets import Input
 
 
 def random_color():
     return "#%06x" % random.randint(0, 0xFFFFFF)
+
+
+def sanitize_transcription_content(content):
+    return bleach.clean(content, tags=["em", "strong", "s", "u"], strip=False)
 
 
 class ColorWidget(Input):

@@ -1,8 +1,6 @@
-import html
 import logging
 import os.path
 
-import bleach
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db.models import Count, Max, Min, Q
@@ -42,6 +40,7 @@ from core.models import (
     TextualWitness,
     Transcription,
 )
+from core.utils import sanitize_transcription_content
 from core.tasks import _chunks, segment, segtrain, train, transcribe
 from imports.forms import FileImportError, clean_import_uri, clean_upload_file
 from imports.models import DocumentImport
@@ -703,9 +702,7 @@ class LineTranscriptionSerializer(serializers.ModelSerializer):
                   'versions', 'version_author', 'version_source', 'version_updated_at')
 
     def cleanup(self, data):
-        cleaned_data = bleach.clean(data, tags=['em', 'strong', 's', 'u'], strip=False)
-        cleaned_data = html.unescape(cleaned_data)
-        return cleaned_data
+        return sanitize_transcription_content(data)
 
     def validate_content(self, content):
         return self.cleanup(content)

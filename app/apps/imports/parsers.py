@@ -29,6 +29,7 @@ from core.models import (
     Metadata,
     Transcription,
 )
+from core.utils import sanitize_transcription_content
 from imports.mets import METSProcessor
 from users.consumers import send_event
 from versioning.models import NoChangeException
@@ -632,7 +633,7 @@ class XMLParser(ParserDocument):
             except NoChangeException:
                 pass
         finally:
-            lt.content = content
+            lt.content = sanitize_transcription_content(content)
             if avg_confidence:
                 lt.avg_confidence = avg_confidence
 

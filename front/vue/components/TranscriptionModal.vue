@@ -225,7 +225,7 @@
                                     @keyup.right="editLine('next')"
                                     @keyup.left="editLine('previous')"
                                     @keyup.enter="cleanHTMLTags();recomputeInputCharsScaleY();editLine('next')"
-                                    v-html="localTranscription"
+                                    v-text="localTranscription"
                                 />
                             </div>
                         </div>
@@ -635,14 +635,23 @@ export default Vue.extend({
             if (!this.line.currentTrans) return;
             let diff = Diff.diffChars(this.line.currentTrans.content, content);
             return diff.map(function(part){
+                const value = this.escapeHtml(part.value);
                 if (part.removed) {
-                    return '<span class="cmp-del">'+part.value+"</span>";
+                    return '<span class="cmp-del">'+value+"</span>";
                 } else if (part.added) {
-                    return '<span class="cmp-add">'+part.value+"</span>";
+                    return '<span class="cmp-add">'+value+"</span>";
                 } else {
-                    return part.value;
+                    return value;
                 }
             }.bind(this)).join("");
+        },
+        escapeHtml(value) {
+            return (value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
         },
 
         getLineAngle() {

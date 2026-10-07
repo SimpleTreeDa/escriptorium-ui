@@ -14,7 +14,7 @@ from core.models import (
     Metadata,
 )
 from core.tests.factory import CoreFactoryTestCase
-from imports.parsers import METSRemoteParser, METSZipParser, ParseError
+from imports.parsers import METSRemoteParser, METSZipParser, ParseError, XMLParser
 from reporting.models import TaskReport
 
 SAMPLES_DIR = os.path.join(
@@ -153,6 +153,23 @@ class METSRemoteParserTestCase(CoreFactoryTestCase):
         self.assertEqual(Block.objects.count(), 17)
         self.assertEqual(Line.objects.count(), 66)
         self.assertEqual(LineTranscription.objects.count(), 129)
+
+    def test_make_transcription_sanitizes_html(self):
+        part = self.factory.make_part(document=self.document)
+        line = Line.objects.create(
+            mask=[10, 10, 50, 50],
+            document_part=part,
+        )
+        parser = XMLParser(
+            self.document,
+            None,
+            self.report,
+            transcription_name="METS Import | transcript",
+            xml_root=self.simple_root,
+        )
+        parser.make_transcription(line, None, '<img src=x onerror=alert(1)><strong>safe</strong>')
+        lt = LineTranscription.objects.get(line=line)
+        self.assertEqual(lt.content, '&lt;img src=x onerror=alert(1)&gt;<strong>safe</strong>')
 
 
 class METSZipParserTestCase(CoreFactoryTestCase):

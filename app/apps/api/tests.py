@@ -1179,6 +1179,18 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
         self.part.refresh_from_db()
         self.assertEqual(self.part.transcription_progress, 100)
 
+    def test_update_sanitizes_html(self):
+        self.client.force_login(self.user)
+        uri = reverse('api:linetranscription-detail',
+                      kwargs={'document_pk': self.part.document.pk,
+                              'part_pk': self.part.pk,
+                              'pk': self.lt.pk})
+        payload = '<img src=x onerror=alert(1)><em>safe</em>'
+        resp = self.client.patch(uri, {'content': payload}, content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+        self.lt.refresh_from_db()
+        self.assertEqual(self.lt.content, '&lt;img src=x onerror=alert(1)&gt;<em>safe</em>')
+
     def test_create(self):
         self.client.force_login(self.user)
         uri = reverse('api:linetranscription-list',

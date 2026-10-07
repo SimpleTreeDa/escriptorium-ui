@@ -84,15 +84,16 @@ export default Vue.extend({
         },
         versionCompare() {
             if (this.version.data) {
-                if (!this.previous) return this.version.data.content;
+                if (!this.previous) return this.escapeHtml(this.version.data.content);
                 let diff = Diff.diffChars(this.previous.data.content, this.version.data.content);
                 return diff.map(function(part){
+                    const value = this.escapeHtml(part.value);
                     if (part.removed) {
-                        return '<span class="cmp-del">'+part.value+"</span>";
+                        return '<span class="cmp-del">'+value+"</span>";
                     } else if (part.added) {
-                        return '<span class="cmp-add">'+part.value+"</span>";
+                        return '<span class="cmp-add">'+value+"</span>";
                     } else {
-                        return part.value;
+                        return value;
                     }
                 }.bind(this)).join("");
             }
@@ -106,6 +107,14 @@ export default Vue.extend({
         this.timeZone = null;  // make sure it's garbage collected
     },
     methods: {
+        escapeHtml(value) {
+            return (value || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        },
         async loadState() {
             this.$parent.localTranscription = this.version.data.content;
         },
