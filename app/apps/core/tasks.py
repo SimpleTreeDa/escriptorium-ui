@@ -32,6 +32,7 @@ from core.search import (
     search_content_psql_regex,
     search_content_psql_word,
 )
+from core.utils import normalize_text
 
 # DO NOT REMOVE THIS IMPORT, it will break celery tasks located in this file
 from reporting.tasks import create_task_reporting  # noqa F401
@@ -911,7 +912,9 @@ def replace_line_transcriptions_text(
         try:
             report.append(f'Applying the replacement on the transcription from the line {result.line}', logger_fct=logger.info)
             # Replace on the highlighted content and then remove the highlighting tags
-            result.content = strip_tags(build_highlighted_replacement_psql(mode, find_terms, replace_term, result.highlighted_content))
+            result.content = normalize_text(strip_tags(
+                build_highlighted_replacement_psql(mode, find_terms, replace_term, result.highlighted_content)
+            ))
         except Exception as e:
             errors += 1
             report.append(f'Failed to apply the replacement on the transcription from the line {result.line}: {e}', logger_fct=logger.error)

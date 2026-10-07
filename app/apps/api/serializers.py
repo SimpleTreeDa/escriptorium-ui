@@ -41,6 +41,7 @@ from core.models import (
     Transcription,
 )
 from core.tasks import _chunks, segment, segtrain, train, transcribe
+from core.utils import normalize_text
 from imports.forms import FileImportError, clean_import_uri, clean_upload_file
 from imports.models import DocumentImport
 from imports.tasks import document_import
@@ -695,12 +696,15 @@ class BlockSerializer(serializers.ModelSerializer):
 
 
 class LineTranscriptionSerializer(serializers.ModelSerializer):
-    # content is plain text, stored as typed ('&', '<abc>'...):
-    # it is escaped wherever it is displayed, never rendered as HTML
+    # content is plain text ('&', '<abc>'...), stored as typed apart from its Unicode
+    # normalization: it is escaped wherever it is displayed, never rendered as HTML
     class Meta:
         model = LineTranscription
         fields = ('pk', 'line', 'transcription', 'content', 'graphs', 'avg_confidence',
                   'versions', 'version_author', 'version_source', 'version_updated_at')
+
+    def validate_content(self, content):
+        return normalize_text(content)
 
 
 class LineListSerializer(serializers.ListSerializer):
