@@ -16,6 +16,8 @@ import { tagColorToVariant } from "../util/color";
 
 // initial state
 const state = () => ({
+    // whether the current user owns the project, and so may share or delete it
+    canManage: false,
     createDocumentModalOpen: false,
     /**
      * documents: [{
@@ -43,6 +45,7 @@ const state = () => ({
      * }]
      */
     documentTags: [],
+    documentsCount: 0,
     documentToDelete: null,
     deleteModalOpen: false,
     deleteDocumentModalOpen: false,
@@ -245,6 +248,7 @@ const actions = {
         commit("setLoading", true);
         try {
             await deleteDocument({ documentId: state?.documentToDelete?.pk });
+            commit("setDocumentsCount", Math.max(state.documentsCount - 1, 0));
             await dispatch("fetchProjectDocuments");
             commit("setDeleteDocumentModalOpen", false);
             // show toast alert on success
@@ -319,6 +323,8 @@ const actions = {
         );
         const { data } = await retrieveProject(state.id);
         if (data) {
+            commit("setCanManage", !!data.can_manage);
+            commit("setDocumentsCount", data.documents_count || 0);
             commit("setName", data.name);
             commit("setSlug", data.slug);
             commit("setGuidelines", data.guidelines);
@@ -539,6 +545,9 @@ const mutations = {
     addDocument(state, document) {
         state.documents.push(document);
     },
+    setCanManage(state, canManage) {
+        state.canManage = canManage;
+    },
     setCreateDocumentModalOpen(state, open) {
         state.createDocumentModalOpen = open;
     },
@@ -550,6 +559,9 @@ const mutations = {
     },
     setDocuments(state, documents) {
         state.documents = documents;
+    },
+    setDocumentsCount(state, count) {
+        state.documentsCount = count;
     },
     setDocumentTags(state, tags) {
         state.documentTags = tags;

@@ -218,10 +218,11 @@
                 <!-- delete document modal -->
                 <ConfirmModal
                     v-if="deleteModalOpen"
-                    body-text="Are you sure you want to delete this document?"
+                    body-text="Are you sure you want to delete this document? It will no longer be
+                        available to you or its collaborators. An administrator can restore it."
                     confirm-verb="Delete"
                     title="Delete Document"
-                    :cannot-undo="true"
+                    :cannot-undo="false"
                     :disabled="loading && loading.document"
                     :on-cancel="closeDeleteModal"
                     :on-confirm="deleteDocument"
@@ -439,6 +440,7 @@ export default {
     computed: {
         ...mapState({
             allDocumentTags: (state) => state.project.documentTags,
+            canManage: (state) => state.document.canManage,
             charCount: (state) => state.transcription.characterCount,
             characters: (state) => state.characters.characters,
             charactersLoading: (state) => state.characters.loading,
@@ -498,20 +500,24 @@ export default {
          * Menu items for the vertical menu in the top right corner of the dashboard.
          */
         documentMenuItems() {
-            return [
+            const items = [
                 {
                     icon: PencilIcon,
                     key: "edit",
                     label: "Edit",
                     onClick: this.openEditModal,
                 },
-                {
+            ];
+            // only the owners of the document or its project may delete it
+            if (this.canManage) {
+                items.push({
                     icon: TrashIcon,
                     key: "delete",
                     label: "Delete Document",
                     onClick: this.openDeleteModal,
-                }
-            ]
+                });
+            }
+            return items;
         },
         /**
          * Headers for the parts (images) table.
@@ -555,6 +561,7 @@ export default {
                         disabled: this.loading?.document,
                         users: this.sharedWithUsers,
                         groups: this.sharedWithGroups,
+                        canShare: this.canManage,
                         openShareModal: this.openShareModal,
                     },
                     icon: PeopleIcon,

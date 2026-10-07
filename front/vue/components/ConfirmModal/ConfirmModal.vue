@@ -10,6 +10,7 @@
         </template>
         <template #modal-content>
             <h3>{{ bodyText }}</h3>
+            <slot />
             <p v-if="cannotUndo">
                 You cannot undo this action.
             </p>
@@ -25,7 +26,7 @@
                 :color="color === 'text' ? 'outline-text' : color"
                 :label="confirmVerb"
                 :on-click="onConfirm"
-                :disabled="disabled"
+                :disabled="disabled || confirmDisabled"
             />
         </template>
     </EscrModal>
@@ -91,6 +92,13 @@ export default {
          * Whether or not the submit/cancel buttons are disabled.
          */
         disabled: {
+            type: Boolean,
+            default: false,
+        },
+        /**
+         * Whether or not only the submit button is disabled, e.g. until a confirmation is typed.
+         */
+        confirmDisabled: {
             type: Boolean,
             default: false,
         },

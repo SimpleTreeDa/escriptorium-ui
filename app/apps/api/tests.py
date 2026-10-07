@@ -20,6 +20,7 @@ from core.models import (
     LineType,
     Metadata,
     OcrModel,
+    Project,
     Transcription,
 )
 from core.tests.factory import CoreFactoryTestCase
@@ -204,6 +205,74 @@ class DocumentViewSetTestCase(CoreFactoryTestCase):
 
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.data['shared_with_users'][0]['pk'], user.pk)
+
+    def test_share_not_owner(self):
+        collaborator = self.factory.make_user()
+        self.doc.shared_with_users.add(collaborator)
+        self.client.force_login(collaborator)
+        other = self.factory.make_user()
+
+        uri = reverse('api:document-share', kwargs={'pk': self.doc.pk})
+        resp = self.client.post(uri, {'user': other.username})
+
+        self.assertEqual(resp.status_code, 403)
+        self.assertFalse(self.doc.shared_with_users.filter(pk=other.pk).exists())
+
+    def test_destroy_archives(self):
+        transcriptions = LineTranscription.objects.filter(line__document_part__document=self.doc)
+        transcriptions_count = transcriptions.count()
+        self.client.force_login(self.doc.owner)
+        uri = reverse('api:document-detail', kwargs={'pk': self.doc.pk})
+        resp = self.client.delete(uri)
+
+        self.assertEqual(resp.status_code, 204)
+        self.doc.refresh_from_db()
+        self.assertEqual(self.doc.workflow_state, Document.WORKFLOW_STATE_ARCHIVED)
+        # nothing is deleted
+        self.assertEqual(self.doc.parts.count(), 2)
+        self.assertEqual(transcriptions.count(), transcriptions_count)
+        # but the document is gone from the API
+        resp = self.client.get(uri)
+        self.assertEqual(resp.status_code, 404)
+        resp = self.client.get(reverse('api:document-list'))
+        self.assertNotIn(self.doc.pk, [d['pk'] for d in resp.json()['results']])
+
+    def test_destroy_project_owner(self):
+        # a document owned by someone else in a project the user owns
+        doc = self.factory.make_document(project=self.proj1, owner=self.factory.make_user())
+        self.client.force_login(self.proj1.owner)
+        uri = reverse('api:document-detail', kwargs={'pk': doc.pk})
+        resp = self.client.delete(uri)
+
+        self.assertEqual(resp.status_code, 204)
+        doc.refresh_from_db()
+        self.assertTrue(doc.is_archived)
+
+    def test_destroy_not_owner(self):
+        user_collaborator = self.factory.make_user()
+        group_collaborator = self.factory.make_user()
+        project_collaborator = self.factory.make_user()
+        self.doc.shared_with_users.add(user_collaborator)
+        self.doc.shared_with_groups.add(self.factory.make_group(users=[group_collaborator]))
+        self.proj1.shared_with_users.add(project_collaborator)
+        uri = reverse('api:document-detail', kwargs={'pk': self.doc.pk})
+
+        for collaborator in (user_collaborator, group_collaborator, project_collaborator):
+            self.client.force_login(collaborator)
+            resp = self.client.delete(uri)
+            self.assertEqual(resp.status_code, 403)
+            self.doc.refresh_from_db()
+            self.assertFalse(self.doc.is_archived)
+
+    def test_can_manage(self):
+        collaborator = self.factory.make_user()
+        self.doc.shared_with_users.add(collaborator)
+        uri = reverse('api:document-detail', kwargs={'pk': self.doc.pk})
+
+        self.client.force_login(self.doc.owner)
+        self.assertTrue(self.client.get(uri).json()['can_manage'])
+        self.client.force_login(collaborator)
+        self.assertFalse(self.client.get(uri).json()['can_manage'])
 
     @unittest.skip
     def test_segtrain_new_model(self):
@@ -1464,6 +1533,50 @@ class ProjectViewSetTestCase(CoreFactoryTestCase):
 
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.data['shared_with_users'][0]['pk'], user.pk)
+        self.assertTrue(resp.data['can_manage'])
+
+    def test_share_not_owner(self):
+        collaborator = self.factory.make_user()
+        self.project.shared_with_users.add(collaborator)
+        self.client.force_login(collaborator)
+        other = self.factory.make_user()
+
+        uri = reverse('api:project-share', kwargs={'pk': self.project.pk})
+        resp = self.client.post(uri, {'user': other.username})
+
+        self.assertEqual(resp.status_code, 403)
+        self.assertFalse(self.project.shared_with_users.filter(pk=other.pk).exists())
+
+    def test_destroy(self):
+        self.client.force_login(self.project.owner)
+        uri = reverse('api:project-detail', kwargs={'pk': self.project.pk})
+        resp = self.client.delete(uri)
+
+        self.assertEqual(resp.status_code, 204)
+        self.assertFalse(Project.objects.filter(pk=self.project.pk).exists())
+
+    def test_destroy_not_owner(self):
+        collaborator = self.factory.make_user()
+        self.project.shared_with_users.add(collaborator)
+        # a collaborator owning a document of the project still can't delete the project
+        doc = self.factory.make_document(project=self.project, owner=collaborator)
+        self.client.force_login(collaborator)
+        uri = reverse('api:project-detail', kwargs={'pk': self.project.pk})
+        resp = self.client.delete(uri)
+
+        self.assertEqual(resp.status_code, 403)
+        self.assertTrue(Project.objects.filter(pk=self.project.pk).exists())
+        self.assertTrue(Document.objects.filter(pk=doc.pk).exists())
+
+    def test_can_manage(self):
+        collaborator = self.factory.make_user()
+        self.project.shared_with_users.add(collaborator)
+        uri = reverse('api:project-detail', kwargs={'pk': self.project.pk})
+
+        self.client.force_login(self.project.owner)
+        self.assertTrue(self.client.get(uri).json()['can_manage'])
+        self.client.force_login(collaborator)
+        self.assertFalse(self.client.get(uri).json()['can_manage'])
 
 
 class DocumentPartMetadataTestCase(CoreFactoryTestCase):

@@ -104,6 +104,7 @@ const actions = {
         commit("setLoading", { key: "document", loading: true });
         const { data } = await retrieveDocument(rootState.document.id);
         if (data) {
+            commit("document/setCanManage", !!data.can_manage, { root: true });
             commit("document/setReadDirection", data.read_direction, {
                 root: true,
             });

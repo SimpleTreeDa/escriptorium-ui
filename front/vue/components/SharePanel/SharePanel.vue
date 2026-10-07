@@ -28,7 +28,14 @@
                 </li>
             </ul>
         </div>
+        <p
+            v-if="data && data.canShare === false"
+            class="escr-share-owner-only"
+        >
+            Only the owner can add groups or users.
+        </p>
         <EscrButton
+            v-else
             :on-click="(data && data.openShareModal) || (() => {})"
             :disabled="data && data.disabled"
             label="Add Group or User"
@@ -53,6 +60,7 @@ export default {
         /**
          * Data for the share panel, an object containing users, groups, disabled boolean,
          * and a callback function openShareModal that should handle clicking "Add group or user".
+         * When canShare is false, the button is replaced by a note that only the owner can share.
          */
         data: {
             type: Object,

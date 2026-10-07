@@ -6,6 +6,10 @@
     padding: 0;
 }
 .escr-share-list + .escr-button,
+.escr-share-list + .escr-share-owner-only,
 .escr-share-list li + li {
     margin-top: 1rem;
+}
+.escr-share-owner-only {
+    margin-bottom: 0;
 }

@@ -137,10 +137,14 @@ class ProjectSerializer(serializers.ModelSerializer):
     documents_count = serializers.ReadOnlyField()
     shared_with_users = UserSerializer(many=True, read_only=True)
     shared_with_groups = GroupSerializer(many=True, read_only=True)
+    can_manage = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
         fields = '__all__'
+
+    def get_can_manage(self, project):
+        return project.can_manage(self.context['request'].user)
 
     def create(self, data):
         data['owner'] = self.context["view"].request.user
@@ -417,6 +421,7 @@ class DocumentSerializer(serializers.ModelSerializer):
                                            queryset=Project.objects.all())
     project_name = serializers.SerializerMethodField()
     project_id = serializers.SerializerMethodField()
+    can_manage = serializers.SerializerMethodField()
     shared_with_users = UserSerializer(many=True, read_only=True)
     shared_with_groups = GroupSerializer(many=True, read_only=True)
     transcriptions = TranscriptionSerializer(many=True, read_only=True)
@@ -427,7 +432,7 @@ class DocumentSerializer(serializers.ModelSerializer):
                   'main_script', 'read_direction', 'line_offset', 'show_confidence_viz',
                   'valid_block_types', 'valid_line_types', 'valid_part_types',
                   'parts_count', 'tags', 'created_at', 'updated_at', 'project_name', 'project_id',
-                  'shared_with_users', 'shared_with_groups')
+                  'shared_with_users', 'shared_with_groups', 'can_manage')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -444,6 +449,9 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     def get_project_id(self, document):
         return document.project.id
+
+    def get_can_manage(self, document):
+        return document.can_manage(self.context['user'])
 
     def to_representation(self, instance):
         # only use DocumentTagSerializer on GET; otherwise, use pks
