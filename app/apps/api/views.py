@@ -427,28 +427,61 @@ class DocumentViewSet(ModelViewSet):
                    .filter(workflow_state__in=[TaskReport.WORKFLOW_STATE_QUEUED,
                                                TaskReport.WORKFLOW_STATE_STARTED]))
 
-        if request.data.get("task_report"):
-            # If a task report PK is provided, try to locate it
-            task_report_pk = int(request.data.get("task_report"))
+        # Without a task report or a task group, every task of the document is canceled
+        scoped = False
+
+        if "task_report" in request.data:
+            # A task report of this document. An empty or invalid value is an error, never a
+            # request to cancel everything.
             try:
-                TaskReport.objects.get(pk=task_report_pk)
-                # limit the canceled tasks to just the one with that pk
-                reports = reports.filter(pk=task_report_pk)
-            except TaskReport.DoesNotExist:
-                # otherwise there is an error here, so let's return a response
+                task_report_pk = int(request.data.get("task_report"))
+            except (TypeError, ValueError):
+                task_report_pk = None
+            if not task_report_pk or not document.reports.filter(pk=task_report_pk).exists():
                 return Response({
                     'status': 'error',
                     'error': 'Could not cancel: the requested task could not be found.'
                 }, status=400)
+            # limit the canceled tasks to just the one with that pk
+            reports = reports.filter(pk=task_report_pk)
+            scoped = True
+
+        if "task_group" in request.data:
+            # A task group of this document, e.g. one row of the document's task dashboard.
+            # An empty or invalid value is an error, never a request to cancel everything.
+            try:
+                task_group_pk = int(request.data.get("task_group"))
+            except (TypeError, ValueError):
+                task_group_pk = None
+            if not task_group_pk or not TaskGroup.objects.filter(pk=task_group_pk, document=document).exists():
+                return Response({
+                    'status': 'error',
+                    'error': 'Could not cancel: the requested task group could not be found.'
+                }, status=400)
+            # limit the canceled tasks to the ones of that group
+            reports = reports.filter(group=task_group_pk)
+            scoped = True
 
         count = len(reports)  # evaluate query
+        # canceling takes the reports out of the query, so keep their pks for the glue code below
+        canceled_pks = [report.pk for report in reports]
+        canceled_trainings = []
+        canceled_parts = []
         for report in reports:
             report.cancel(request.user.username)
 
             method_name = report.method.split('.')[-1]
             task_name = CLIENT_TASK_NAME_MAP.get(method_name, method_name)
+            if task_name == 'training':
+                canceled_trainings.append(report.pk)
 
             if report.document_part:
+                canceled_parts.append({
+                    'id': report.document_part.pk,
+                    'process': task_name,
+                    'status': 'canceled',
+                    'reason': _('Canceled.')
+                })
                 continue
 
             try:
@@ -457,18 +490,10 @@ class DocumentViewSet(ModelViewSet):
                 # don't crash on websocket error
                 logger.exception(e)
 
-        if count:
+        if canceled_parts:
             try:
                 # send a single websocket message for all parts
-                if report.document_part:
-                    send_event('document', document.pk, 'parts:workflow', {
-                        'parts': [{
-                            'id': report.document_part.pk,
-                            'process': task_name,
-                            'status': 'canceled',
-                            'reason': _('Canceled.')
-                        } for report in reports]
-                    })
+                send_event('document', document.pk, 'parts:workflow', {'parts': canceled_parts})
             except Exception as e:
                 # don't crash on websocket error
                 logger.exception(e)
@@ -476,10 +501,19 @@ class DocumentViewSet(ModelViewSet):
         # Executing all the glue code outside the real revoking of tasks to maintain db objects
         # up-to-date with the real state of the app (e.g.: we stopped a training, we need to set
         # the model.training attribute to False)
-        for model in document.ocr_models.filter(training=True):
+        models = document.ocr_models.filter(training=True)
+        doc_imports = document.documentimport_set.all()
+        if scoped:
+            # only the trainings and imports of the canceled tasks, not those of other users.
+            # A model is also linked to the reports of the transcriptions it runs: only the
+            # reports of its training count.
+            models = models.filter(reports__pk__in=canceled_trainings).distinct()
+            doc_imports = doc_imports.filter(report__pk__in=canceled_pks)
+
+        for model in models:
             model.cancel_training(revoke_task=False, username=request.user.username)  # We already revoked the Celery task
 
-        for doc_import in document.documentimport_set.all():
+        for doc_import in doc_imports:
             doc_import.cancel(revoke_task=False, username=request.user.username)  # We already revoked the Celery task
 
         return Response({

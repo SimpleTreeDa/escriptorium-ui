@@ -110,6 +110,70 @@
                         Reset zoom (Ctrl 0)
                     </template>
                 </VDropdown>
+                <!-- touchpad pan speed -->
+                <VDropdown
+                    theme="escr-tooltip-small"
+                    placement="bottom"
+                    :distance="8"
+                    :triggers="['hover']"
+                    :disabled="panSpeedMenuOpen"
+                >
+                    <VDropdown
+                        placement="bottom"
+                        theme="vertical-menu"
+                        :shown="panSpeedMenuOpen"
+                        :triggers="[]"
+                        :auto-hide="true"
+                        @apply-hide="closePanSpeedMenu"
+                    >
+                        <EscrButton
+                            aria-label="Touchpad pan speed"
+                            aria-haspopup="true"
+                            :aria-expanded="panSpeedMenuOpen ? 'true' : 'false'"
+                            color="text"
+                            size="small"
+                            :on-click="openPanSpeedMenu"
+                            :disabled="disabled"
+                        >
+                            <template #button-icon>
+                                <ChevronDownIcon />
+                            </template>
+                        </EscrButton>
+                        <template #popper>
+                            <div class="escr-pan-speed">
+                                <label for="escr-pan-speed-range">
+                                    Two-finger pan speed
+                                    <span>{{ Math.round(panSpeed * 100) }}%</span>
+                                </label>
+                                <input
+                                    id="escr-pan-speed-range"
+                                    type="range"
+                                    class="custom-range"
+                                    :min="panSpeedRange.min"
+                                    :max="panSpeedRange.max"
+                                    step="0.05"
+                                    :value="panSpeed"
+                                    @input="(e) => setPanSpeed(e.target.value)"
+                                >
+                                <span class="small">
+                                    How far scrolling with two fingers on a touchpad
+                                    moves the image
+                                </span>
+                                <button
+                                    type="button"
+                                    class="escr-pan-speed-default"
+                                    :disabled="panSpeed === panSpeedRange.default"
+                                    @click="setPanSpeed(panSpeedRange.default)"
+                                >
+                                    Default ({{ panSpeedRange.default * 100 }}%)
+                                </button>
+                            </div>
+                        </template>
+                    </VDropdown>
+                    <template #popper>
+                        Touchpad pan speed
+                    </template>
+                </VDropdown>
             </div>
             <div class="new-section with-separator">
                 <VDropdown
@@ -374,6 +438,7 @@ import ZoomOutIcon from "../Icons/ZoomOutIcon/ZoomOutIcon.vue";
 import ZoomResetIcon from "../Icons/ZoomResetIcon/ZoomResetIcon.vue";
 import { SYRIAC_FONTS } from "../../../src/editor/syriacFont";
 import { Dropdown as VDropdown } from "floating-vue";
+import { PAN_SPEED } from "../../../src/wheelzoom";
 import "./EditorGlobalToolbar.css";
 
 export default {
@@ -456,6 +521,8 @@ export default {
             layoutMenuOpen: false,
             textMenuOpen: false,
             syriacFonts: SYRIAC_FONTS,
+            panSpeedMenuOpen: false,
+            panSpeedRange: PAN_SPEED,
         }
     },
     computed: {
@@ -463,6 +530,7 @@ export default {
             editorPanels: (state) => state.document.editorPanels,
             layoutOrientation: (state) => state.document.editorLayout.orientation,
             syriacFont: (state) => state.document.syriacFont,
+            panSpeed: (state) => state.document.panSpeed,
         }),
     },
     methods: {
@@ -480,7 +548,7 @@ export default {
             this.closeTextMenu();
             this.setSyriacFont(value);
         },
-        ...mapMutations("document", ["resetEditorPanelSizes"]),
+        ...mapMutations("document", ["resetEditorPanelSizes", "setPanSpeed"]),
         /**
          * Callback to close the panel layout menu
          */
@@ -506,6 +574,18 @@ export default {
         onResetPanelSizes() {
             this.closeLayoutMenu();
             this.resetEditorPanelSizes();
+        },
+        /**
+         * Callback to close the touchpad pan speed menu
+         */
+        closePanSpeedMenu() {
+            this.panSpeedMenuOpen = false;
+        },
+        /**
+         * Callback to open the touchpad pan speed menu
+         */
+        openPanSpeedMenu() {
+            this.panSpeedMenuOpen = true;
         },
         /**
          * Callback to close the add panel menu

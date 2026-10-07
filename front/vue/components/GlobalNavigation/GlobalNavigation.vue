@@ -116,7 +116,7 @@
                         'escr-globalnav-icon': true,
                         'escr-globalnav-icon-active': profilePages.some(
                             (page) => location.href.endsWith(page)
-                        ),
+                        ) || location.pathname.startsWith('/admin/'),
                     }"
                     type="button"
                 >

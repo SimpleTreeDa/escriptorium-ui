@@ -284,13 +284,13 @@ export default {
             if (direction === "left") {
                 // left = next in RTL, previous in LTR
                 return this.readDirection === "rtl"
-                    ? "Next Element (PgDn)"
-                    : "Previous Element (PgUp)";
+                    ? "Next Element (PgDn; End: last)"
+                    : "Previous Element (PgUp; Home: first)";
             } else {
                 // right = previous in RTL, next in LTR
                 return this.readDirection === "rtl"
-                    ? "Previous Element (PgUp)"
-                    : "Next Element (PgDn)";
+                    ? "Previous Element (PgUp; Home: first)"
+                    : "Next Element (PgDn; End: last)";
             }
         },
         submitNavigation(e) {

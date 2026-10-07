@@ -1,4 +1,5 @@
 import axios from "axios";
+import { cancelPayload } from "../taskGroups";
 import { getFilterParams, getSortParam, ontologyMap } from "./util";
 
 // retrieve the full list of documents, with filters/sort
@@ -374,11 +375,13 @@ export const queueImport = async ({ documentId, params }) => {
 export const retrieveDocumentTasks = async ({ documentId }) =>
     await axios.get(`/documents/${documentId}/task_groups/`);
 
-// cancel a task on a document by pk
-export const cancelTask = async ({ documentId, taskReportId }) =>
-    await axios.post(`/documents/${documentId}/cancel_tasks/`, {
-        task_report: taskReportId,
-    });
+// cancel the tasks of one task group on a document; throws without a task group,
+// as the endpoint would then cancel every task of the document
+export const cancelTask = async ({ documentId, taskGroupId }) =>
+    await axios.post(
+        `/documents/${documentId}/cancel_tasks/`,
+        cancelPayload(taskGroupId),
+    );
 
 // create a new transcription layer
 export const createTranscriptionLayer = async ({ documentId, layerName }) =>

@@ -9,8 +9,12 @@
         <div
             class="d-table-cell w-100 escr-line-content"
             :title="version.data.content"
-            v-html="versionCompare"
-        />
+        >
+            <TextDiff
+                :before="previous ? previous.data.content : null"
+                :after="versionContent"
+            />
+        </div>
         <div
             class="d-table-cell"
             title="Edited by author (source)"
@@ -49,11 +53,13 @@
 <script>
 import EscrButton from "./Button/Button.vue";
 import HistoryIcon from "./Icons/HistoryIcon/HistoryIcon.vue";
+import TextDiff from "./TextDiff.vue";
 
 export default Vue.extend({
     components: {
         EscrButton,
         HistoryIcon,
+        TextDiff,
     },
     props: {
         version: {
@@ -82,22 +88,6 @@ export default Vue.extend({
             }
             return "";
         },
-        versionCompare() {
-            if (this.version.data) {
-                if (!this.previous) return this.version.data.content;
-                let diff = Diff.diffChars(this.previous.data.content, this.version.data.content);
-                return diff.map(function(part){
-                    if (part.removed) {
-                        return '<span class="cmp-del">'+part.value+"</span>";
-                    } else if (part.added) {
-                        return '<span class="cmp-add">'+part.value+"</span>";
-                    } else {
-                        return part.value;
-                    }
-                }.bind(this)).join("");
-            }
-            return "";
-        }
     },
     created() {
         this.timeZone = this.$parent.timeZone;

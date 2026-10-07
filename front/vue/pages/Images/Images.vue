@@ -767,6 +767,7 @@ import TranscribeModal from "../../components/TranscribeModal/TranscribeModal.vu
 import TrashIcon from "../../components/Icons/TrashIcon/TrashIcon.vue";
 import XCircleFilledIcon from "../../components/Icons/XCircleFilledIcon/XCircleFilledIcon.vue";
 import { numberFolios, setPartsEditorialStatus, setPartsMetadata } from "../../../src/api";
+import { partWorkflowUpdates } from "../../../src/taskGroups";
 import { PAGE_ACTIONS } from "../../../src/tei";
 import { EDITORIAL_STATUSES, editorialStatusLabel } from "../../store/util/editorialStatus";
 import "../../components/EditorialStatus/EditorialStatus.css";
@@ -1533,14 +1534,19 @@ export default {
         },
         async websocketTaskListener(e) {
             const data = JSON.parse(e.data);
-            // handle task-related events
+            // handle task-related events; "parts:workflow" is sent when tasks are canceled
             const taskEvents = [
-                "export:", "import:", "part:mask", "part:workflow", "training:"
+                "export:", "import:", "part:mask", "part:workflow", "parts:workflow", "training:"
             ];
             if (
                 data.type === "event" && taskEvents.some((task) => data.name.startsWith(task))
             ) {
-                this.updatePartTaskStatus(data.data);
+                const updates = partWorkflowUpdates(data);
+                if (updates.length) {
+                    updates.forEach((update) => this.updatePartTaskStatus(update));
+                } else {
+                    this.updatePartTaskStatus(data.data);
+                }
             }
             // update images on import progress
             if (data.name === "import:progress" || data.name === "import:done") {

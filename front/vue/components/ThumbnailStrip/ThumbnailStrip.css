@@ -1,0 +1,101 @@
+/* thumbnail strip: a row of page thumbnails under the editor's navigation bar.
+Its height is --escr-thumbnail-strip-height, set by Editor.vue on #escr-editor
+(96px open, 32px collapsed), which the panels subtract from theirs. Collapsed,
+it stays a bar in the flow of the page, holding the button that opens it again:
+nothing is positioned over the panels or the toolbar, so nothing can cover it. */
+.escr-thumbnail-strip {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: stretch;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    height: var(--escr-thumbnail-strip-height, 96px);
+    min-height: var(--escr-thumbnail-strip-height, 96px);
+    padding: 0 8px 0 4px;
+    background-color: var(--background2);
+    border-bottom: 1px solid var(--background2-dark);
+}
+.escr-thumbnail-strip.collapsed {
+    padding: 0 4px;
+}
+.escr-thumbnail-strip > .v-popper {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+}
+.escr-thumbnail-strip .strip-toggle {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+/* the bar is exactly the small button's height */
+.escr-thumbnail-strip.collapsed .strip-toggle {
+    min-height: var(--escr-thumbnail-strip-height, 32px);
+    font-size: 13px;
+}
+.escr-thumbnail-strip .strip-toggle svg {
+    fill: var(--text1);
+    transition: transform 0.15s;
+}
+.escr-thumbnail-strip:not(.collapsed) .strip-toggle svg {
+    transform: rotate(180deg);
+}
+.escr-thumbnail-strip .strip-message {
+    align-self: center;
+    margin: 0 8px;
+    font-size: 13px;
+    color: var(--text2);
+}
+.escr-thumbnail-strip ul {
+    flex: 1 1 auto;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: flex-start;
+    gap: 6px;
+    margin: 0;
+    padding: 6px 4px;
+    list-style: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+}
+.escr-thumbnail-strip li {
+    flex: 0 0 auto;
+}
+.escr-thumbnail-strip li button {
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    background: none;
+    color: var(--text2);
+    cursor: pointer;
+}
+.escr-thumbnail-strip li button:hover,
+.escr-thumbnail-strip li button:focus-visible {
+    border-color: var(--background2-dark);
+    outline: none;
+}
+.escr-thumbnail-strip li.current button {
+    border-color: var(--secondary);
+    color: var(--text1);
+}
+.escr-thumbnail-strip li button:disabled {
+    cursor: default;
+}
+.escr-thumbnail-strip li img,
+.escr-thumbnail-strip li .no-thumbnail {
+    display: block;
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 4px;
+    background-color: var(--background1);
+}
+.escr-thumbnail-strip li .page-number {
+    font-size: 12px;
+    line-height: 14px;
+    font-weight: 700;
+}

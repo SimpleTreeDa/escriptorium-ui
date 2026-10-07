@@ -25,7 +25,8 @@ const state = () => ({
         trainSegmenter: false,
         trainRecognizer: false,
     },
-    selectedTask: undefined,
+    // pk of the task group to cancel, from the document's task dashboard
+    selectedTaskGroup: undefined,
 });
 
 const getters = {};
@@ -63,7 +64,8 @@ const actions = {
         }
     },
     /**
-     * Confirm cancelling a task and close the cancel warning modal.
+     * Confirm cancelling the selected task group and close the cancel warning modal.
+     * Without a selected task group, nothing is sent and an error is shown.
      */
     async cancel({ commit, dispatch, state }, { documentId }) {
         try {
@@ -72,7 +74,7 @@ const actions = {
                 { key: "tasks", loading: true },
                 { root: true },
             );
-            await cancelTask({ documentId, taskReportId: state.selectedTask });
+            await cancelTask({ documentId, taskGroupId: state.selectedTaskGroup });
             dispatch("closeModal", "cancelWarning");
             commit(
                 "document/setLoading",
@@ -103,6 +105,10 @@ const actions = {
      */
     closeModal({ commit, dispatch, rootState }, key) {
         commit("setModalOpen", { key, open: false });
+        if (key === "cancelWarning") {
+            // so that a later cancel can't reuse the task group of this one
+            commit("setSelectedTaskGroup", undefined);
+        }
         let form = key;
         // ensure training forms are cleared (different modals that share a key)
         if (key.startsWith("train")) form = "train";
@@ -222,10 +228,10 @@ const actions = {
         await segmentDocument(params);
     },
     /**
-     * Set the selected task pk on the state (e.g. for cancellation)
+     * Set the pk of the task's group on the state (e.g. for cancellation)
      */
     selectTask({ commit }, task) {
-        commit("setSelectedTask", task.pk);
+        commit("setSelectedTaskGroup", task.pk);
     },
     /**
      * Queue the model training task.
@@ -275,8 +281,8 @@ const mutations = {
     setModalOpen(state, { key, open }) {
         state.modalOpen[key] = open;
     },
-    setSelectedTask(state, task) {
-        state.selectedTask = task;
+    setSelectedTaskGroup(state, taskGroup) {
+        state.selectedTaskGroup = taskGroup;
     },
 };
 

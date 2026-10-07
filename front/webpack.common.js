@@ -15,6 +15,7 @@ module.exports = {
         projectDashboard: "./vue/exports/projectDashboard.js",
         projectsList: "./vue/exports/projectsList.js",
         imagesPage: "./vue/exports/imagesPage.js",
+        siteAdmin: "./vue/exports/siteAdmin.js",
     },
 
     output: {

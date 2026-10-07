@@ -1,0 +1,43 @@
+{% extends "admin/base.html" %}
+{% load i18n static %}
+{% comment %}
+Site administration restyled to match the rest of eScriptorium: the global
+navigation on the left, Noto Sans, the light/dark theme of the main UI, and
+each admin module in its own card. Styles live in front/vue/admin.css.
+{% endcomment %}
+
+{% block title %}eScriptorium - {% if subtitle %}{{ subtitle }} | {% endif %}{{ title }}{% endblock %}
+
+{% block dark-mode-vars %}
+  <script>
+    // follow the theme picked with the switch in the global navigation,
+    // set early to avoid a flash of the wrong theme
+    document.documentElement.className = localStorage.getItem("user-theme") === "dark-mode"
+      ? "dark-mode" : "light-mode";
+  </script>
+{% endblock %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="icon" href="{% static "images/favicon.ico" %}">
+  <link rel="stylesheet" href="{% static 'globalNavigation.css' %}">
+  <link rel="stylesheet" href="{% static 'siteAdmin.css' %}">
+{% endblock %}
+
+{% block bodyclass %}{{ block.super }} escr-admin{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">{% translate "Site administration" %}</a></h1>
+{% endblock %}
+
+{% block nav-global %}
+  {% if not user.legacy_mode %}
+  <div id="vue-global-nav">
+    <global-navigation
+      :is-authenticated="{% if user.is_authenticated %}true{% else %}false{% endif %}"
+      :search-disabled="{% if DISABLE_ELASTICSEARCH %}true{% else %}false{% endif %}"
+    ></global-navigation>
+  </div>
+  <script src="{% static 'globalNavigation.js' %}" defer></script>
+  {% endif %}
+{% endblock %}

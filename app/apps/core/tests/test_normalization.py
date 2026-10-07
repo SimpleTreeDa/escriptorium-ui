@@ -202,13 +202,13 @@ class LineTranscriptionAPITestCase(CoreFactoryTestCase):
                 self.lt.refresh_from_db()
                 self.assertEqual(code_points(self.lt.content), code_points(text))
 
-    def test_decomposed_character_reference(self):
-        # the combining accent as an HTML character reference, unescaped by the cleanup
+    def test_character_reference_is_text(self):
+        # content is plain text: an HTML character reference is kept as typed, not decoded
         uri = reverse('api:linetranscription-detail', kwargs={**self.kwargs, 'pk': self.lt.pk})
         resp = self.client.patch(uri, {'content': 'Cafe&#769; au lait'}, content_type='application/json')
         self.assertEqual(resp.status_code, 200, resp.data)
         self.lt.refresh_from_db()
-        self.assertEqual(self.lt.content, COMPOSED)
+        self.assertEqual(self.lt.content, 'Cafe&#769; au lait')
 
 
 class ImportTestCase(CoreFactoryTestCase):

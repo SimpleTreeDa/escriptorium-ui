@@ -222,6 +222,7 @@ export default {
             zoom: new WheelZoom({
                 legacyModeEnabled: this.legacyModeEnabled,
                 getActiveTool: this.getActiveTool,
+                panSpeed: this.$store.state.document.panSpeed,
             }),
             fullsizeimage: false,
             isWorking: false,
@@ -264,6 +265,12 @@ export default {
         },
         minPanelSize() {
             return MIN_PANEL_SIZE[this.layoutOrientation];
+        },
+    },
+    watch: {
+        // set from the global toolbar
+        "$store.state.document.panSpeed": function (speed) {
+            this.zoom.panSpeed = speed;
         },
     },
     created() {

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load i18n bootstrap %}
+{% load i18n bootstrap search_highlight %}
 
 {% block bodyclass %}search{% endblock %}
 
@@ -79,14 +79,14 @@
           <td>
             {% if result.context_before %}
             <small class="context" title="{% trans "Previous line" %}">
-              {{ result.context_before|safe }}
+              {{ result.context_before|escape_highlighted }}
             </small>
             <br/>
             {% endif %}
 
             {% if result.object.highlighted_content %}
             <big title="{% trans "Line transcription" %}">
-              {{ result.object.highlighted_content|safe }}
+              {{ result.object.highlighted_content|escape_highlighted }}
             </big>
             {% else %}
             <small class="text-muted text-sm">
@@ -97,7 +97,7 @@
             {% if result.context_after %}
             <br/>
             <small class="context" title="{% trans "Next line" %}">
-              {{ result.context_after|safe }}
+              {{ result.context_after|escape_highlighted }}
             </small>
             {% endif %}
             <br/>
@@ -126,7 +126,7 @@
           {% if request.GET.replacement %}
           <td>
             <big>
-              {{ result.replacement_preview|safe }}
+              {{ result.replacement_preview|escape_highlighted }}
             </big>
           </td>
           {% endif %}

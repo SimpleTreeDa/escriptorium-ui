@@ -3,7 +3,8 @@ import json
 from django.contrib.auth.models import Group
 from django.contrib.messages import get_messages
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.template.loader import render_to_string
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from lxml import etree
 
@@ -15,6 +16,7 @@ from core.models import (
     Document,
     DocumentPartType,
     LineType,
+    OcrModel,
 )
 from core.tests.factory import CoreFactory
 from imports.serializers import OntologyImportSerializer
@@ -375,3 +377,100 @@ class DocumentTestCase(TestCase):
         self.assertEqual(messages[0].message, 'Ontology import finished successfully!')
         self.assertEqual(messages[0].level_tag, 'success')
         self.assertEqual(messages[0].extra_tags, report.uri)
+
+
+class ModelDeleteTestCase(TestCase):
+    """Deleting a model must go through a confirmation page (#84)."""
+
+    def setUp(self):
+        factory = CoreFactory()
+        self.doc = factory.make_document()
+        self.user = self.doc.owner
+        self.other_user = factory.make_user()
+        # The models list hides models without a file, so give it one.
+        self.model = OcrModel.objects.create(
+            name='delete-me.mlmodel',
+            owner=self.user,
+            job=OcrModel.MODEL_JOB_RECOGNIZE,
+            file='models/test/delete-me.mlmodel',
+            file_size=0)
+        self.doc.ocr_models.add(self.model)
+        self.uri = reverse('model-delete', kwargs={'pk': self.model.pk})
+
+    def test_get_shows_confirmation_and_keeps_model(self):
+        self.client.force_login(self.user)
+        resp = self.client.get(self.uri)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTemplateUsed(resp, 'core/models_list/delete.html')
+        self.assertContains(resp, self.model.name)
+        self.assertContains(resp, 'bound to 1 document')
+        self.assertTrue(OcrModel.objects.filter(pk=self.model.pk).exists())
+
+    def test_get_cancel_link_uses_next(self):
+        self.client.force_login(self.user)
+        resp = self.client.get(self.uri + '?next=/models/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'href="/models/"')
+        self.assertTrue(OcrModel.objects.filter(pk=self.model.pk).exists())
+
+    def test_post_deletes_and_redirects(self):
+        self.client.force_login(self.user)
+        resp = self.client.post(self.uri)
+        self.assertRedirects(resp, reverse('user-models'),
+                             fetch_redirect_response=False)
+        self.assertFalse(OcrModel.objects.filter(pk=self.model.pk).exists())
+        messages = [str(m) for m in get_messages(resp.wsgi_request)]
+        self.assertIn('Model deleted successfully!', messages)
+
+    def test_post_redirects_to_next(self):
+        self.client.force_login(self.user)
+        resp = self.client.post(self.uri + '?next=/somewhere/')
+        self.assertRedirects(resp, '/somewhere/', fetch_redirect_response=False)
+        self.assertFalse(OcrModel.objects.filter(pk=self.model.pk).exists())
+
+    def test_other_user_cannot_see_or_delete(self):
+        self.client.force_login(self.other_user)
+        self.assertEqual(self.client.get(self.uri).status_code, 404)
+        self.assertEqual(self.client.post(self.uri).status_code, 404)
+        self.assertTrue(OcrModel.objects.filter(pk=self.model.pk).exists())
+
+    def test_anonymous_is_redirected_to_login(self):
+        resp = self.client.post(self.uri)
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn('login', resp['Location'])
+        self.assertTrue(OcrModel.objects.filter(pk=self.model.pk).exists())
+
+    def test_models_list_delete_button_opens_modal(self):
+        # The trash icon opens the confirmation modal on the page; its href
+        # is the confirmation page as a no-JS fallback. Nothing deletes on
+        # click.
+        self.client.force_login(self.user)
+        resp = self.client.get(reverse('user-models'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'href="%s?next=/models/"' % self.uri)
+        self.assertContains(resp, 'data-target="#confirm-action-modal"')
+        self.assertContains(resp, 'id="confirm-action-modal"')
+        self.assertContains(resp, 'Are you sure you want to delete the model')
+        self.assertNotContains(resp, ' action="%s' % self.uri)
+
+    def test_unbind_button_opens_modal(self):
+        # The per-document models table is included with unbind_model=True,
+        # so render it directly and check the unbind button goes through the
+        # confirmation modal instead of submitting straight away.
+        request = RequestFactory().get(
+            reverse('document-models', kwargs={'document_pk': self.doc.pk}))
+        request.user = self.user
+        html = render_to_string('core/models_list/table.html', {
+            'request': request,
+            'page_obj': [self.model],
+            'document': self.doc,
+            'unbind_model': True,
+        })
+        unbind_uri = reverse('model-unbind',
+                             kwargs={'pk': self.model.pk, 'docPk': self.doc.pk})
+        self.assertIn('data-action="%s' % unbind_uri, html)
+        self.assertIn('data-target="#confirm-action-modal"', html)
+        self.assertIn('id="confirm-action-modal"', html)
+        self.assertIn('Do you really want to unbind the model', html)
+        self.assertNotIn(' action="%s' % unbind_uri, html)
+        self.assertNotIn(self.uri, html)

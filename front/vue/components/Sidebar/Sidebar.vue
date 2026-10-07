@@ -3,6 +3,7 @@
         <div
             v-if="selectedKey"
             class="escr-modal-backdrop escr-sidebar-backdrop"
+            @click="closeSidebar"
         />
         <div
             v-if="selectedKey"
@@ -98,9 +99,16 @@ export default {
             return this.actions.find((action) => action.key === this.selectedKey);
         },
     },
+    mounted() {
+        document.addEventListener("keydown", this.onKeydown);
+    },
+    beforeDestroy() {
+        document.removeEventListener("keydown", this.onKeydown);
+    },
     methods: {
         ...mapActions("sidebar",
             [
+                "closeSidebar",
                 "toggleAction",
             ],
         ),
@@ -109,6 +117,14 @@ export default {
                 "escr-sidebar-button": true,
                 "escr-sidebar-button--selected": this.selectedKey === key,
             }
+        },
+        /**
+         * Close the open panel on Escape.
+         */
+        onKeydown(e) {
+            if (e.key !== "Escape" || !this.selectedKey) return;
+            e.preventDefault();
+            this.closeSidebar();
         },
     }
 }
