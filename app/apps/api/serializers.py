@@ -540,7 +540,8 @@ class MetadataSerializer(serializers.ModelSerializer):
         fields = ('name', 'cidoc_id')
 
     def create(self, validated_data):
-        instance, _ = Metadata.objects.get_or_create(**validated_data)
+        instance, _ = Metadata.get_or_create_by_name(validated_data['name'],
+                                                     cidoc_id=validated_data.get('cidoc_id'))
         return instance
 
 
@@ -553,7 +554,7 @@ class DocumentMetadataSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         key_data = validated_data.pop('key')
-        md, _created = Metadata.objects.get_or_create(**key_data)
+        md = self.fields['key'].create(key_data)
         dmd = DocumentMetadata.objects.create(document=self.context['document'],
                                               key=md,
                                               **validated_data)
@@ -561,14 +562,11 @@ class DocumentMetadataSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         instance.value = validated_data.get('value', instance.value)
-        instance.save()
-
         if "key" in validated_data:
-            new_key = validated_data.get('key')
-            nested_serializer = self.fields['key']
-            nested_instance = instance.key
-            nested_serializer.update(nested_instance, new_key)
-
+            # point this value to the key with the new name; renaming the key itself
+            # would rename it on every document and page that uses it
+            instance.key = self.fields['key'].create(validated_data['key'])
+        instance.save()
         return instance
 
 
@@ -590,14 +588,11 @@ class DocumentPartMetadataSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         instance.value = validated_data.get('value', instance.value)
-        instance.save()
-
         if "key" in validated_data:
-            new_key = validated_data.get('key')
-            nested_serializer = self.fields['key']
-            nested_instance = instance.key
-            nested_serializer.update(nested_instance, new_key)
-
+            # point this value to the key with the new name; renaming the key itself
+            # would rename it on every document and page that uses it
+            instance.key = self.fields['key'].create(validated_data['key'])
+        instance.save()
         return instance
 
 

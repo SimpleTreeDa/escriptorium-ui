@@ -369,6 +369,18 @@ class Metadata(ExportModelOperationsMixin("Metadata"), models.Model):
     def __str__(self):
         return self.name
 
+    @classmethod
+    def get_or_create_by_name(cls, name, **defaults):
+        """
+        The key named name, ignoring case and surrounding spaces, so that "Shelfmark" and
+        "shelfmark" are one key; a key with exactly that name is preferred. Created if there is none.
+        """
+        name = name.strip()
+        key = cls.objects.filter(name=name).first() or cls.objects.filter(name__iexact=name).order_by("pk").first()
+        if key is not None:
+            return key, False
+        return cls.objects.create(name=name, **defaults), True
+
 
 class Script(ExportModelOperationsMixin("Script"), models.Model):
     TEXT_DIRECTION_HORIZONTAL_LTR = "horizontal-lr"
