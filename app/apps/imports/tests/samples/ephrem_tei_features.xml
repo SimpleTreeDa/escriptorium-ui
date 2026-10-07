@@ -1,38 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-model href="https://www.tei-c.org/Vault/P5/4.12.0/xml/tei/custom/schema/relaxng/tei_all.rng" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>
 <!--
-  Synthetic test document for the Ephrem TEI profile, version 1 (docs/tei/ephrem-tei-profile.md).
+  Synthetic test document for the Ephrem TEI profile, version 1.1 (docs/tei/ephrem-tei-profile.md).
   It uses every construct in the profile, including those the canonical sample (ephrem_tei_sample.xml)
-  has no data for: headings and sections, margin notes, page furniture, unclear/gap/add, several works,
-  a source image link and a Syriac image file name. The values are made up.
+  has no data for. It is the export of the fixture in test_ephrem_tei_exporter.py, with the database
+  ids renumbered; the values are made up.
 -->
-<TEI xmlns="http://www.tei-c.org/ns/1.0" xml:id="ephrem-doc-123" xml:lang="en">
+<TEI xmlns="http://www.tei-c.org/ns/1.0" xml:id="example-ms-1" xml:lang="en">
   <teiHeader>
     <fileDesc>
       <titleStmt>
-        <title>Example Library, MS 1, ff. 23r–25r</title>
+        <title>Example MS 1</title>
+        <respStmt>
+          <resp>Edited by</resp>
+          <persName xml:id="pers-1">Ed Itor</persName>
+        </respStmt>
         <respStmt>
           <resp>Syriac text transcribed by</resp>
           <resp>Reviewed by</resp>
-          <persName xml:id="pers-jdoe">Jane Doe</persName>
+          <persName xml:id="pers-2">Jane Doe</persName>
         </respStmt>
         <respStmt>
-          <resp>Edited by</resp>
-          <persName xml:id="pers-a.b_c-d">a.b_c-d</persName>
+          <resp>Reviewed by</resp>
+          <persName xml:id="pers-x-sebastian-brock">Sebastian Brock</persName>
         </respStmt>
         <respStmt>
           <resp>Automatic text recognition by</resp>
-          <name type="software" xml:id="htr-syrestr_02_34">kraken model SyrEstr_02_34</name>
+          <name type="software" xml:id="htr-syr_test">kraken model syr_test</name>
         </respStmt>
       </titleStmt>
       <publicationStmt>
         <authority>Example project</authority>
-        <idno type="ephrem">ephrem-doc-123</idno>
+        <idno type="ephrem">example-ms-1</idno>
+        <idno type="URI">https://ephrem.example.org/records/example-ms-1</idno>
         <date when="2026-10-07"/>
       </publicationStmt>
       <sourceDesc>
         <msDesc>
           <msIdentifier>
+            <settlement>Example City</settlement>
             <repository>Example Library</repository>
             <idno type="shelfmark">MS 1</idno>
           </msIdentifier>
@@ -41,11 +47,11 @@
               <locus from="23r" to="23v"/>
               <locus from="25r" to="25r"/>
               <author>Ephrem</author>
-              <title>Work A</title>
+              <title ref="http://syriaca.org/work/1505">Hymns on Faith</title>
             </msItem>
             <msItem xml:id="work-2" n="2">
               <locus from="24r" to="24r"/>
-              <title>Work B</title>
+              <title>Hymns on Paradise</title>
             </msItem>
           </msContents>
         </msDesc>
@@ -53,7 +59,7 @@
     </fileDesc>
     <encodingDesc>
       <editorialDecl>
-        <p>Diplomatic transcription made in eScriptorium, from the transcription layer "manual". One lb element per manuscript line and one pb element per page. Line text is as entered: not normalised and not punctuated.</p>
+        <p>Diplomatic transcription made in eScriptorium, from the transcription layer "manual". One lb element per manuscript line, one pb element per page and one cb element per column. Headings (head) and paragraphs (p) are those the editors marked; the rest of the text is in ab elements. Line text is as entered: not normalised and not punctuated.</p>
       </editorialDecl>
     </encodingDesc>
     <profileDesc>
@@ -62,83 +68,125 @@
         <language ident="syr">Syriac</language>
       </langUsage>
     </profileDesc>
-    <revisionDesc status="in_progress">
-      <change when="2026-10-03T14:12:09+00:00" who="#pers-a.b_c-d" status="ready_for_tei" target="#surface-901">23r: Ready for TEI export</change>
-      <change when="2026-10-02T09:00:00.123456+00:00" who="#pers-jdoe" status="reviewed_1" target="#surface-901">23r: Reviewed by Editor 1</change>
-      <change when="2026-10-01T08:30:00+00:00" who="#pers-jdoe" status="in_progress" target="#surface-902">23v: In progress</change>
-      <change when="2026-09-30T17:45:00+00:00" who="#pers-jdoe" status="transcribed" target="#surface-903">24r: Initial transcription complete</change>
-      <change status="in_progress" target="#surface-904">25r: In progress</change>
+    <revisionDesc status="not_started">
+      <change xml:id="status-903" when="2026-10-05T09:30:00+00:00" who="#pers-1" status="final" target="#surface-903">24r: Final edited copy</change>
+      <change xml:id="status-901" when="2026-10-03T14:12:09+00:00" who="#pers-2" status="reviewed_1" target="#surface-901">23r: Reviewed by Editor 1</change>
+      <change xml:id="status-902" status="not_started" target="#surface-902">23v: Not started</change>
+      <change xml:id="status-904" status="not_started" target="#surface-904">25r: Not started</change>
     </revisionDesc>
   </teiHeader>
   <facsimile>
-    <surface xml:id="surface-901" n="23r" ulx="0" uly="0" lrx="2480" lry="3508">
-      <graphic url="MS1%20f023r%20%281%29.jpg" width="2480px" height="3508px"/>
+    <surface xml:id="surface-901" n="23r" ulx="0" uly="0" lrx="864" lry="206" change="#status-901">
+      <graphic url="MS1%20f23r.png" width="864px" height="206px"/>
       <graphic type="source" url="https://iiif.example.org/iiif/abc/full/full/0/default.jpg"/>
-      <zone xml:id="zone-r4400" type="runningtitlezone" points="300,100 2000,100 2000,160 300,160">
-        <zone xml:id="zone-l88100" type="line" points="305,105 1995,105 1995,155 305,155"/>
+      <zone xml:id="zone-r1" type="runningtitlezone" points="300,0 700,0 700,20 300,20">
+        <zone xml:id="zone-l1" type="line" points="300,2 700,2 700,18 300,18"/>
       </zone>
-      <zone xml:id="zone-r4408" type="numberingzone" points="2200,120 2300,120 2300,180 2200,180">
-        <zone xml:id="zone-l88117" type="line" points="2205,125 2295,125 2295,175 2205,175"/>
+      <zone xml:id="zone-r2" type="numberingzone" points="950,0 990,0 990,20 950,20">
+        <zone xml:id="zone-l2" type="line" points="950,2 990,2 990,18 950,18"/>
       </zone>
-      <zone xml:id="zone-r4409" type="title" points="210,250 2270,250 2270,320 210,320">
-        <zone xml:id="zone-l88118" type="line" points="215,255 2260,255 2260,315 215,315"/>
+      <zone xml:id="zone-r3" type="mainzone:right" points="500,40 900,40 900,160 500,160">
+        <zone xml:id="zone-l3" type="line" points="500,40 900,40 900,60 500,60"/>
+        <zone xml:id="zone-l4" type="line" points="500,70 900,70 900,90 500,90"/>
+        <zone xml:id="zone-l5" type="line" points="600,92 700,92 700,98 600,98"/>
+        <zone xml:id="zone-l6" type="line" points="500,100 900,100 900,120 500,120"/>
+        <zone xml:id="zone-l7" type="line" points="500,130 900,130 900,150 500,150"/>
       </zone>
-      <zone xml:id="zone-r4410" type="main" points="210,330 2270,330 2270,3190 210,3190">
-        <zone xml:id="zone-l88119" type="line" points="215,340 2260,338 2262,402 217,405"/>
-        <zone xml:id="zone-l88120" type="line" points="215,410 2260,408 2262,470 217,472"/>
+      <zone xml:id="zone-r4" type="mainzone:left" points="100,40 450,40 450,160 100,160">
+        <zone xml:id="zone-l8" type="line" points="100,40 450,40 450,60 100,60"/>
+        <zone xml:id="zone-l9" type="line" points="100,70 450,70 450,90 100,90"/>
       </zone>
-      <zone xml:id="zone-r4411" type="margintextzone" points="2300,900 2450,900 2450,1100 2300,1100">
-        <zone xml:id="zone-l88121" type="line" points="2305,905 2445,905 2445,960 2305,960"/>
+      <zone xml:id="zone-r5" type="margintextzone" points="950,100 990,100 990,120 950,120">
+        <zone xml:id="zone-l10" type="line" points="950,100 990,100 990,120 950,120"/>
       </zone>
-      <zone xml:id="zone-r4412" type="quiremarkszone" points="1000,3300 1200,3300 1200,3380"/>
-      <zone xml:id="zone-l88130" type="line" points="5,3400 400,3400 400,3450 5,3450"/>
+      <zone xml:id="zone-r6" type="illustration" points="100,170 450,170 450,200 100,200">
+        <zone xml:id="zone-l11" type="line" points="100,170 450,170 450,200 100,200"/>
+      </zone>
+      <zone xml:id="zone-r7" type="quiremarkszone" points="450,290 550,290 550,300 450,300">
+        <zone xml:id="zone-l12" type="line" points="450,290 550,290 550,300 450,300"/>
+      </zone>
     </surface>
-    <surface xml:id="surface-902" n="23v" ulx="0" uly="0" lrx="2480" lry="3508">
-      <graphic url="%DC%90%DC%A6%DC%AA%DC%9D%DC%A1.jpg" width="2480px" height="3508px"/>
+    <surface xml:id="surface-902" n="23v" ulx="0" uly="0" lrx="864" lry="206" change="#status-902">
+      <graphic url="MS1%20f23v.png" width="864px" height="206px"/>
+      <zone xml:id="zone-r8" type="mainzone" points="100,40 900,40 900,160 100,160">
+        <zone xml:id="zone-l13" type="line" points="100,40 900,40 900,60 100,60"/>
+        <zone xml:id="zone-l14" type="line" points="100,70 900,70 900,90 100,90"/>
+        <zone xml:id="zone-l15" type="line" points="100,100 900,100 900,120 100,120"/>
+        <zone xml:id="zone-l16" type="line" points="500,150 600,150 600,160 500,160"/>
+      </zone>
+      <zone xml:id="zone-r9" type="footnotes" points="100,250 900,250 900,280 100,280">
+        <zone xml:id="zone-l18" type="line" points="100,250 900,250 900,280 100,280"/>
+      </zone>
+      <zone xml:id="zone-r10" type="commentary" points="950,40 990,40 990,60 950,60">
+        <zone xml:id="zone-l19" type="line" points="950,40 990,40 990,60 950,60"/>
+      </zone>
+      <zone xml:id="zone-l17" type="line" points="100,130 900,130 900,150 100,150"/>
     </surface>
-    <surface xml:id="surface-903" n="24r" ulx="0" uly="0" lrx="2480" lry="3508">
-      <graphic url="MS1_f024r.jpg" width="2480px" height="3508px"/>
+    <surface xml:id="surface-903" n="24r" ulx="0" uly="0" lrx="864" lry="206" change="#status-903">
+      <graphic url="MS1%20f24r.png" width="864px" height="206px"/>
+      <zone xml:id="zone-r11" type="mainzone" points="100,40 900,40 900,160 100,160">
+        <zone xml:id="zone-l20" type="line" points="100,40 900,40 900,60 100,60"/>
+      </zone>
     </surface>
-    <surface xml:id="surface-904" n="25r" ulx="0" uly="0" lrx="2480" lry="3508">
-      <graphic url="MS1_f025r.jpg" width="2480px" height="3508px"/>
+    <surface xml:id="surface-904" n="25r" ulx="0" uly="0" lrx="864" lry="206" change="#status-904">
+      <graphic url="MS1%20f25r.png" width="864px" height="206px"/>
     </surface>
   </facsimile>
   <text xml:lang="syr" type="ManuscriptTranscription">
     <body>
       <div type="work" n="1" corresp="#work-1">
-        <pb n="23r" facs="#surface-901"/>
-        <fw type="header" facs="#zone-r4400"><lb n="1" facs="#zone-l88100"/>ܡܕܪܫܐ ܕܗܝܡܢܘܬܐ</fw>
-        <fw type="pageNum" facs="#zone-r4408"><lb n="2" facs="#zone-l88117"/>ܟܓ</fw>
-        <head facs="#zone-r4409"><lb n="3" facs="#zone-l88118"/>ܡܕܪܫܐ</head>
-        <ab type="main" facs="#zone-r4410">
-          <lb n="4" facs="#zone-l88119"/>ܗܝܡܢܘܬܐ <unclear reason="faded">ܕܐܠ
-          <lb n="5" facs="#zone-l88120"/>ܗܐ</unclear> ܘ<gap reason="illegible" extent="2" unit="words"/> <add place="above">ܘ</add> &amp; &lt;
-        </ab>
-        <note place="margin" facs="#zone-r4411"><lb n="6" facs="#zone-l88121"/>ܥܘܢܝܬܐ</note>
-        <fw type="sig" facs="#zone-r4412"><lb n="7"/>ܒ</fw>
-        <ab>
-          <lb n="8" facs="#zone-l88130"/>&#x200F;ܐ&#x200C;ܒ<gap reason="illegible"/>
-        </ab>
-        <pb n="23v" facs="#surface-902"/>
-        <ab type="main-zone"><lb n="1"/>ܐ</ab>
         <div type="section" n="1">
-          <head><lb n="2"/>ܡܕܪܫܐ ܬܪܝܢܐ</head>
-          <ab type="main"><lb n="3"/>ܒ</ab>
-          <note place="margin"><lb n="4"/>ܥ</note>
-          <ab type="main"><lb n="5"/></ab>
-        </div>
-        <div type="section" n="2">
-          <fw type="pageNum"><lb n="6"/>ܟܓ</fw>
-          <head><lb n="7"/>ܡܕܪܫܐ ܬܠܬܐ</head>
-          <ab type="main"><lb n="8"/>ܓ</ab>
+          <pb n="23r" facs="#surface-901"/>
+          <fw type="header" facs="#zone-r1">
+            <lb facs="#zone-l1"/>ܡܕܪܫܐ ܕܗܝܡܢܘܬܐ
+          </fw>
+          <fw type="pageNum" facs="#zone-r2">
+            <lb facs="#zone-l2"/>ܟܓ
+          </fw>
+          <cb n="a"/>
+          <head>
+            <lb n="1" facs="#zone-l3"/>ܡܕܪܫܐ
+          </head>
+          <p>
+            <lb n="2" facs="#zone-l4"/>ܗܝܡܢܘܬܐ <unclear reason="faded">ܕܐܠ
+            <lb n="3" facs="#zone-l6"/>ܗܐ</unclear> <add place="above">ܘ</add>ܗ<add place="above" facs="#zone-l5">ܘ</add>
+            <note place="margin" facs="#zone-r5">
+              <lb facs="#zone-l10"/>ܥܘܢܝܬܐ
+            </note>
+            <lb n="4" facs="#zone-l7"/>x &lt; y &amp; z
+            <fw type="sig" facs="#zone-r7">
+              <lb facs="#zone-l12"/>ܒ
+            </fw>
+            <cb n="b"/>
+            <lb n="1" facs="#zone-l8"/>ܐ
+            <lb n="2" facs="#zone-l9"/>ܒ
+            <pb n="23v" facs="#surface-902"/>
+            <lb n="1" facs="#zone-l13"/>ܓ <gap reason="illegible" extent="3" unit="chars"/> ܕ
+            <note type="commentary" facs="#zone-r10">
+              <lb facs="#zone-l19"/>ܦܘܫܩܐ
+            </note>
+          </p>
+          <ab type="dropcapitalline">
+            <lb n="2" facs="#zone-l14"/>ܐ
+          </ab>
+          <ab>
+            <lb n="3" facs="#zone-l15"/>ܕ
+            <lb n="4" facs="#zone-l17"/>ܣܪ̈ܦܐ
+            <fw type="sig" facs="#zone-l16">ܓ</fw>
+          </ab>
+          <ab type="footnotes">
+            <lb n="5" facs="#zone-l18"/>1. ܗ
+          </ab>
         </div>
       </div>
       <div type="work" n="2" corresp="#work-2">
         <pb n="24r" facs="#surface-903"/>
+        <ab>
+          <lb n="1" facs="#zone-l20"/>ܗ
+        </ab>
       </div>
       <div type="work" n="1" corresp="#work-1">
         <pb n="25r" facs="#surface-904"/>
-        <ab type="main"><lb n="1"/>ܕ</ab>
       </div>
     </body>
   </text>

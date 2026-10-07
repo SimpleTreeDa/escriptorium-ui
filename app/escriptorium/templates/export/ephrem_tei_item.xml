@@ -1,3 +1,0 @@
-{% if item.kind == "pb" %}<pb n="{{ item.n }}" facs="#{{ item.facs }}"/>{% else %}<{{ item.element }}{% for name, value in item.attributes %} {{ name }}="{{ value }}"{% endfor %}>{% for event in item.events %}{% if event.kind == "lb" %}
-          <lb n="{{ event.n }}"{% if event.facs %} facs="#{{ event.facs }}"{% endif %}/>{% elif event.kind == "text" %}{{ event.text }}{% elif event.kind == "open" %}<{{ event.name }}{% for name, value in event.attributes %} {{ name }}="{{ value }}"{% endfor %}>{% elif event.kind == "close" %}</{{ event.name }}>{% else %}<{{ event.name }}{% for name, value in event.attributes %} {{ name }}="{{ value }}"{% endfor %}/>{% endif %}{% endfor %}
-        </{{ item.element }}>{% endif %}
