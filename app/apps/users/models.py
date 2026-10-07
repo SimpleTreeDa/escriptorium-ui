@@ -39,6 +39,11 @@ class User(AbstractUser):
     # quota_gpu is to be defined in GPU-min (spread over a week)
     quota_gpu = models.PositiveIntegerField(null=True, blank=True)
 
+    notify_by_email = models.BooleanField(
+        default=True,
+        help_text=_("Also send an email for notifications such as a share invitation."),
+    )
+
     class Meta:
         permissions = (('can_invite', 'Can invite users'),)
 
@@ -130,6 +135,44 @@ class ResearchField(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Notification(models.Model):
+    """A persisted, in-app notification, also pushed live through the websocket."""
+    KIND_SHARE_INVITED = 'share:invited'
+    KIND_SHARE_ACCEPTED = 'share:accepted'
+    KIND_SHARE_DECLINED = 'share:declined'
+    KIND_SHARE_REVOKED = 'share:revoked'
+    KIND_OWNERSHIP_TRANSFERRED = 'ownership:transferred'
+    KIND_CHOICES = (
+        (KIND_SHARE_INVITED, _("Share invited")),
+        (KIND_SHARE_ACCEPTED, _("Share accepted")),
+        (KIND_SHARE_DECLINED, _("Share declined")),
+        (KIND_SHARE_REVOKED, _("Share revoked")),
+        (KIND_OWNERSHIP_TRANSFERRED, _("Ownership transferred")),
+    )
+
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    kind = models.CharField(max_length=32, choices=KIND_CHOICES)
+    message = models.CharField(max_length=512)
+    payload = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ('-created_at',)
+
+    def mark_read(self):
+        if self.read_at is None:
+            self.read_at = timezone.now()
+            self.save(update_fields=['read_at'])
+
+    @classmethod
+    def push(cls, recipient, kind, message, payload=None):
+        """Persist a notification and push it live to the recipient over the websocket."""
+        notification = cls.objects.create(recipient=recipient, kind=kind, message=message, payload=payload or {})
+        recipient.notify(message, id=notification.pk)
+        return notification
 
 
 class Invitation(models.Model):

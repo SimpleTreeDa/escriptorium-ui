@@ -9,11 +9,13 @@ from core.models import (
     AnnotationType,
     BlockType,
     Document,
+    DocumentGroupShare,
     DocumentMetadata,
     DocumentPart,
     DocumentPartType,
     DocumentTag,
     DocumentType,
+    DocumentUserShare,
     InstanceSettings,
     LineTranscription,
     LineType,
@@ -22,6 +24,8 @@ from core.models import (
     OcrModelDocument,
     OcrModelRight,
     Project,
+    ProjectGroupShare,
+    ProjectUserShare,
     Script,
     TextualWitness,
     Transcription,
@@ -40,16 +44,40 @@ class DocumentTagInline(admin.TabularInline):
     model = Document.tags.through
 
 
+class ShareInline(admin.TabularInline):
+    extra = 0
+    raw_id_fields = ('invited_by',)
+    readonly_fields = ('created_at',)
+
+
+class ProjectUserShareInline(ShareInline):
+    model = ProjectUserShare
+    raw_id_fields = ('user', 'invited_by')
+
+
+class ProjectGroupShareInline(ShareInline):
+    model = ProjectGroupShare
+
+
+class DocumentUserShareInline(ShareInline):
+    model = DocumentUserShare
+    raw_id_fields = ('user', 'invited_by')
+
+
+class DocumentGroupShareInline(ShareInline):
+    model = DocumentGroupShare
+
+
 class ProjectAdmin(admin.ModelAdmin):
     list_display = ['pk', 'name']
     search_fields = ['name']
-    inlines = (TagInline,)
+    inlines = (TagInline, ProjectUserShareInline, ProjectGroupShareInline)
 
 
 class DocumentAdmin(admin.ModelAdmin):
     list_display = ['pk', 'name', 'owner', 'project']
     search_fields = ['name', 'owner__username', 'project__name']
-    inlines = (MetadataInline, DocumentTagInline)
+    inlines = (MetadataInline, DocumentTagInline, DocumentUserShareInline, DocumentGroupShareInline)
 
 
 class DocumentPartAdmin(admin.ModelAdmin):

@@ -23,8 +23,19 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.files.uploadedfile import File
 from django.core.validators import FileExtensionValidator
 from django.db import models, transaction
-from django.db.models import Avg, JSONField, Prefetch, Q, Sum
-from django.db.models.functions import Coalesce, Length
+from django.db.models import (
+    Avg,
+    Case,
+    JSONField,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+    When,
+)
+from django.db.models.functions import Coalesce, Greatest, Length
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 from django.forms import ValidationError
@@ -420,29 +431,151 @@ class DocumentPartMetadata(CascadeUpdate, models.Model):
         return "%s:%s" % (self.part.name, self.key.name)
 
 
-class ProjectManager(models.Manager):
+class Role(models.IntegerChoices):
+    """What a user can do on a project or a document, each role allows everything the lower ones do."""
+    VIEWER = 10, _("Viewer")  # read and export
+    EDITOR = 20, _("Editor")  # edit the content and run tasks
+    ADMIN = 30, _("Admin")  # share and change settings
+    OWNER = 40, _("Owner")  # delete, transfer and give admin rights; never given through a share
+
+    @property
+    def slug(self):
+        return self.name.lower()
+
+
+SHARE_ROLE_CHOICES = [choice for choice in Role.choices if choice[0] != Role.OWNER]
+
+
+class UserShare(models.Model):
+    """
+    A project or a document shared with a single user, who has to accept it before getting access.
+    The tables are those of the former auto created shared_with_users relations.
+    """
+    STATUS_PENDING = 'pending'
+    STATUS_ACCEPTED = 'accepted'
+    STATUS_DECLINED = 'declined'
+    STATUS_CHOICES = (
+        (STATUS_PENDING, _("Pending")),
+        (STATUS_ACCEPTED, _("Accepted")),
+        (STATUS_DECLINED, _("Declined")),
+    )
+
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    role = models.PositiveSmallIntegerField(choices=SHARE_ROLE_CHOICES, default=Role.EDITOR)
+    # existing shares predate invitations, they were accepted by default
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_ACCEPTED)
+    invited_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        abstract = True
+
+
+class GroupShare(models.Model):
+    """
+    A project or a document shared with a team. Joining a team is already
+    consented to, so there is nothing to accept for its members.
+    """
+    id = models.AutoField(primary_key=True)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    role = models.PositiveSmallIntegerField(choices=SHARE_ROLE_CHOICES, default=Role.EDITOR)
+    invited_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        abstract = True
+
+
+class ProjectUserShare(UserShare):
+    project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='user_shares')
+
+    class Meta:
+        db_table = 'core_project_shared_with_users'
+        unique_together = (('project', 'user'),)
+
+
+class ProjectGroupShare(GroupShare):
+    project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='group_shares')
+
+    class Meta:
+        db_table = 'core_project_shared_with_groups'
+        unique_together = (('project', 'group'),)
+
+
+class DocumentUserShare(UserShare):
+    document = models.ForeignKey('Document', on_delete=models.CASCADE, related_name='user_shares')
+
+    class Meta:
+        db_table = 'core_document_shared_with_users'
+        unique_together = (('document', 'user'),)
+
+
+class DocumentGroupShare(GroupShare):
+    document = models.ForeignKey('Document', on_delete=models.CASCADE, related_name='group_shares')
+
+    class Meta:
+        db_table = 'core_document_shared_with_groups'
+        unique_together = (('document', 'group'),)
+
+
+def granting_shares(share_model, user, min_role=Role.VIEWER):
+    """The shares of share_model giving user access with at least min_role."""
+    if issubclass(share_model, UserShare):
+        shares = share_model.objects.filter(user=user, status=UserShare.STATUS_ACCEPTED)
+    else:
+        shares = share_model.objects.filter(group__user=user)
+    return shares.filter(role__gte=min_role)
+
+
+def best_share_role(share_model, target, outer_ref, user):
+    """Subquery of the highest role user is granted on target (eg. project=OuterRef('pk')) by share_model."""
+    shares = granting_shares(share_model, user).filter(**{target: OuterRef(outer_ref)})
+    return Coalesce(Subquery(shares.order_by('-role').values('role')[:1]), 0, output_field=models.IntegerField())
+
+
+class ProjectQuerySet(models.QuerySet):
+    def with_role(self, user, min_role):
+        """Projects on which user has at least min_role."""
+        if not user.is_authenticated:
+            return self.none()
+        return self.filter(
+            Q(owner=user)
+            | Q(pk__in=granting_shares(ProjectUserShare, user, min_role).values('project'))
+            | Q(pk__in=granting_shares(ProjectGroupShare, user, min_role).values('project'))
+        )
+
     def for_user_write(self, user):
         # return the list of EDITABLE projects
         # allows to add documents to it
-        return (
-            self.filter(Q(owner=user)
-                        | Q(shared_with_users=user)
-                        | Q(shared_with_groups__user=user))
-            .distinct()
-        )
+        return self.with_role(user, Role.EDITOR)
 
     def for_user_read(self, user):
-        # return the list of VIEWABLE projects
-        # Note: Monitor this query
+        # return the list of VIEWABLE projects,
+        # sharing one document also makes its project visible, but not its other documents
+        if not user.is_authenticated:
+            return self.none()
         return self.filter(
-            Q(owner=user)
-            | Q(shared_with_users=user)
-            | Q(shared_with_groups__user=user)
-            | (
-                Q(documents__shared_with_users=user)
-                | Q(documents__shared_with_groups__user=user)
-            )
-        ).distinct()
+            Q(pk__in=Project.objects.with_role(user, Role.VIEWER).values('pk'))
+            | Q(pk__in=granting_shares(DocumentUserShare, user).values('document__project'))
+            | Q(pk__in=granting_shares(DocumentGroupShare, user).values('document__project'))
+        )
+
+    def annotate_role(self, user):
+        """Adds my_role, the Role of user on each project, 0 when it is only visible through its documents."""
+        if not user.is_authenticated:
+            return self.annotate(my_role=Value(0))
+        return self.annotate(my_role=Case(
+            When(owner=user.pk, then=Value(Role.OWNER)),
+            default=Greatest(best_share_role(ProjectUserShare, 'project', 'pk', user),
+                             best_share_role(ProjectGroupShare, 'project', 'pk', user)),
+            output_field=models.IntegerField(),
+        ))
+
+
+class ProjectManager(models.Manager.from_queryset(ProjectQuerySet)):
+    pass
 
 
 class Project(ExportModelOperationsMixin("Project"), models.Model):
@@ -455,17 +588,23 @@ class Project(ExportModelOperationsMixin("Project"), models.Model):
 
     owner = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
 
+    # Lists everyone the project was shared with, whatever the status of the share,
+    # access is only granted by accepted shares, see ProjectQuerySet.
     shared_with_users = models.ManyToManyField(
         User,
         blank=True,
         verbose_name=_("Share with users"),
         related_name="shared_projects",
+        through=ProjectUserShare,
+        through_fields=('project', 'user'),
     )
     shared_with_groups = models.ManyToManyField(
         Group,
         blank=True,
         verbose_name=_("Share with teams"),
         related_name="shared_projects",
+        through=ProjectGroupShare,
+        through_fields=('project', 'group'),
     )
 
     tags = models.ManyToManyField(ProjectTag, blank=True, related_name='tags_project')
@@ -477,6 +616,11 @@ class Project(ExportModelOperationsMixin("Project"), models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_role(self, user):
+        """The Role of user on this project, None if it doesn't give them any."""
+        role = Project.objects.filter(pk=self.pk).annotate_role(user).values_list('my_role', flat=True).first()
+        return Role(role) if role else None
 
     def make_slug(self):
         slug = slugify(self.name, allow_unicode=True)
@@ -493,20 +637,43 @@ class Project(ExportModelOperationsMixin("Project"), models.Model):
         super().save(*args, **kwargs)
 
 
-class DocumentManager(models.Manager):
-    def for_user(self, user):
+class DocumentQuerySet(models.QuerySet):
+    def with_role(self, user, min_role):
+        """Documents on which user has at least min_role, directly or through their project."""
+        if not user.is_authenticated:
+            return self.none()
+        return self.filter(
+            Q(owner=user)
+            | Q(project__owner=user)
+            | Q(project__in=granting_shares(ProjectUserShare, user, min_role).values('project'))
+            | Q(project__in=granting_shares(ProjectGroupShare, user, min_role).values('project'))
+            | Q(pk__in=granting_shares(DocumentUserShare, user, min_role).values('document'))
+            | Q(pk__in=granting_shares(DocumentGroupShare, user, min_role).values('document'))
+        )
+
+    def for_user(self, user, min_role=Role.VIEWER):
         return (
-            Document.objects.filter(
-                Q(owner=user)
-                | Q(project__owner=user)
-                | Q(project__shared_with_users=user)
-                | Q(project__shared_with_groups__user=user)
-                | (Q(shared_with_users=user) | Q(shared_with_groups__user=user))
-            )
+            self.with_role(user, min_role)
             .exclude(workflow_state=Document.WORKFLOW_STATE_ARCHIVED)
             .select_related("owner")
-            .distinct()
         )
+
+    def annotate_role(self, user):
+        """Adds my_role, the Role of user on each document."""
+        if not user.is_authenticated:
+            return self.annotate(my_role=Value(0))
+        return self.annotate(my_role=Case(
+            When(Q(owner=user.pk) | Q(project__owner=user.pk), then=Value(Role.OWNER)),
+            default=Greatest(best_share_role(ProjectUserShare, 'project', 'project', user),
+                             best_share_role(ProjectGroupShare, 'project', 'project', user),
+                             best_share_role(DocumentUserShare, 'document', 'pk', user),
+                             best_share_role(DocumentGroupShare, 'document', 'pk', user)),
+            output_field=models.IntegerField(),
+        ))
+
+
+class DocumentManager(models.Manager.from_queryset(DocumentQuerySet)):
+    pass
 
 
 class Document(ExportModelOperationsMixin("Document"), CascadeUpdate, models.Model):
@@ -588,17 +755,22 @@ class Document(ExportModelOperationsMixin("Document"), CascadeUpdate, models.Mod
         Project, on_delete=models.CASCADE, related_name="documents"
     )
 
+    # see Project.shared_with_users
     shared_with_users = models.ManyToManyField(
         User,
         blank=True,
         verbose_name=_("Share with users"),
         related_name="shared_documents",
+        through=DocumentUserShare,
+        through_fields=('document', 'user'),
     )
     shared_with_groups = models.ManyToManyField(
         Group,
         blank=True,
         verbose_name=_("Share with teams"),
         related_name="shared_documents",
+        through=DocumentGroupShare,
+        through_fields=('document', 'group'),
     )
 
     tags = models.ManyToManyField(DocumentTag, blank=True, related_name='tags_document')
@@ -612,6 +784,11 @@ class Document(ExportModelOperationsMixin("Document"), CascadeUpdate, models.Mod
 
     def __str__(self):
         return self.name
+
+    def get_role(self, user):
+        """The Role of user on this document, None if it doesn't give them any."""
+        role = Document.objects.filter(pk=self.pk).annotate_role(user).values_list('my_role', flat=True).first()
+        return Role(role) if role else None
 
     def save(self, *args, **kwargs):
         created = not self.pk

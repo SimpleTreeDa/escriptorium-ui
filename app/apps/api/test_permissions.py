@@ -4,7 +4,15 @@ from django.contrib.auth.models import Group
 from django.urls import reverse
 from rest_framework.authtoken.models import Token
 
-from core.models import Block, Document, DocumentMetadata, DocumentTag, Line, LineTranscription, Project
+from core.models import (
+    Block,
+    Document,
+    DocumentMetadata,
+    DocumentTag,
+    Line,
+    LineTranscription,
+    Project,
+)
 from core.tests.factory import CoreFactoryTestCase
 from reporting.models import TaskGroup
 

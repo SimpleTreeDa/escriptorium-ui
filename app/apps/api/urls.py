@@ -9,18 +9,22 @@ from api.views import (
     BlockViewSet,
     DocumentMetadataViewSet,
     DocumentPartTypeViewSet,
+    DocumentShareViewSet,
     DocumentTagViewSet,
     DocumentTranscriptionViewSet,
     DocumentViewSet,
     GroupViewSet,
     ImageAnnotationViewSet,
     ImportViewSet,
+    IncomingShareViewSet,
     LineTranscriptionViewSet,
     LineTypeViewSet,
     LineViewSet,
+    NotificationViewSet,
     OcrModelViewSet,
     PartMetadataViewSet,
     PartViewSet,
+    ProjectShareViewSet,
     ProjectTagViewSet,
     ProjectViewSet,
     RegenerableAuthToken,
@@ -41,6 +45,8 @@ router.register(r'tasks', TaskReportViewSet)
 router.register(r'models', OcrModelViewSet)
 router.register(r'users', UserViewSet)
 router.register(r'groups', GroupViewSet)
+router.register(r'shares', IncomingShareViewSet, basename='share')
+router.register(r'notifications', NotificationViewSet, basename='notification')
 router.register(r'tags/project', ProjectTagViewSet, basename='project-tag')
 router.register(r'types/block', BlockTypeViewSet)
 router.register(r'types/line', LineTypeViewSet)
@@ -49,6 +55,7 @@ router.register(r'types/part', DocumentPartTypeViewSet)
 
 projects_router = routers.NestedSimpleRouter(router, r'projects', lookup='project')
 projects_router.register(r'tags', DocumentTagViewSet, basename='document-tag')
+projects_router.register(r'shares', ProjectShareViewSet, basename='project-share')
 
 documents_router = routers.NestedSimpleRouter(router, r'documents', lookup='document')
 documents_router.register(r'metadata', DocumentMetadataViewSet, basename='metadata')
@@ -58,6 +65,7 @@ documents_router.register(r'taxonomies/annotations', AnnotationTaxonomyViewSet)
 documents_router.register(r'taxonomies/components', AnnotationComponentViewSet)
 documents_router.register(r'import', ImportViewSet, basename='import')
 documents_router.register(r'task_groups', TaskGroupViewSet, basename='task-group')
+documents_router.register(r'shares', DocumentShareViewSet, basename='document-share')
 
 parts_router = routers.NestedSimpleRouter(documents_router, r'parts', lookup='part')
 parts_router.register(r'blocks', BlockViewSet)

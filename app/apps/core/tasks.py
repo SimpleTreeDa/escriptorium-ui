@@ -890,6 +890,7 @@ def replace_line_transcriptions_text(
     if mode == REGEX_SEARCH_MODE:
         search_method = search_content_psql_regex
 
+    from core.models import Role  # core.models imports this module
     search_results = search_method(
         find_terms,
         user,
@@ -898,6 +899,7 @@ def replace_line_transcriptions_text(
         document_id=document_pk,
         transcription_id=transcription_pk,
         part_id=part_pk,
+        min_role=Role.EDITOR,
     )
 
     if mode == WORD_BY_WORD_SEARCH_MODE:

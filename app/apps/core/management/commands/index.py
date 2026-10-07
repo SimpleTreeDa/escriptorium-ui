@@ -10,7 +10,7 @@ from elasticsearch import Elasticsearch
 from elasticsearch.client import IndicesClient
 from elasticsearch.helpers import bulk as es_bulk
 
-from core.models import LineTranscription, Project
+from core.models import LineTranscription, Project, UserShare
 from users.models import User
 
 logger = logging.getLogger("es_indexing")
@@ -274,18 +274,20 @@ class Command(BaseCommand):
         return nb_inserted
 
     def retrieve_allowed_users(self, project, document):
+        # the same users as Document.objects.for_user, pending or declined shares give no access
         shared_with_groups = Group.objects.filter(
             Q(shared_documents=document) | Q(shared_projects=project)
         )
         shared_with_users = list(
             User.objects.filter(
                 Q(groups__in=shared_with_groups)
-                | Q(shared_documents=document)
-                | Q(shared_projects=project)
-            ).values_list("id", flat=True)
+                | Q(pk__in=document.user_shares.filter(status=UserShare.STATUS_ACCEPTED).values("user"))
+                | Q(pk__in=project.user_shares.filter(status=UserShare.STATUS_ACCEPTED).values("user"))
+            ).distinct().values_list("id", flat=True)
         )
 
-        if document.owner_id:
-            shared_with_users.append(document.owner_id)
+        for owner_id in (document.owner_id, project.owner_id):
+            if owner_id and owner_id not in shared_with_users:
+                shared_with_users.append(owner_id)
 
         return shared_with_users

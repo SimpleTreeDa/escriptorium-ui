@@ -1,0 +1,10 @@
+{% load i18n %}
+<p>{% trans "Hello " %}{{recipient_first_name}},</p>
+<p>{{inviter|title}} {% trans "invited you to collaborate as" %} {{role}} {% trans "on the" %} {{kind}} "{{name}}".</p>
+{% if note %}
+<p>{% trans "They added this note:" %}</br>
+{{note}}</p>
+{% endif %}
+<p>{% trans "Log in to eScriptorium to accept or decline this invitation:" %}</p>
+<a href="{{link}}">{{link}}</a>
+<p>{% trans "Sincerely, the eScriptorium team." %}</p>

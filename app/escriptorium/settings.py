@@ -441,6 +441,9 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'core.pagination.CustomPagination',
     'PAGE_SIZE': 10,
+    'DEFAULT_THROTTLE_RATES': {
+        'user-search': '30/min',
+    },
 }
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000

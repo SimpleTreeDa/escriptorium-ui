@@ -1,0 +1,11 @@
+Dear {{recipient_first_name}},
+
+{{inviter|title}} invited you to collaborate as {{role}} on the {{kind}} "{{name}}".
+{% if note %}
+They added this note:
+{{note}}
+{% endif %}
+Log in to eScriptorium to accept or decline this invitation:
+{{link}}
+
+Sincerely, the eScriptorium team.
