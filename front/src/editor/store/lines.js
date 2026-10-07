@@ -161,13 +161,20 @@ export const actions = {
             let type =
                 l.type &&
                 rootState.document.types.lines.find((t) => t.name == l.type);
-            return {
+            let line = {
                 pk: l.pk,
                 document_part: rootState.parts.pk,
                 baseline: l.baseline,
+                mask: l.mask,
                 region: l.region,
                 typology: (type && type.pk) || null,
             };
+            // a line recreated by undoing its deletion brings its text back;
+            // a line drawn from scratch has none
+            if (l.transcriptions) {
+                line.transcriptions = l.transcriptions;
+            }
+            return line;
         });
 
         const resp = await api.bulkCreateLines(
@@ -208,11 +215,10 @@ export const actions = {
             await dispatch("recalculateOrdering");
         }
 
-        if (getters.hasMasks) {
-            await dispatch(
-                "recalculateMasks",
-                createdLines.map((l) => l.pk),
-            );
+        // a line recreated with its mask keeps it, the others get one computed
+        const withoutMask = createdLines.filter((l) => !l.mask).map((l) => l.pk);
+        if (getters.hasMasks && withoutMask.length) {
+            await dispatch("recalculateMasks", withoutMask);
         }
 
         return createdLines;
