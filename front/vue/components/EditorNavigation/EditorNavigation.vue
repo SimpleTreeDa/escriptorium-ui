@@ -220,7 +220,7 @@ export default {
                         href: `/document/${this.documentId}`
                     },
                     {
-                        title: "Images",
+                        title: "Processing",
                         // include select=pk to select the image being edited in the list
                         href: `/document/${this.documentId}/images${
                             this.elementPk ? "?select=" + this.elementPk : ""
