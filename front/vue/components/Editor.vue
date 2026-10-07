@@ -69,6 +69,7 @@ import TabContent from "./TabContent.vue";
 import TranscriptionManagement from "./TranscriptionManagement.vue";
 import TranscriptionsModal from "./TranscriptionsModal/TranscriptionsModal.vue";
 import { trackSaves } from "../../src/editor/saveTracking";
+import { isTaskEvent } from "../../src/editor/taskStatus";
 import "./Editor.css";
 
 export default {
@@ -249,6 +250,10 @@ export default {
         }.bind(this));
 
         if (!this.legacyModeEnabled) {
+            // background tasks of the document, kept up to date by the websocket
+            this.$store.dispatch("taskStatus/load").catch((err) => {
+                console.log("couldn't fetch the tasks!", err);
+            });
             // join document websocket room
             const msg = `{"type": "join-room", "object_cls": "document", "object_pk": ${
                 this.documentId
@@ -260,9 +265,15 @@ export default {
             msgSocket.maxReconnectAttempts = 3;
             // intercept all websocket messages
             msgSocket.addEventListener("message", this.websocketListener);
+            let connected = false;
             msgSocket.addEventListener("open", function() {
                 msgSocket.send(msg);
-            });
+                if (connected) {
+                    // reconnected: task events may have been missed
+                    this.$store.dispatch("taskStatus/refresh");
+                }
+                connected = true;
+            }.bind(this));
         }
     },
     beforeDestroy() {
@@ -333,6 +344,9 @@ export default {
         },
         websocketListener(e) {
             const data = JSON.parse(e.data);
+            if (isTaskEvent(data)) {
+                this.$store.dispatch("taskStatus/refresh");
+            }
             if (data.type == "message") {
                 // handle "message" type here, for display purposes
                 const message = data.text;

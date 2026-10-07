@@ -1041,6 +1041,47 @@ class LineViewSetTestCase(CoreFactoryTestCase):
         self.line.refresh_from_db()
         self.assertEqual(self.line.baseline, '[[100,100], [150,150]]')
 
+    def test_bulk_create(self):
+        # undoing a deletion recreates the lines with their mask and their text
+        self.client.force_login(self.user)
+        transcription = Transcription.objects.create(
+            document=self.part.document, name='test')
+        uri = reverse('api:line-bulk-create',
+                      kwargs={'document_pk': self.part.document.pk, 'part_pk': self.part.pk})
+        mask = [[10, 5], [50, 5], [50, 15], [10, 15]]
+        resp = self.client.post(uri, {'lines': [
+            {'document_part': self.part.pk,
+             'baseline': [[10, 10], [50, 10]],
+             'mask': mask,
+             'region': self.block.pk,
+             'typology': self.line_type.pk,
+             'transcriptions': [{'transcription': transcription.pk,
+                                 'content': 'restored text'}]},
+            # a line drawn from scratch has neither
+            {'document_part': self.part.pk,
+             'baseline': [[10, 30], [50, 30]],
+             'mask': None,
+             'region': None,
+             'typology': None},
+        ]}, content_type='application/json')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(self.part.lines.count(), 5)  # 3 + 2 new
+
+        restored, drawn = sorted(resp.data['lines'], key=lambda line: line['pk'])
+        self.assertEqual(restored['mask'], mask)
+        self.assertEqual(restored['region'], self.block.pk)
+        self.assertEqual(restored['typology'], self.line_type.pk)
+        self.assertEqual(
+            [(t['transcription'], t['content']) for t in restored['transcriptions']],
+            [(transcription.pk, 'restored text')])
+        self.assertEqual(
+            LineTranscription.objects.get(line_id=restored['pk']).content,
+            'restored text')
+
+        self.assertIsNone(drawn['mask'])
+        self.assertEqual(drawn['transcriptions'], [])
+        self.assertFalse(LineTranscription.objects.filter(line_id=drawn['pk']).exists())
+
     def test_bulk_delete(self):
         self.client.force_login(self.user)
         uri = reverse('api:line-bulk-delete',

@@ -23,10 +23,15 @@ export default Vue.extend({
         "line.order": function(n, o) {
             // make sure it's at the right place,
             // in case it was just created or the ordering got recalculated
-            this.$el.parentNode.insertBefore(
-                this.$el,
-                this.$el.parentNode.children[this.line.order]);
-            this.setElContent(this.line.currentTrans.content);
+            const parent = this.$el && this.$el.parentNode;
+            if (parent) {
+                // a line recreated by an undo can be detached while the list
+                // is re-rendered: its text must still land in the right row
+                parent.insertBefore(this.$el, parent.children[this.line.order]);
+            }
+            if (this.line.currentTrans) {
+                this.setElContent(this.line.currentTrans.content);
+            }
         },
         "line.currentTrans": function(n, o) {
             if (n!=undefined) {

@@ -22,6 +22,7 @@
         </div>
         <div class="escr-editor-nav-actions">
             <SaveStatus />
+            <TaskStatus />
             <VDropdown
                 theme="escr-tooltip-small"
                 placement="bottom"
@@ -155,6 +156,7 @@ import InfoOutlineIcon from "../Icons/InfoOutlineIcon/InfoOutlineIcon.vue";
 import OntologyIcon from "../Icons/OntologyIcon/OntologyIcon.vue";
 import PagePicker from "../PagePicker/PagePicker.vue";
 import SaveStatus from "../SaveStatus/SaveStatus.vue";
+import TaskStatus from "../TaskStatus/TaskStatus.vue";
 import TranscribeIcon from "../Icons/TranscribeIcon/TranscribeIcon.vue";
 import { editorialStatusChange } from "../../store/util/editorialStatus";
 import { middleTruncate } from "../../store/util/filename";
@@ -172,6 +174,7 @@ export default {
         OntologyIcon,
         PagePicker,
         SaveStatus,
+        TaskStatus,
         TranscribeIcon,
         VDropdown,
     },

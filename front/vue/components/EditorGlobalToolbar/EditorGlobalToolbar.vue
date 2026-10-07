@@ -280,6 +280,15 @@
                                 <span>Image Annotation</span>
                             </button>
                         </li>
+                        <li v-if="!editorPanels.includes('comparison')">
+                            <button
+                                type="button"
+                                @mousedown="onAddEditorPanel('comparison')"
+                            >
+                                <HistoryIcon />
+                                <span>Comparison</span>
+                            </button>
+                        </li>
                     </ul>
                 </template>
             </VDropdown>
@@ -293,6 +302,7 @@ import ChevronDownIcon from "../Icons/ChevronDownIcon/ChevronDownIcon.vue";
 import CursorPanIcon from "../Icons/CursorPanIcon/CursorPanIcon.vue";
 import CursorSelectIcon from "../Icons/CursorSelectIcon/CursorSelectIcon.vue";
 import EscrButton from "../Button/Button.vue";
+import HistoryIcon from "../Icons/HistoryIcon/HistoryIcon.vue";
 import ImageAnnotationIcon from "../Icons/ImageAnnotationIcon/ImageAnnotationIcon.vue";
 import LayoutSideBySideIcon from "../Icons/LayoutSideBySideIcon/LayoutSideBySideIcon.vue";
 import LayoutStackedIcon from "../Icons/LayoutStackedIcon/LayoutStackedIcon.vue";
@@ -315,6 +325,7 @@ export default {
         CursorPanIcon,
         CursorSelectIcon,
         EscrButton,
+        HistoryIcon,
         ImageAnnotationIcon,
         LayoutSideBySideIcon,
         LayoutStackedIcon,
