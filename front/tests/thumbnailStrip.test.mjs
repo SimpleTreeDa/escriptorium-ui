@@ -2,11 +2,14 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import {
+    COLLAPSED_HEIGHT,
+    EXPANDED_HEIGHT,
     PROFILE_KEY,
     currentIndex,
     loadCollapsed,
     savedState,
     sortedPages,
+    stripHeight,
     withPageName,
 } from "../src/editor/thumbnailStrip.js";
 
@@ -43,6 +46,37 @@ describe("collapsed state", () => {
         assert.deepEqual(savedState(undefined), { collapsed: false });
         assert.deepEqual(savedState(1), { collapsed: true });
         assert.equal(PROFILE_KEY, "editor-thumbnail-strip");
+    });
+});
+
+describe("toggling", () => {
+    test("collapsing and opening again round-trip through the saved state", () => {
+        let collapsed = loadCollapsed(undefined);
+        assert.equal(collapsed, false);
+        // collapse: saved, and read back as collapsed
+        collapsed = loadCollapsed(savedState(!collapsed));
+        assert.equal(collapsed, true);
+        // open again: saved, and read back as expanded
+        collapsed = loadCollapsed(savedState(!collapsed));
+        assert.equal(collapsed, false);
+    });
+});
+
+describe("stripHeight", () => {
+    test("the thumbnails, or the bar with the toggle when collapsed", () => {
+        assert.equal(stripHeight(false), `${EXPANDED_HEIGHT}px`);
+        assert.equal(stripHeight(true), `${COLLAPSED_HEIGHT}px`);
+    });
+
+    test("the collapsed strip keeps room for the button that opens it", () => {
+        assert.ok(COLLAPSED_HEIGHT >= 32, "a small button is 32px high");
+        assert.ok(COLLAPSED_HEIGHT < EXPANDED_HEIGHT);
+        assert.equal(EXPANDED_HEIGHT, 96);
+    });
+
+    test("nothing when the strip is not shown (legacy UI)", () => {
+        assert.equal(stripHeight(false, false), "0px");
+        assert.equal(stripHeight(true, false), "0px");
     });
 });
 

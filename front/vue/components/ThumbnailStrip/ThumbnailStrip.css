@@ -1,35 +1,36 @@
 /* thumbnail strip: a row of page thumbnails under the editor's navigation bar.
-Its height is --escr-thumbnail-strip-height, set in Editor.css, which the
-panels subtract from theirs. */
+Its height is --escr-thumbnail-strip-height, set by Editor.vue on #escr-editor
+(96px open, 32px collapsed), which the panels subtract from theirs. Collapsed,
+it stays a bar in the flow of the page, holding the button that opens it again:
+nothing is positioned over the panels or the toolbar, so nothing can cover it. */
 .escr-thumbnail-strip {
     display: flex;
     flex-flow: row nowrap;
     align-items: stretch;
     box-sizing: border-box;
+    flex: 0 0 auto;
     height: var(--escr-thumbnail-strip-height, 96px);
     min-height: var(--escr-thumbnail-strip-height, 96px);
     padding: 0 8px 0 4px;
     background-color: var(--background2);
     border-bottom: 1px solid var(--background2-dark);
 }
-/* collapsed: only the toggle stays, over the top of the panels */
 .escr-thumbnail-strip.collapsed {
-    position: relative;
-    height: 0;
-    min-height: 0;
-    padding: 0;
-    border-bottom: none;
-    overflow: visible;
-    z-index: var(--editor-global-toolbar-z);
+    padding: 0 4px;
 }
-.escr-thumbnail-strip.collapsed > .v-popper {
-    position: absolute;
-    top: 8px;
-    left: 4px;
+.escr-thumbnail-strip > .v-popper {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
 }
 .escr-thumbnail-strip .strip-toggle {
-    align-self: center;
     flex: 0 0 auto;
+    white-space: nowrap;
+}
+/* the bar is exactly the small button's height */
+.escr-thumbnail-strip.collapsed .strip-toggle {
+    min-height: var(--escr-thumbnail-strip-height, 32px);
+    font-size: 13px;
 }
 .escr-thumbnail-strip .strip-toggle svg {
     fill: var(--text1);

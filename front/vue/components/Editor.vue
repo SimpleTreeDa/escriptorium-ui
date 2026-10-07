@@ -1,5 +1,8 @@
 <template>
-    <div id="escr-editor">
+    <div
+        id="escr-editor"
+        :style="{ '--escr-thumbnail-strip-height': thumbnailStripHeight }"
+    >
         <nav v-if="legacyModeEnabled">
             <div
                 id="nav-tab"
@@ -18,7 +21,9 @@
         />
         <ThumbnailStrip
             v-if="!legacyModeEnabled"
+            :collapsed="thumbnailStripCollapsed"
             :disabled="!partsLoaded"
+            @toggle="toggleThumbnailStrip"
         />
 
         <TabContent :legacy-mode-enabled="legacyModeEnabled" />
@@ -59,6 +64,7 @@
 </template>
 
 <script>
+/* global userProfile */
 import axios from "axios";
 import ReconnectingWebSocket from "reconnectingwebsocket";
 import { mapActions, mapState } from "vuex";
@@ -76,6 +82,12 @@ import TranscriptionsModal from "./TranscriptionsModal/TranscriptionsModal.vue";
 import { pageShortcut, targetOrder } from "../../src/editor/pageShortcuts";
 import { trackSaves } from "../../src/editor/saveTracking";
 import { isTaskEvent } from "../../src/editor/taskStatus";
+import {
+    PROFILE_KEY as THUMBNAIL_STRIP_KEY,
+    loadCollapsed,
+    savedState,
+    stripHeight,
+} from "../../src/editor/thumbnailStrip";
 import "./Editor.css";
 
 export default {
@@ -126,7 +138,17 @@ export default {
             required: true,
         },
     },
+    data() {
+        return {
+            // the thumbnail strip under the navigation bar, as the user left it
+            thumbnailStripCollapsed: loadCollapsed(userProfile.get(THUMBNAIL_STRIP_KEY)),
+        };
+    },
     computed: {
+        thumbnailStripHeight() {
+            // the panels subtract it from their height (Editor.css)
+            return stripHeight(this.thumbnailStripCollapsed, !this.legacyModeEnabled);
+        },
         lastViewedKey() {
             // a browser can be shared by several users
             return `${userProfile.userId}:${this.documentId}`;
@@ -296,6 +318,13 @@ export default {
         window.removeEventListener("beforeunload", this.warnBeforeLeaving);
     },
     methods: {
+        /**
+         * Collapse the thumbnail strip to its bar, or open it again, and remember it.
+         */
+        toggleThumbnailStrip() {
+            this.thumbnailStripCollapsed = !this.thumbnailStripCollapsed;
+            userProfile.set(THUMBNAIL_STRIP_KEY, savedState(this.thumbnailStripCollapsed));
+        },
         /**
          * Make the browser ask for confirmation before leaving the page while edits are
          * not saved yet, still being saved, or failed to save.

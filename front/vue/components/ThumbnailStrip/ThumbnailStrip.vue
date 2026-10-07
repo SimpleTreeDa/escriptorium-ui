@@ -4,16 +4,20 @@
         role="region"
         aria-label="Page thumbnails"
     >
+        <!-- the toggle stays in the bar in both states: collapsed, the bar is all
+        that is left of the strip, and this is how it is opened again -->
         <VDropdown
             theme="escr-tooltip-small"
             placement="right"
             :distance="8"
             :triggers="['hover']"
+            :disabled="collapsed"
         >
             <EscrButton
                 class="strip-toggle"
                 color="text"
                 size="small"
+                :label="collapsed ? 'Show page thumbnails' : ''"
                 :aria-label="collapsed ? 'Show page thumbnails' : 'Hide page thumbnails'"
                 :aria-expanded="collapsed ? 'false' : 'true'"
                 :on-click="toggle"
@@ -23,7 +27,7 @@
                 </template>
             </EscrButton>
             <template #popper>
-                {{ collapsed ? "Show page thumbnails" : "Hide page thumbnails" }}
+                Hide page thumbnails
             </template>
         </VDropdown>
         <template v-if="!collapsed">
@@ -76,18 +80,10 @@
     </div>
 </template>
 <script>
-/* global userProfile */
 import { Dropdown as VDropdown } from "floating-vue";
 import { mapActions, mapState } from "vuex";
 import { retrieveDocumentPartsNavigation } from "../../../src/api";
-import {
-    PROFILE_KEY,
-    currentIndex,
-    loadCollapsed,
-    savedState,
-    sortedPages,
-    withPageName,
-} from "../../../src/editor/thumbnailStrip";
+import { currentIndex, sortedPages, withPageName } from "../../../src/editor/thumbnailStrip";
 import EscrButton from "../Button/Button.vue";
 import ChevronDownIcon from "../Icons/ChevronDownIcon/ChevronDownIcon.vue";
 import { middleTruncate } from "../../store/util/filename";
@@ -95,13 +91,21 @@ import "./ThumbnailStrip.css";
 
 /**
  * Every page of the document as a thumbnail, under the editor's navigation
- * bar: the current page is highlighted, clicking one goes to it. Collapsible,
- * and whether it is collapsed is saved in the user profile.
+ * bar: the current page is highlighted, clicking one goes to it. Collapsed,
+ * it is a bar with the button that opens it again. The editor owns the
+ * collapsed state (saved in the user profile) and the strip's height.
  */
 export default {
     name: "EscrThumbnailStrip",
     components: { ChevronDownIcon, EscrButton, VDropdown },
     props: {
+        /**
+         * True when only the bar with the toggle is shown
+         */
+        collapsed: {
+            type: Boolean,
+            required: true,
+        },
         /**
          * True while pages cannot be changed (the editor is loading)
          */
@@ -112,7 +116,6 @@ export default {
     },
     data() {
         return {
-            collapsed: loadCollapsed(userProfile.get(PROFILE_KEY)),
             loading: false,
             error: "",
             pages: [],
@@ -128,6 +131,12 @@ export default {
         }),
     },
     watch: {
+        collapsed(collapsed) {
+            if (collapsed) return;
+            // opened again: show the current page, or fetch the pages the first time
+            if (this.pages.length) this.scrollToCurrent();
+            else this.fetchPages();
+        },
         currentPk(pk) {
             if (this.collapsed || !pk) return;
             if (this.pages.length && currentIndex(this.pages, pk) === -1) {
@@ -152,12 +161,10 @@ export default {
     methods: {
         ...mapActions("parts", ["loadPartByOrder"]),
         toggle() {
-            this.collapsed = !this.collapsed;
-            userProfile.set(PROFILE_KEY, savedState(this.collapsed));
-            if (!this.collapsed) {
-                if (this.pages.length) this.scrollToCurrent();
-                else this.fetchPages();
-            }
+            /**
+             * Asks the editor to collapse or expand the strip
+             */
+            this.$emit("toggle");
         },
         async fetchPages() {
             if (!this.documentId) return;

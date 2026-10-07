@@ -1,12 +1,20 @@
 /*
  * The thumbnail strip of the editor (new UI): every page of the document in
  * a row under the navigation bar, from /api/documents/<pk>/parts/navigation/.
- * Whether it is collapsed is saved in the user profile. Its height is set in
- * Editor.css (--escr-thumbnail-strip-height), which the panels subtract.
+ * Whether it is collapsed is saved in the user profile. Collapsed, it stays a
+ * thin bar holding the button that expands it again, so it never disappears.
+ * Editor.vue sets its height as --escr-thumbnail-strip-height on #escr-editor,
+ * which the panels subtract from theirs (Editor.css).
  */
 
 /** Key of the saved state in the user profile */
 export const PROFILE_KEY = "editor-thumbnail-strip";
+
+/** Height of the strip with the thumbnails, in pixels */
+export const EXPANDED_HEIGHT = 96;
+
+/** Height of the bar left when the strip is collapsed, in pixels: the toggle fits in it */
+export const COLLAPSED_HEIGHT = 32;
 
 /**
  * Whether the strip is collapsed, from what was saved in the user profile.
@@ -21,6 +29,16 @@ export function loadCollapsed(saved) {
  */
 export function savedState(collapsed) {
     return { collapsed: Boolean(collapsed) };
+}
+
+/**
+ * The height the strip takes, as a CSS length: the thumbnails, the bar with
+ * the toggle when collapsed, or nothing when the strip is not shown at all
+ * (legacy UI).
+ */
+export function stripHeight(collapsed, shown = true) {
+    if (!shown) return "0px";
+    return `${collapsed ? COLLAPSED_HEIGHT : EXPANDED_HEIGHT}px`;
 }
 
 /**

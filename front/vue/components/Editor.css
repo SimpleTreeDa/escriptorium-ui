@@ -8,11 +8,9 @@ main:has(#escr-editor) {
     display: flex;
     flex-flow: column;
     /* the thumbnail strip (ThumbnailStrip.vue) under the navigation bar: the panels
-    give it this much of their height, nothing when it is collapsed */
+    give it this much of their height. Editor.vue sets it inline: 96px with the
+    thumbnails, 32px for the bar left when collapsed, 0 in the legacy UI. */
     --escr-thumbnail-strip-height: 0px;
-}
-#escr-editor:has(.escr-thumbnail-strip:not(.collapsed)) {
-    --escr-thumbnail-strip-height: 96px;
 }
 
 /* generic panel styling */
