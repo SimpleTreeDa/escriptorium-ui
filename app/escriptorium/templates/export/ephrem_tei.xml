@@ -1,0 +1,94 @@
+{% load export_tags %}<?xml version="1.0" encoding="UTF-8"?>
+<?xml-model href="https://www.tei-c.org/Vault/P5/4.12.0/xml/tei/custom/schema/relaxng/tei_all.rng" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0" xml:id="{{ record_id }}" xml:lang="en">
+  <teiHeader>
+    <fileDesc>
+      <titleStmt>
+        <title>{{ title }}</title>
+        {% for person in people %}
+        <respStmt>
+          {% for role in person.roles %}<resp>{{ role }}</resp>
+          {% endfor %}<persName xml:id="{{ person.id }}">{{ person.name }}</persName>
+        </respStmt>
+        {% endfor %}
+        {% for model in models %}
+        <respStmt>
+          <resp>Automatic text recognition by</resp>
+          <name type="software" xml:id="{{ model.id }}">kraken model {{ model.name }}</name>
+        </respStmt>
+        {% endfor %}
+      </titleStmt>
+      <publicationStmt>
+        <authority>{{ authority }}</authority>
+        <idno type="ephrem">{{ record_id }}</idno>
+        <date when="{{ date }}"/>
+      </publicationStmt>
+      <sourceDesc>
+        <msDesc>
+          <msIdentifier>
+            {% if metadata.settlement %}<settlement>{{ metadata.settlement }}</settlement>{% endif %}
+            <repository>{{ metadata.repository }}</repository>
+            <idno type="shelfmark">{{ metadata.shelfmark }}</idno>
+          </msIdentifier>
+          <msContents>
+            {% for msitem in msitems %}
+            <msItem xml:id="work-{{ msitem.n }}" n="{{ msitem.n }}">
+              {% for locus in msitem.loci %}<locus from="{{ locus.0 }}" to="{{ locus.1 }}"/>
+              {% endfor %}{% if msitem.author %}<author>{{ msitem.author }}</author>
+              {% endif %}<title>{{ msitem.title }}</title>
+            </msItem>
+            {% endfor %}
+          </msContents>
+        </msDesc>
+      </sourceDesc>
+    </fileDesc>
+    <encodingDesc>
+      <editorialDecl>
+        <p>Diplomatic transcription made in eScriptorium, from the transcription layer "{{ transcription }}". One lb element per manuscript line and one pb element per page. Line text is as entered: not normalised and not punctuated.</p>
+      </editorialDecl>
+    </encodingDesc>
+    <profileDesc>
+      <langUsage>
+        <language ident="en">English</language>
+        <language ident="syr">Syriac</language>
+      </langUsage>
+    </profileDesc>
+    <revisionDesc status="{{ stage }}">
+      {% for change in changes %}
+      <change{% if change.when %} when="{{ change.when }}"{% endif %}{% if change.who %} who="#{{ change.who }}"{% endif %} status="{{ change.status }}" target="#surface-{{ change.part }}">{{ change.label }}</change>
+      {% endfor %}
+    </revisionDesc>
+  </teiHeader>
+  <facsimile>
+    {% for page in pages %}
+    <surface xml:id="surface-{{ page.pk }}" n="{{ page.name }}" ulx="0" uly="0" lrx="{{ page.part.image.width }}" lry="{{ page.part.image.height }}">
+      <graphic url="{{ page.image_name|urlencode }}" width="{{ page.part.image.width }}px" height="{{ page.part.image.height }}px"/>
+      {% if page.source_url %}<graphic type="source" url="{{ page.source_url }}"/>{% endif %}
+      {% for region in page.regions %}
+      <zone xml:id="zone-r{{ region.block.pk }}"{% if region.type %} type="{{ region.type }}"{% endif %} points="{% pagexml_points region.block.box %}">
+        {% for entry in region.lines %}{% if entry.line.mask %}
+        <zone xml:id="zone-l{{ entry.line.pk }}" type="line" points="{% pagexml_points entry.line.mask %}"/>{% endif %}{% endfor %}
+      </zone>
+      {% endfor %}
+      {% for entry in page.orphan_lines %}{% if entry.line.mask %}
+      <zone xml:id="zone-l{{ entry.line.pk }}" type="line" points="{% pagexml_points entry.line.mask %}"/>{% endif %}{% endfor %}
+    </surface>
+    {% endfor %}
+  </facsimile>
+  <text xml:lang="syr" type="ManuscriptTranscription">
+    <body>
+      {% for work in works %}
+      <div type="work" n="{{ work.n }}" corresp="#work-{{ work.n }}">
+        {% for item in work.items %}{% include "export/ephrem_tei_item.xml" %}
+        {% endfor %}
+        {% for section in work.sections %}
+        <div type="section" n="{{ section.n }}">
+          {% for item in section.items %}{% include "export/ephrem_tei_item.xml" %}
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </body>
+  </text>
+</TEI>

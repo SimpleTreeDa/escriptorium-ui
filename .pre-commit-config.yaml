@@ -18,7 +18,7 @@ repos:
       - id: check-symlinks
       - id: debug-statements
       - id: trailing-whitespace
-        exclude: '^app\/apps\/imports\/tests\/samples\/.*$'
+        exclude: '^app\/apps\/imports\/tests\/samples\/.*|app\/escriptorium\/static\/tei_all\.rng$'
       - id: check-yaml
         args: [--allow-multiple-documents]
       - id: mixed-line-ending
@@ -35,7 +35,7 @@ repos:
     hooks:
       - id: codespell
         args: ['--write-changes', '--ignore-words-list=falsy', '--uri-ignore-words-list=groupes,projet']
-        exclude: '^.*\.po|app\/escriptorium\/static\/alto-4-1-baselines\.xsd|app\/apps\/core\/migrations\/0019_load_scripts\.py|front\/src\/stories\/util\/scripts.js|package-lock\.json.*$'
+        exclude: '^.*\.po|app\/escriptorium\/static\/alto-4-1-baselines\.xsd|app\/escriptorium\/static\/tei_all\.rng|app\/apps\/core\/migrations\/0019_load_scripts\.py|front\/src\/stories\/util\/scripts.js|package-lock\.json.*$'
   - repo: meta
     hooks:
       - id: check-useless-excludes

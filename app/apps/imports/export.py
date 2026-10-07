@@ -12,12 +12,14 @@ from django.template import loader
 from django.utils.text import slugify
 
 from core.models import Block
+from imports.ephrem_tei import EphremTEI, validate
 
 TEXT_FORMAT = "text"
 PAGEXML_FORMAT = "pagexml"
 ALTO_FORMAT = "alto"
 OPENITI_MARKDOWN_FORMAT = "openitimarkdown"
 TEI_XML_FORMAT = "teixml"
+EPHREM_TEI_FORMAT = "ephremtei"
 
 
 class EsZipFile(zipfile.ZipFile):
@@ -265,10 +267,36 @@ class TEIXMLExporter(OpenITIMARkdownExporter):
         super().render(tei_conversion=True)
 
 
+class EphremTEIExporter(BaseExporter):
+    """
+    TEI for the Ephrem Project website, as defined in docs/tei/ephrem-tei-profile.md:
+    one file for the whole document, validated against TEI P5 (tei_all.rng).
+    Nothing is written if the document lacks data the profile requires: the error lists every problem.
+    """
+    file_format = EPHREM_TEI_FORMAT
+    file_extension = "zip"
+    template_path = "export/ephrem_tei.xml"
+
+    def render(self):
+        context = EphremTEI(self.document, self.part_pks, self.transcription, self.region_types).context()
+        tei = loader.get_template(self.template_path).render(context)
+        # Remove empty lines from XML output.
+        tei = re.sub(r'\n[ \t]*(?=\n)', '', tei)
+        validate(tei.encode("utf-8"))
+
+        with EsZipFile(self.filepath, "w") as zip_:
+            if self.include_images:
+                # the same names as the graphic/@url of the TEI file, before percent-encoding
+                for page in context["pages"]:
+                    zip_.write(page["part"].image.path, page["image_name"])
+            zip_.writestr("%s.xml" % context["record_id"], tei)
+
+
 ENABLED_EXPORTERS = {
     TEXT_FORMAT: {"class": TextExporter, "label": "Text"},
     PAGEXML_FORMAT: {"class": PageXMLExporter, "label": "PAGE"},
     ALTO_FORMAT: {"class": AltoExporter, "label": "ALTO"},
+    EPHREM_TEI_FORMAT: {"class": EphremTEIExporter, "label": "TEI (Ephrem)"},
 }
 
 if settings.EXPORT_OPENITI_MARKDOWN_ENABLED:
