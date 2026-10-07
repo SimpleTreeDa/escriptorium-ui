@@ -91,6 +91,7 @@ from core.models import (
     Project,
     ProjectTag,
     ProtectedObjectException,
+    Role,
     Script,
     TextAnnotation,
     TextualWitness,
@@ -174,15 +175,22 @@ class IsAdminOrSelfOnly(BasePermission):
                     or request.user.is_staff)
 
 
-class IsOwnerForActions(BasePermission):
+class HasRole(BasePermission):
     """
-    Collaborators can use a shared object, but the actions listed
-    in the view's owner_actions are reserved to its owner.
+    Checks the Role of the user on a project or a document, reading what the queryset already lets them see,
+    writing as an editor; the view's required_roles sets the role needed by specific actions.
     """
 
     def has_object_permission(self, request, view, obj):
-        return bool(view.action not in getattr(view, 'owner_actions', ())
-                    or obj.owner == request.user)
+        required = getattr(view, 'required_roles', {}).get(view.action)
+        if required is None:
+            if request.method in SAFE_METHODS:
+                return True
+            required = Role.EDITOR
+        role = getattr(obj, 'my_role', None)
+        if role is None:
+            role = obj.get_role(request.user)
+        return (role or 0) >= required
 
 
 class LargeResultsSetPagination(PageNumberPagination):
@@ -253,12 +261,18 @@ class ProjectViewSet(ModelViewSet):
     filterset_class = TagFilterSet
     filter_backends = [filters.OrderingFilter, DjangoFilterBackend]
     ordering_fields = ['created_at', 'documents_count', 'id', 'name', 'owner', 'updated_at']
-    permission_classes = [IsAuthenticated, IsOwnerForActions]
-    owner_actions = ('update', 'partial_update', 'destroy', 'share')
+    permission_classes = [IsAuthenticated, HasRole]
+    required_roles = {
+        'update': Role.ADMIN,
+        'partial_update': Role.ADMIN,
+        'share': Role.ADMIN,
+        'destroy': Role.OWNER,
+    }
 
     def get_queryset(self):
         return (Project.objects
                 .for_user_read(self.request.user)
+                .annotate_role(self.request.user)
                 .annotate(documents_count=Count(
                     'documents',
                     filter=~Q(documents__workflow_state=Document.WORKFLOW_STATE_ARCHIVED),
@@ -279,7 +293,7 @@ class ProjectViewSet(ModelViewSet):
                 return Response({'error': 'invalid group.'},
                                 status=status.HTTP_400_BAD_REQUEST)
             else:
-                project.shared_with_groups.add(target)
+                project.shared_with_groups.add(target, through_defaults={'invited_by': request.user})
         elif 'user' in request.data:
             try:
                 target = User.objects.get(username__iexact=request.data['user'])
@@ -287,7 +301,7 @@ class ProjectViewSet(ModelViewSet):
                 return Response({'error': 'invalid username.'},
                                 status=status.HTTP_400_BAD_REQUEST)
             else:
-                project.shared_with_users.add(target)
+                project.shared_with_users.add(target, through_defaults={'invited_by': request.user})
         else:
             return Response({'error': 'Please provide either a group(pk) or user(username).'},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -337,11 +351,15 @@ class DocumentViewSet(ModelViewSet):
     filterset_fields = ['project', 'tags']
     filterset_class = DocumentTagFilterSet
     ordering_fields = ['name', 'parts_count', 'updated_at']
-    permission_classes = [IsAuthenticated, IsOwnerForActions]
-    owner_actions = ('destroy', 'share')
+    permission_classes = [IsAuthenticated, HasRole]
+    required_roles = {
+        'export': Role.VIEWER,
+        'share': Role.ADMIN,
+        'destroy': Role.OWNER,
+    }
 
     def get_queryset(self):
-        qs = Document.objects.for_user(self.request.user).prefetch_related(
+        qs = Document.objects.for_user(self.request.user).annotate_role(self.request.user).prefetch_related(
             Prefetch('valid_block_types', queryset=BlockType.objects.order_by('name')),
             Prefetch('valid_line_types', queryset=LineType.objects.order_by('name')),
         ).annotate(parts_count=Count('parts', distinct=True)).order_by('-updated_at')
@@ -717,7 +735,7 @@ class DocumentViewSet(ModelViewSet):
                 return Response({'error': 'invalid group.'},
                                 status=status.HTTP_400_BAD_REQUEST)
             else:
-                document.shared_with_groups.add(target)
+                document.shared_with_groups.add(target, through_defaults={'invited_by': request.user})
         elif 'user' in request.data:
             try:
                 target = User.objects.get(username__iexact=request.data['user'])
@@ -725,7 +743,7 @@ class DocumentViewSet(ModelViewSet):
                 return Response({'error': 'invalid username.'},
                                 status=status.HTTP_400_BAD_REQUEST)
             else:
-                document.shared_with_users.add(target)
+                document.shared_with_users.add(target, through_defaults={'invited_by': request.user})
         else:
             return Response({'error': 'Please provide either a group(pk) or user(username).'},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -804,6 +822,7 @@ class TaskReportViewSet(ModelViewSet):
 class DocumentPermissionMixin():
     """
     For viewsets nested under documents/<document_pk>/ (and parts/<part_pk>/).
+    Any of their write requests needs the Editor role on the document.
 
     Access is checked before any action runs, not only when it happens to call get_queryset
     (create and most custom actions never do), and relations sent by the client are
@@ -815,8 +834,12 @@ class DocumentPermissionMixin():
         try:
             self.document = (Document.objects
                              .for_user(request.user)
+                             .annotate_role(request.user)
                              .get(pk=self.kwargs.get('document_pk')))
         except (Document.DoesNotExist, ValueError):
+            raise PermissionDenied
+        # viewers can read everything in the document, changing anything takes an editor
+        if request.method not in SAFE_METHODS and self.document.my_role < Role.EDITOR:
             raise PermissionDenied
         self.part = None
         if 'part_pk' in self.kwargs:
@@ -1099,11 +1122,7 @@ class TypologyViewSet(ModelViewSet):
         elif self.request.method in ["PUT", "PATCH", "DELETE"]:
             # PUT/PATCH/DELETE (updating and deleting) require permissions
             return qs.filter(
-                Q(valid_in__owner=self.request.user)
-                | Q(valid_in__shared_with_users=self.request.user)
-                | Q(valid_in__shared_with_groups__user=self.request.user)
-                | Q(valid_in__project__owner=self.request.user)
-                | Q(valid_in__project__shared_with_users=self.request.user)
+                valid_in__in=Document.objects.with_role(self.request.user, Role.EDITOR)
             ).distinct()
         return qs
 

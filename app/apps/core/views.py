@@ -63,6 +63,7 @@ from core.models import (
     OcrModelDocument,
     OcrModelRight,
     Project,
+    Role,
 )
 from core.search import WORD_BY_WORD_SEARCH_MODE, build_highlighted_replacement_psql
 from core.tasks import replace_line_transcriptions_text
@@ -414,7 +415,7 @@ class UpdateProject(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
     def get_object(self):
         obj = super().get_object()
 
-        if not obj.owner == self.request.user:
+        if (obj.get_role(self.request.user) or 0) < Role.ADMIN:
             raise PermissionDenied
 
         return obj
@@ -436,10 +437,11 @@ class DocumentsList(LoginRequiredMixin, PerPageMixin, ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        self.project = (Project.objects
-                        .get(slug=self.kwargs['slug']))
         try:
-            Project.objects.for_user_read(self.request.user).get(pk=self.project.pk)
+            self.project = (Project.objects
+                            .for_user_read(self.request.user)
+                            .annotate_role(self.request.user)
+                            .get(slug=self.kwargs['slug']))
         except Project.DoesNotExist:
             raise PermissionDenied
 
@@ -459,20 +461,13 @@ class DocumentsList(LoginRequiredMixin, PerPageMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['project'] = self.project
         context['document_tags'] = list(self.project.document_tags.values())
-        if self.project.owner == self.request.user:
+        role = self.project.my_role
+        if role >= Role.ADMIN:
             context['share_form'] = ProjectShareForm(instance=self.project,
                                                      request=self.request)
-
-            context['can_create_document'] = True
-        else:
-            # can only create a new document if the whole project as been shared
-            # not if some specific documents
-            try:
-                context['can_create_document'] = (Project.objects
-                                                  .for_user_write(self.request.user)
-                                                  .get(slug=self.kwargs['slug']))
-            except Project.DoesNotExist:
-                context['can_create_document'] = False
+        # can only create a new document if the whole project as been shared
+        # not if some specific documents
+        context['can_create_document'] = role >= Role.EDITOR
 
         context['filters'] = self.request.GET.getlist('tags')
 
@@ -499,10 +494,9 @@ class DocumentMixin():
 
     def get_object(self):
         obj = super().get_object()
-        try:
-            # we fetched the object already, now we check that the user has perms to edit it
-            Document.objects.for_user(self.request.user).get(pk=obj.pk)
-        except Document.DoesNotExist:
+        # we fetched the object already, now we check that the user has perms to see it, or to edit it
+        min_role = Role.VIEWER if self.request.method in ('GET', 'HEAD', 'OPTIONS') else Role.EDITOR
+        if not Document.objects.for_user(self.request.user, min_role).filter(pk=obj.pk).exists():
             raise PermissionDenied
         return obj
 
@@ -561,9 +555,10 @@ class UpdateDocument(LoginRequiredMixin, SuccessMessageMixin, DocumentMixin, Upd
         if 'metadata_form' not in kwargs:
             context['metadata_form'] = self.get_metadata_formset(instance=self.object)
 
-        if self.object.owner == self.request.user:
+        if (self.object.get_role(self.request.user) or 0) >= Role.ADMIN:
             context['share_form'] = DocumentShareForm(instance=self.object,
                                                       request=self.request)
+        if self.object.owner == self.request.user:
             context['migrate_form'] = MigrateDocumentForm(instance=self.object,
                                                           request=self.request)
 
@@ -696,7 +691,7 @@ class ShareDocument(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         return reverse('document-update', kwargs={'pk': self.object.pk})
 
     def get_queryset(self):
-        return Document.objects.filter(owner=self.request.user)
+        return Document.objects.with_role(self.request.user, Role.ADMIN)
 
 
 class DeleteDocumentUserShare(LoginRequiredMixin, View):
@@ -737,7 +732,7 @@ class ShareProject(LoginRequiredMixin, SuccessMessageMixin, UpdateView):
         return reverse('documents-list', kwargs={'slug': self.object.slug})
 
     def get_queryset(self):
-        return Project.objects.filter(owner=self.request.user)
+        return Project.objects.with_role(self.request.user, Role.ADMIN)
 
 
 class DeleteProjectUserShare(LoginRequiredMixin, View):
@@ -786,7 +781,7 @@ class DocumentPartsProcessAjax(LoginRequiredMixin, View):
     http_method_names = ('post',)
 
     def get_document(self):
-        return Document.objects.for_user(self.request.user).get(pk=self.kwargs['pk'])
+        return Document.objects.for_user(self.request.user, Role.EDITOR).get(pk=self.kwargs['pk'])
 
     def post(self, request, *args, **kwargs):
         try:
@@ -1083,3 +1078,7 @@ class DocumentsTasksList(LoginRequiredMixin, TemplateView):
 class MigrateDocument(ShareDocument):
     form_class = MigrateDocumentForm
     success_message = _("Document was successfully migrated to the selected project!")
+
+    def get_queryset(self):
+        # unlike sharing, moving a document stays reserved to its owner
+        return Document.objects.filter(owner=self.request.user)

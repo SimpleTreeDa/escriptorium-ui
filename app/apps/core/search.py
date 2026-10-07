@@ -74,12 +74,15 @@ def search_content_es(current_page, page_size, user_id, terms, projects=None, do
     return es_client.search(index=settings.ELASTICSEARCH_COMMON_INDEX, body=body)
 
 
-def get_filtered_queryset(user, project_id, document_id, transcription_id, part_id):
-    from core.models import Document, LineTranscription, Project
+def get_filtered_queryset(user, project_id, document_id, transcription_id, part_id, min_role=None):
+    from core.models import Document, LineTranscription, Project, Role
+
+    # replacing text needs to be an editor of the documents, searching it a viewer
+    min_role = min_role or Role.VIEWER
 
     right_filters = {
         "line__document_part__document__project_id__in": Project.objects.for_user_read(user),
-        "line__document_part__document_id__in": Document.objects.for_user(user),
+        "line__document_part__document_id__in": Document.objects.for_user(user, min_role),
     }
 
     filters = {}
@@ -103,10 +106,10 @@ def get_filtered_queryset(user, project_id, document_id, transcription_id, part_
     ).filter(**right_filters, **filters)
 
 
-def search_content_psql_word(terms, user, highlight_class, project_id=None, document_id=None, transcription_id=None, part_id=None):
+def search_content_psql_word(terms, user, highlight_class, project_id=None, document_id=None, transcription_id=None, part_id=None, min_role=None):
     search_query = SearchQuery(terms)
     return (
-        get_filtered_queryset(user, project_id, document_id, transcription_id, part_id)
+        get_filtered_queryset(user, project_id, document_id, transcription_id, part_id, min_role)
         .filter(content__search=search_query)
         .annotate(
             highlighted_content=SearchHeadline(
@@ -119,9 +122,9 @@ def search_content_psql_word(terms, user, highlight_class, project_id=None, docu
     )
 
 
-def search_content_psql_regex(terms, user, highlight_class, project_id=None, document_id=None, transcription_id=None, part_id=None):
+def search_content_psql_regex(terms, user, highlight_class, project_id=None, document_id=None, transcription_id=None, part_id=None, min_role=None):
     return (
-        get_filtered_queryset(user, project_id, document_id, transcription_id, part_id)
+        get_filtered_queryset(user, project_id, document_id, transcription_id, part_id, min_role)
         .filter(content__regex=terms)
         .annotate(
             highlighted_content=Func(
