@@ -34,5 +34,6 @@
     unicode-bidi: plaintext;
 }
 .escr-export-modal .escr-tei-readiness li.error {
-    color: var(--foreground-alert);
+    /* readable on the light and the dark theme */
+    color: var(--alert);
 }

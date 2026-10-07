@@ -699,6 +699,7 @@
                     :confirm-verb="pageActions[pageAction].verb"
                     color="primary"
                     :icon="null"
+                    :cannot-undo="false"
                     :disabled="loading && loading.images"
                     :confirm-disabled="!pageActionValid"
                     :on-cancel="closePageAction"
