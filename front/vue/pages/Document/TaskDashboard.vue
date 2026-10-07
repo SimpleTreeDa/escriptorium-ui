@@ -25,7 +25,7 @@
                 </span>
             </div>
             <EscrButton
-                v-if="['Queued', 'Initiated'].includes(task.label)"
+                v-if="task.pk && ['Queued', 'Initiated'].includes(task.label)"
                 color="text"
                 size="small"
                 :on-click="() => handleCancel(task)"
@@ -57,6 +57,8 @@ export default {
             return this.taskGroups.slice(0, 3).map((taskGroup) => {
                 const { tasks, method } = taskGroup;
                 const taskStatus = this.getWorkflowStatus(tasks, method);
+                // the task group's pk, to cancel only this group's tasks
+                taskStatus.pk = taskGroup.pk;
                 // convert timestamp date to string
                 taskStatus.timestamp = taskStatus.timestamp
                     ? new Date(taskStatus.timestamp).toLocaleString(undefined, {
