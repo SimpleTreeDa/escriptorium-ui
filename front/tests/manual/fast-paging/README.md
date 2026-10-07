@@ -43,57 +43,70 @@ Keystrokes were dispatched every 50 ms. "Control" is `main` at 2f7d4311 with onl
 
 Conclusion: PR #9 fixed issue #6. No further change to `SegPanel.vue` was needed.
 
-## How to run it again
+## Run the check yourself (one command)
 
-Everything below runs against a throwaway stack; nothing touches an existing deployment.
+Needs Docker Desktop running, Node 22, and the images this repository's compose file uses
+already pulled or built once (`base:kraken6`, the nginx image, postgres, redis). Ports 8081
+and 8082 must be free. Everything runs in a throwaway stack named `issue6`; nothing touches an
+existing deployment.
 
-1. **Stack.** Copy `variables.env_example` to `variables.env` and set
-   `CSRF_TRUSTED_ORIGINS=http://127.0.0.1:8081,http://127.0.0.1:8082`. Build the bundle
-   (`cd front && npm ci && npm run build`; the development build keeps readable stack traces),
-   then from the repository root:
-
-   ```bash
-   docker compose -p issue6 -f docker-compose.yml -f front/tests/manual/fast-paging/compose.dev.yml up -d --no-build db redis web channelserver nginx
-   ```
-
-   `compose.dev.yml` runs the pulled `base:kraken6` image with `./app` and `./front/dist`
-   mounted and publishes nginx on port 8081 only. After rebuilding the bundle, re-run
-   `docker exec issue6-web-1 python manage.py collectstatic --no-input`.
-
-2. **Data.** Seed one 200-page document (generated PNGs with a page number and
-   `5 + (n mod 7)` rules, plus the same number of segmentation lines):
+1. **See the bug first** (editor built without PR #9), from the repository root:
 
    ```bash
-   docker exec -i issue6-web-1 python manage.py shell < front/tests/manual/fast-paging/seed.py
+   node front/tests/manual/fast-paging/check.js --bundle control
    ```
 
-   It prints the editor URL. The `admin` account from `variables.env` is used and switched to
-   the new UI.
+   The script creates `variables.env` from the example if needed, builds the control bundle
+   (it reverse-applies PR #9's `SegPanel.vue` diff for the build and restores the file right
+   after), starts the stack, seeds a 200-page document, and runs the latency proxy with a
+   test panel added to the editor page. When it prints `Ready`, open the URL it shows,
+   sign in as the `DJANGO_SU_NAME` account from `variables.env`, keep the Segmentation
+   panel open, wait for the page image, and click **Full check** in the box at the bottom
+   right. Expected: **FAIL**, with console errors, stale image sources and the
+   `reading '0'` stack trace from `SegPanel.vue`.
 
-3. **Latency.** Start the proxy, then browse through it:
+2. **Check the fix** (current code). Press Ctrl+C to stop the proxy, then:
 
    ```bash
-   node front/tests/manual/fast-paging/latency-proxy.js
+   node front/tests/manual/fast-paging/check.js --bundle main
    ```
 
-   Defaults: `/api/` delayed 120–300 ms, `/media/` 100–400 ms, websockets tunnelled.
-   Override with `API_DELAY=150-250 MEDIA_DELAY=...`. Open
-   `http://127.0.0.1:8082/document/<doc>/part/<part>/edit/` with the segmentation panel open.
+   Reload the editor page and click **Full check** again. Expected: **PASS**: no console
+   errors, no stale image sources, and the panel image, scale and overlay match the page
+   shown after every run.
 
-4. **Drive and measure.** Paste `driver.js` into the browser console, then:
+3. **Try it by hand** if you like: with the page open through the proxy (port 8082) and the
+   browser's DevTools console visible, hold or hammer PgDn, or type page numbers into the
+   page-number box and press Enter as fast as you can. No `refreshSegmenter` errors should
+   appear, and the page that settles should show its own image and overlay.
 
-   ```js
-   await window.__issue6.runPgDn(40, 50)
-   await window.__issue6.runNumberBox(30, 50, 200)
+4. **Clean up:**
+
+   ```bash
+   node front/tests/manual/fast-paging/check.js --down
    ```
 
-   Each run returns the counts in the table above plus the settled-state checks. The driver
-   hooks `console.error`, `window.onerror` and unhandled rejections, counts `parts/load`
-   commits, and flags any `src` set on the segmentation panel's image that does not belong to
-   the loaded part.
+Options: `--build` forces a rebuild, `--project`, `--port`, `--proxy-port`, `--api-delay`
+and `--media-delay` (ms ranges, defaults `120-300` and `100-400`) change the setup.
 
-5. **Control build.** `git show 4773072b -- front/vue/components/SegPanel.vue | git apply -R`,
-   rebuild, `collectstatic`, reload, repeat step 4. Restore with
-   `git checkout -- front/vue/components/SegPanel.vue`.
+### What "Full check" does
 
-Tear down with `docker compose -p issue6 down -v`.
+The panel (`panel.js`) calls `driver.js`, which jumps to page 1, then dispatches 40 PgDn
+keydowns at 50 ms intervals three times and 30 page-number entries at 50 ms once, waiting
+3 s after each run. It hooks `console.error`, `window.onerror` and unhandled rejections,
+counts `parts/load` commits, and flags any `src` set on the segmentation panel's image that
+does not belong to the loaded part. PASS means zero console errors, zero stale sources, and
+a correct settled state (image, scale and overlay line count) after each run.
+
+## Pieces, for running them separately
+
+- `compose.dev.yml`: override for the throwaway stack (pulled base image with `./app` and
+  `./front/dist` mounted, nginx on port 8081 only). Used with the root `docker-compose.yml`.
+- `seed.py`: creates the 200-page document (page n shows "PAGE n" and `5 + (n mod 7)` rules,
+  with the same number of segmentation lines). Run with
+  `docker exec -i <web> python manage.py shell < seed.py`.
+- `latency-proxy.js`: `:8082 -> :8081` with delays on `/api/` and `/media/`; websockets
+  tunnelled. Standalone it adds no panel.
+- `driver.js`: can also be pasted into the browser console on an editor page, then
+  `await window.__issue6.runPgDn(40, 50)` and `await window.__issue6.runNumberBox(30, 50)`.
+- `panel.js`: the on-page PASS/FAIL box; only served by `check.js`'s proxy.
