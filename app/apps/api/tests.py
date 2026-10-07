@@ -1179,17 +1179,20 @@ class LineTranscriptionViewSetTestCase(CoreFactoryTestCase):
         self.part.refresh_from_db()
         self.assertEqual(self.part.transcription_progress, 100)
 
-    def test_update_sanitizes_html(self):
+    def test_update_keeps_text_as_typed(self):
+        # content is plain text, escaped where it is displayed:
+        # '&' and angle brackets must not be turned into entities (or tags into markup)
         self.client.force_login(self.user)
         uri = reverse('api:linetranscription-detail',
                       kwargs={'document_pk': self.part.document.pk,
                               'part_pk': self.part.pk,
                               'pk': self.lt.pk})
-        payload = '<img src=x onerror=alert(1)><em>safe</em>'
-        resp = self.client.patch(uri, {'content': payload}, content_type='application/json')
+        text = 'Rex & regina <supplied> 1 < 2 &amp; <img src=x onerror=alert(1)>'
+        resp = self.client.patch(uri, {'content': text}, content_type='application/json')
         self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['content'], text)
         self.lt.refresh_from_db()
-        self.assertEqual(self.lt.content, '&lt;img src=x onerror=alert(1)&gt;<em>safe</em>')
+        self.assertEqual(self.lt.content, text)
 
     def test_create(self):
         self.client.force_login(self.user)

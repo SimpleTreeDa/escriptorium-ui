@@ -78,7 +78,8 @@
 #trans-modal.escr-line-modal #history .d-table {
     border-spacing: 0;
 }
-.escr-line-modal .escr-line-version :not(.escr-line-content):not(button) {
+/* smaller author and date: the line text (and its highlighted differences) keeps its size */
+.escr-line-modal .escr-line-version :not(.escr-line-content):not(.escr-line-content *):not(button) {
     font-size: 80%;
 }
 .escr-line-modal .escr-line-version {

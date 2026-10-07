@@ -40,7 +40,6 @@ from core.models import (
     TextualWitness,
     Transcription,
 )
-from core.utils import sanitize_transcription_content
 from core.tasks import _chunks, segment, segtrain, train, transcribe
 from imports.forms import FileImportError, clean_import_uri, clean_upload_file
 from imports.models import DocumentImport
@@ -696,16 +695,12 @@ class BlockSerializer(serializers.ModelSerializer):
 
 
 class LineTranscriptionSerializer(serializers.ModelSerializer):
+    # content is plain text, stored as typed ('&', '<abc>'...):
+    # it is escaped wherever it is displayed, never rendered as HTML
     class Meta:
         model = LineTranscription
         fields = ('pk', 'line', 'transcription', 'content', 'graphs', 'avg_confidence',
                   'versions', 'version_author', 'version_source', 'version_updated_at')
-
-    def cleanup(self, data):
-        return sanitize_transcription_content(data)
-
-    def validate_content(self, content):
-        return self.cleanup(content)
 
 
 class LineListSerializer(serializers.ListSerializer):
