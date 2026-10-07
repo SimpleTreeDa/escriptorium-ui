@@ -463,7 +463,7 @@ export default Vue.extend({
          * Return true if there are any segments selected.
          */
         hasPointsSelection() {
-            return this.segmenter?.selection?.segments?.length !== 0 || false;
+            return (this.segmenter?.selection?.segments?.length || 0) > 0;
         },
         /**
          * Return true if all lines selected are linked to a region.
@@ -1225,8 +1225,11 @@ export default Vue.extend({
          * change the currently active tool
          */
         onToggleTool(tool) {
-            // purge the selection before changing tool
-            this.segmenter.purgeSelection();
+            // purge the selection before changing tool, except for box
+            // selecting, which can select the points of the selection
+            if (!["box-select", "box-select-points"].includes(tool)) {
+                this.segmenter.purgeSelection();
+            }
 
             // use the vuex store callback for toggling the active tool
             this.toggleTool(tool);

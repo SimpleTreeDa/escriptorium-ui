@@ -13,6 +13,60 @@
         >
             <DragVerticalIcon />
         </div>
+        <!-- box select tools -->
+        <VDropdown
+            id="box-select"
+            theme="escr-tooltip-small"
+            placement="bottom"
+            :distance="8"
+            :triggers="['hover']"
+        >
+            <ToggleButton
+                color="text"
+                :aria-label="`Box select ${boxTargets}`"
+                :checked="tool === 'box-select'"
+                :disabled="disabled"
+                :on-change="() => toggleTool('box-select')"
+            >
+                <template #button-icon>
+                    <BoxSelectIcon />
+                </template>
+            </ToggleButton>
+            <template #popper>
+                <div class="escr-toolbar-tooltip">
+                    Box select {{ boxTargets }} (B): drag to select the
+                    {{ boxTargets }} the box touches, drag the selection to
+                    move it. Shift adds to the selection.
+                </div>
+            </template>
+        </VDropdown>
+        <VDropdown
+            id="box-select-points"
+            theme="escr-tooltip-small"
+            placement="bottom"
+            :distance="8"
+            :triggers="['hover']"
+        >
+            <ToggleButton
+                color="text"
+                aria-label="Box select points"
+                :checked="tool === 'box-select-points'"
+                :disabled="disabled"
+                :on-change="() => toggleTool('box-select-points')"
+            >
+                <template #button-icon>
+                    <BoxSelectPointsIcon />
+                </template>
+            </ToggleButton>
+            <template #popper>
+                <div class="escr-toolbar-tooltip">
+                    Box select points (V): drag to select the points in the
+                    box, of the selected {{ boxTargets }} if any, drag a
+                    selected point to move them all. Shift adds to the
+                    selection.
+                </div>
+            </template>
+        </VDropdown>
         <!-- add line tool -->
         <VDropdown
             v-if="displayMode === 'lines'"
@@ -101,6 +155,51 @@
             </ToggleButton>
             <template #popper>
                 Cut (C)
+            </template>
+        </VDropdown>
+        <!-- add points tool -->
+        <VDropdown
+            id="add-points"
+            theme="escr-tooltip-small"
+            placement="bottom"
+            :distance="8"
+            :triggers="['hover']"
+        >
+            <ToggleButton
+                color="text"
+                aria-label="Add points"
+                :checked="tool === 'add-points'"
+                :disabled="disabled"
+                :on-change="() => toggleTool('add-points')"
+            >
+                <template #button-icon>
+                    <AddPointIcon />
+                </template>
+            </ToggleButton>
+            <template #popper>
+                Add points: click on a {{ pointsTarget }} to add a point there
+            </template>
+        </VDropdown>
+        <!-- remove selected points -->
+        <VDropdown
+            id="remove-points"
+            theme="escr-tooltip-small"
+            placement="bottom"
+            :distance="8"
+            :triggers="['hover']"
+        >
+            <EscrButton
+                aria-label="Remove selected points"
+                color="text"
+                :on-click="() => onDelete(true)"
+                :disabled="disabled || !hasPointsSelection"
+            >
+                <template #button-icon>
+                    <RemovePointIcon />
+                </template>
+            </EscrButton>
+            <template #popper>
+                Remove selected points (Del)
             </template>
         </VDropdown>
 
@@ -375,7 +474,10 @@
 <script>
 import { Dropdown as VDropdown, Menu as VMenu } from "floating-vue";
 import { mapState } from "vuex";
+import AddPointIcon from "../Icons/AddPointIcon/AddPointIcon.vue";
 import AttachToolbarIcon from "../Icons/AttachToolbarIcon/AttachToolbarIcon.vue";
+import BoxSelectIcon from "../Icons/BoxSelectIcon/BoxSelectIcon.vue";
+import BoxSelectPointsIcon from "../Icons/BoxSelectPointsIcon/BoxSelectPointsIcon.vue";
 import ChangeTypeIcon from "../Icons/ChangeTypeIcon/ChangeTypeIcon.vue";
 import ChevronDownIcon from "../Icons/ChevronDownIcon/ChevronDownIcon.vue";
 import DetachableMixin from "./DetachableMixin.vue";
@@ -386,6 +488,7 @@ import JoinIcon from "../Icons/JoinIcon/JoinIcon.vue";
 import LineToolIcon from "../Icons/LineToolIcon/LineToolIcon.vue";
 import LinkIcon from "../Icons/LinkIcon/LinkIcon.vue";
 import RegionToolIcon from "../Icons/RegionToolIcon/RegionToolIcon.vue";
+import RemovePointIcon from "../Icons/RemovePointIcon/RemovePointIcon.vue";
 import ReverseIcon from "../Icons/ReverseIcon/ReverseIcon.vue";
 import ScissorsIcon from "../Icons/ScissorsIcon/ScissorsIcon.vue";
 import ToggleButton from "../ToggleButton/ToggleButton.vue";
@@ -395,7 +498,10 @@ import UnlinkIcon from "../Icons/UnlinkIcon/UnlinkIcon.vue";
 export default {
     name: "EscrDetachableToolbar",
     components: {
+        AddPointIcon,
         AttachToolbarIcon,
+        BoxSelectIcon,
+        BoxSelectPointsIcon,
         ChangeTypeIcon,
         ChevronDownIcon,
         DetachToolbarIcon,
@@ -405,6 +511,7 @@ export default {
         LineToolIcon,
         LinkIcon,
         RegionToolIcon,
+        RemovePointIcon,
         ReverseIcon,
         ScissorsIcon,
         ToggleButton,
@@ -457,6 +564,26 @@ export default {
             lineTypes: (state) => state.document.types.lines,
             regionTypes: (state) => state.document.types.regions,
         }),
+        /**
+         * What the box select tool selects in the current mode
+         */
+        boxTargets() {
+            return {
+                lines: "lines",
+                masks: "masks",
+                regions: "regions",
+            }[this.displayMode] || "lines";
+        },
+        /**
+         * What the add points tool adds points to in the current mode
+         */
+        pointsTarget() {
+            return {
+                lines: "baseline",
+                masks: "mask",
+                regions: "region outline",
+            }[this.displayMode] || "line";
+        },
         /**
          * Current available types with "None" appended at the beginning
          */

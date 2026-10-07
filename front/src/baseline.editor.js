@@ -52,7 +52,12 @@ function isRightClick(event) {
     return event.which === 3 || event.button === 2;
 }
 
-class SegmenterRegion {
+// whether path is one of the outlines (baseline, mask or polygon) of a line or region
+function isOwnPath(obj, path) {
+    return [obj.baselinePath, obj.maskPath, obj.polygonPath].includes(path);
+}
+
+export class SegmenterRegion {
     constructor(order, polygon, type, context, segmenter_) {
         this.id = generateUniqueId();
         this.order = order;
@@ -115,6 +120,8 @@ class SegmenterRegion {
 
     unselect() {
         if (!this.selected) return;
+        // also unselects any selected segments
+        this.segmenter.unselectSegmentsOf(this.polygonPath);
         this.polygonPath.selected = false;
         this.segmenter.removeFromSelection(this);
         this.selected = false;
@@ -223,7 +230,7 @@ class SegmenterRegion {
     }
 }
 
-class SegmenterLine {
+export class SegmenterLine {
     constructor(
         order,
         baseline,
@@ -362,26 +369,16 @@ class SegmenterLine {
 
     unselect() {
         if (!this.selected) return;
-        // also unselects any selected segments
+        // also unselects any selected segments, before unselecting the paths
+        // (which clears their segments' selected state)
+        this.segmenter.unselectSegmentsOf(this.maskPath, this.baselinePath);
         if (this.maskPath) {
             this.maskPath.selected = false;
             this.maskPath.fillColor = this.getMaskColor();
-            for (let i = 0; i < this.maskPath.segments.length; i++) {
-                if (this.maskPath.segments[i].point.selected) {
-                    this.segmenter.removeFromSelection(
-                        this.maskPath.segments[i],
-                    );
-                }
-            }
         }
         if (this.baselinePath) {
             this.baselinePath.selected = false;
             this.baselinePath.strokeColor = this.segmenter.baselinesColor;
-            for (let i = 0; i < this.baselinePath.segments; i++) {
-                this.segmenter.removeFromSelection(
-                    this.baselinePath.segments[i],
-                );
-            }
         }
         this.segmenter.removeFromSelection(this);
         this.selected = false;
@@ -686,6 +683,8 @@ export class Segmenter {
         this.lineTypes = ["None"].concat(lineTypes);
 
         this.selection = { lines: [], segments: [], regions: [] };
+        this.hoveringPoint = false;
+        this.activeBox = null;
         this.defaultTextDirection = defaultTextDirection;
 
         this.scale = scale;
@@ -837,12 +836,14 @@ export class Segmenter {
     deleteSelectedSegments() {
         for (let i = this.selection.segments.length - 1; i >= 0; i--) {
             let segment = this.selection.segments[i];
-            if (
-                segment.path &&
-                ((segment.path.closed && segment.path.segments.length > 3) ||
-                    segment.path.segments.length > 2)
+            if (!segment.path) {
+                // already removed from its path, drop the stale reference
+                this.selection.segments.splice(i, 1);
+            } else if (
+                // keep at least 3 points on a polygon and 2 on a baseline
+                segment.path.segments.length > (segment.path.closed ? 3 : 2)
             ) {
-                this.selection.segments[i].remove();
+                segment.remove();
                 this.selection.segments.splice(i, 1);
             }
         }
@@ -1030,7 +1031,10 @@ export class Segmenter {
                     case "delete":
                         // delete highlighted points if there are any, otherwise
                         // the entire selection (ctrl forces points only)
-                        if (ctrlKey || this.selection.segments.length) {
+                        if (
+                            ctrlKey ||
+                            this.selection.segments.some((s) => s.path)
+                        ) {
                             this.deleteSelectedSegments();
                         } else {
                             this.deleteSelection();
@@ -1038,8 +1042,23 @@ export class Segmenter {
                         break;
                     case "escape":
                         // clear selection
+                        if (this.activeBox) this.activeBox.cancel();
                         this.purgeSelection();
                         break;
+                    case "b":
+                    case "v": {
+                        // box select tools: lines/regions (B), points (V)
+                        const tool =
+                            key.toLowerCase() === "b"
+                                ? "box-select"
+                                : "box-select-points";
+                        if (this.newUiEnabled) {
+                            this.setActiveTool(
+                                this.activeTool === tool ? "select" : tool,
+                            );
+                        }
+                        break;
+                    }
                     case "a":
                         if (ctrlKey) {
                             // select all
@@ -1400,52 +1419,38 @@ export class Segmenter {
                 this.mode != "regions"
             )
                 return;
+            if (
+                this.pressPointAt(event, {
+                    obj: region,
+                    path: region.polygonPath,
+                })
+            )
+                return;
 
-            // if what we are clicking on is already selected,
-            // check there isn't something below
-            if (region.selected) {
-                let hit;
-                for (let i = 0; i < this.regions.length; i++) {
-                    if (this.regions[i] != region) {
-                        hit = this.regions[i].polygonPath.hitTest(event.point);
-                        if (hit) {
-                            this.selecting = this.regions[i];
-                            break;
-                        }
-                    }
-                }
-                if (!hit) this.selecting = region;
-            } else {
-                this.selecting = region;
+            const under = this.regions.filter((r) =>
+                r.polygonPath.contains(event.point),
+            );
+            const pressed = under.find((r) => r.selected) || region;
+            const boxLevel = this.boxLevel(event);
+            if (boxLevel) {
+                this.pressBox(event, region, pressed, boxLevel);
+                return;
             }
+            if (this.pressSelection(event, pressed)) return;
 
-            var dragging = region.polygonPath.getNearestLocation(
+            const { select, drag } = this.pickOverlapping(region, under);
+            this.selecting = select;
+
+            var dragging = drag.polygonPath.getNearestLocation(
                 event.point,
             ).segment;
             this.tool.onMouseDrag = function (event) {
-                this.selecting = region;
+                this.selecting = drag;
                 if (!event.event.shiftKey) {
                     this.movePointInView(dragging.point, event.delta);
                 }
             }.bind(this);
 
-            var hit = region.polygonPath.hitTest(event.point, {
-                segments: true,
-                tolerance: 20,
-            });
-            if (hit && hit.type == "segment") {
-                if (
-                    this.selection.segments.findIndex(
-                        (e) =>
-                            e.path.id == hit.segment.path.id &&
-                            e.index == hit.segment.index,
-                    ) == -1
-                ) {
-                    this.addToSelection(hit.segment);
-                } else {
-                    this.removeFromSelection(hit.segment);
-                }
-            }
             this.tool.onMouseUp = function (event) {
                 this.onMouseUp(event);
                 this.resetToolEvents();
@@ -1490,27 +1495,21 @@ export class Segmenter {
                     this.selecting
                 )
                     return;
+                if (
+                    this.pressPointAt(event, {
+                        obj: line,
+                        path: line.baselinePath,
+                    })
+                )
+                    return;
+                const boxLevel = this.boxLevel(event);
+                if (boxLevel) {
+                    this.pressBox(event, line, line, boxLevel);
+                    return;
+                }
+                if (this.pressSelection(event, line)) return;
                 this.selecting = line;
 
-                var hit = line.baselinePath.hitTest(event.point, {
-                    segments: true,
-                    tolerance: 20,
-                });
-
-                if (hit && hit.type == "segment") {
-                    if (
-                        this.selection.segments.findIndex(
-                            (e) =>
-                                e.path &&
-                                e.path.id == hit.segment.path.id &&
-                                e.index == hit.segment.index,
-                        ) == -1
-                    ) {
-                        this.addToSelection(hit.segment);
-                    } else {
-                        this.removeFromSelection(hit.segment);
-                    }
-                }
                 var dragging = line.baselinePath.getNearestLocation(
                     event.point,
                 ).segment;
@@ -1578,34 +1577,36 @@ export class Segmenter {
                     !["lines", "masks"].includes(this.mode)
                 )
                     return;
-                this.selecting = line;
+                if (
+                    this.pressPointAt(event, {
+                        obj: line,
+                        path: line.maskPath,
+                    })
+                )
+                    return;
 
-                var hit = line.maskPath.hitTest(event.point, {
-                    segments: true,
-                    tolerance: 20,
-                });
-                if (hit && hit.type == "segment") {
-                    if (
-                        this.selection.segments.findIndex(
-                            (e) =>
-                                e.path &&
-                                e.path.id == hit.segment.path.id &&
-                                e.index == hit.segment.index,
-                        ) == -1
-                    ) {
-                        if (this.mode !== "masks") {
-                            // in masks mode, this causes mask to get deselected and replaced
-                            // with line selection, which is not desired behavior
-                            this.addToSelection(hit.segment);
-                        }
-                    } else {
-                        this.removeFromSelection(hit.segment);
-                    }
+                const under = this.lines.filter(
+                    (l) =>
+                        l.maskPath &&
+                        l.maskPath.visible &&
+                        l.maskPath.contains(event.point),
+                );
+                const pressed = under.find((l) => l.selected) || line;
+                const boxLevel = this.boxLevel(event);
+                if (boxLevel) {
+                    this.pressBox(event, line, pressed, boxLevel);
+                    return;
                 }
-                var dragging = line.maskPath.getNearestLocation(
+                if (this.pressSelection(event, pressed)) return;
+
+                const { select, drag } = this.pickOverlapping(line, under);
+                this.selecting = select;
+
+                var dragging = drag.maskPath.getNearestLocation(
                     event.point,
                 ).segment;
                 this.tool.onMouseDrag = function (event) {
+                    this.selecting = drag;
                     if (!event.event.shiftKey && !event.event.ctrlKey) {
                         this.movePointInView(dragging.point, event.delta);
                     }
@@ -1614,7 +1615,7 @@ export class Segmenter {
                 this.tool.onMouseUp = function (event) {
                     this.onMouseUp(event);
                     this.resetToolEvents();
-                    line.updateDataFromCanvas();
+                    drag.updateDataFromCanvas();
                 }.bind(this);
             }.bind(this);
             line.maskPath.onMouseMove = function (event) {
@@ -1646,7 +1647,397 @@ export class Segmenter {
         this.tool.onMouseDown = this.onMouseDown.bind(this);
         this.tool.onMouseUp = null; //this.onMouseUp.bind(this);
         this.tool.onMouseDrag = this.onMouseDrag.bind(this);
-        this.tool.onMouseMove = null;
+        this.tool.onMouseMove = this.onMouseMove.bind(this);
+    }
+
+    onMouseMove(event) {
+        // show that a handle of the selection can be grabbed, also where it
+        // sticks out of its path (where the path's own cursor doesn't apply)
+        const overPoint =
+            (!this.newUiEnabled || this.activeTool === "select") &&
+            this.nearestPoint(event.point, true);
+        if (overPoint) {
+            this.setCursor("pointer");
+        } else if (this.hoveringPoint) {
+            this.setCursor();
+        }
+        this.hoveringPoint = !!overPoint;
+    }
+
+    editableOutlines() {
+        // the paths whose control points can be edited in the current mode,
+        // with the line or region they belong to
+        if (this.mode === "regions") {
+            return this.regions.map((r) => ({ obj: r, path: r.polygonPath }));
+        }
+        const outlines = [];
+        for (const line of this.lines) {
+            if (
+                line.baselinePath &&
+                (!this.newUiEnabled || this.mode === "lines")
+            ) {
+                outlines.push({ obj: line, path: line.baselinePath });
+            }
+            if (
+                line.maskPath &&
+                line.maskPath.visible &&
+                (!this.newUiEnabled || this.mode === "masks")
+            ) {
+                outlines.push({ obj: line, path: line.maskPath });
+            }
+        }
+        return outlines;
+    }
+
+    pointTolerance() {
+        // how close to a control point a click has to be to grab it: a bit
+        // more than the drawn handle, in screen pixels whatever the zoom
+        return (paper.settings.handleSize / 2 + 4) / this.getRatio();
+    }
+
+    nearestPoint(point, onlySelected) {
+        // the control point closest to point, points of selected lines and
+        // regions (which have their handles shown) winning over the others
+        const tolerance = this.pointTolerance();
+        const find = (outlines) => {
+            let best = null;
+            for (const { obj, path } of outlines) {
+                for (const segment of path.segments) {
+                    const distance = segment.point.getDistance(point);
+                    if (
+                        distance <= tolerance &&
+                        (!best || distance < best.distance)
+                    ) {
+                        best = { obj, segment, distance };
+                    }
+                }
+            }
+            return best;
+        };
+        const outlines = this.editableOutlines();
+        return (
+            find(outlines.filter((o) => o.obj.selected)) ||
+            (!onlySelected && find(outlines)) ||
+            null
+        );
+    }
+
+    nearestOutline(point) {
+        // the editable path passing closest to point
+        const tolerance = this.pointTolerance();
+        let best = null;
+        for (const outline of this.editableOutlines()) {
+            const location = outline.path.getNearestLocation(point);
+            if (
+                location &&
+                location.distance <= tolerance &&
+                (!best || location.distance < best.distance)
+            ) {
+                best = { ...outline, distance: location.distance };
+            }
+        }
+        return best;
+    }
+
+    pressPointAt(event, clicked = null) {
+        // handles a press on a control point, or on an outline with the add
+        // points tool; clicked is the line/region (and its path) paperjs found
+        // under the cursor, if any. Returns true if the press was handled.
+        if (this.activeTool === "add-points") {
+            const target = this.nearestOutline(event.point) || clicked;
+            if (!target) return false;
+            this.addPointOnPath(target.obj, target.path, event.point);
+            return true;
+        }
+        if (
+            this.newUiEnabled &&
+            !["select", "box-select-points"].includes(this.activeTool)
+        )
+            return false;
+        // with shift, dragging draws a selection box instead
+        if (event.event.shiftKey) return false;
+        // the handles are bigger than their paths, so this also catches
+        // presses that paperjs saw on another item or on nothing at all,
+        // in which case only visible handles (of the selection) count
+        const hit = this.nearestPoint(event.point, !clicked);
+        if (!hit) return false;
+        this.pressPoint(hit.obj, hit.segment);
+        return true;
+    }
+
+    pressPoint(obj, segment) {
+        // selects a control point (and its line/region) and lets it be
+        // dragged; a selected one is unselected on release, unless dragged
+        this.selecting = obj;
+        const unselectOnClick = this.selection.segments.includes(segment)
+            ? segment
+            : null;
+        if (!unselectOnClick) this.addToSelection(segment);
+        // dragging one of several selected points moves them all
+        const moving = unselectOnClick
+            ? [...this.selection.segments]
+            : [segment];
+        this.tool.onMouseDrag = function (event) {
+            if (event.event.shiftKey || event.event.ctrlKey) return;
+            for (const s of moving) this.movePointInView(s.point, event.delta);
+            this.setCursor("move");
+            if (obj instanceof SegmenterLine) obj.refresh();
+            for (const line of this.selection.lines) line.refresh();
+        }.bind(this);
+        this.tool.onMouseUp = function (event) {
+            if (moving.length > 1 && !event.delta.isZero()) {
+                // keep the selection, the points can be on several lines/regions
+                this.selecting = null;
+            } else {
+                this.onMouseUp(event);
+                if (unselectOnClick && event.delta.isZero()) {
+                    this.removeFromSelection(unselectOnClick);
+                }
+            }
+            this.resetToolEvents();
+            obj.updateDataFromCanvas();
+            this.updateSelectedFromCanvas();
+        }.bind(this);
+    }
+
+    pickOverlapping(clicked, under) {
+        // with overlapping lines/regions, clicking one that is selected
+        // selects the next one under the cursor, so each can be reached,
+        // while dragging still moves the selected one
+        const current = under.findIndex((o) => o.selected);
+        if (current === -1) return { select: clicked, drag: clicked };
+        return {
+            select: under[(current + 1) % under.length],
+            drag: under[current],
+        };
+    }
+
+    updateSelectedFromCanvas() {
+        for (const line of this.selection.lines) line.updateDataFromCanvas();
+        for (const region of this.selection.regions) {
+            region.updateDataFromCanvas();
+        }
+    }
+
+    pressSelection(event, obj, shapesTool = false) {
+        // pressing one of several selected lines/regions: dragging moves them
+        // all, a click selects only that one. The box select shapes tool
+        // also moves a single one, and never selected points.
+        const count =
+            this.selection.lines.length + this.selection.regions.length;
+        if (
+            !obj ||
+            !obj.selected ||
+            event.event.shiftKey ||
+            count < (shapesTool ? 1 : 2) ||
+            (!shapesTool && this.selection.segments.length)
+        )
+            return false;
+        if (shapesTool) {
+            // moving whole lines/regions, drop the selected points
+            for (let i = this.selection.segments.length - 1; i >= 0; i--) {
+                this.removeFromSelection(this.selection.segments[i]);
+            }
+        }
+        this.selecting = obj;
+        let moved = false;
+        this.tool.onMouseDrag = function (event) {
+            moved = true;
+            this.multiMove(event);
+            this.setCursor("move");
+        }.bind(this);
+        this.tool.onMouseUp = function (event) {
+            if (moved) {
+                this.selecting = null;
+                this.updateSelectedFromCanvas();
+                this.setCursor();
+            } else {
+                this.onMouseUp(event);
+            }
+            this.resetToolEvents();
+        }.bind(this);
+        return true;
+    }
+
+    boxLevel(event) {
+        // what a box drawn from this press selects (see startBox), if any:
+        // set by the box select tools, else shift+drag
+        if (this.newUiEnabled && this.activeTool === "box-select") {
+            return "objects";
+        }
+        if (this.newUiEnabled && this.activeTool === "box-select-points") {
+            return "points";
+        }
+        return event.event.shiftKey ? "auto" : null;
+    }
+
+    pressBox(event, obj, pressed, level) {
+        // box select tools, or shift: dragging draws a selection box (adding
+        // to the selection with shift), a click selects obj, the line/region
+        // under the cursor (if any). With the shapes tool, pressing the
+        // selection (pressed, which can be below obj) moves it instead.
+        if (level === "objects" && this.pressSelection(event, pressed, true)) {
+            return;
+        }
+        this.selecting = obj;
+        const origin = event.point;
+        const additive = event.event.shiftKey;
+        let box = null;
+        this.tool.onMouseDrag = function (event) {
+            if (!box) box = this.startBox(origin, additive, level);
+            box.update(event.point);
+        }.bind(this);
+        this.tool.onMouseUp = function (event) {
+            if (box) {
+                this.selecting = null;
+                box.finish();
+            } else if (obj) {
+                this.onMouseUp(event);
+            } else if (!additive) {
+                this.purgeSelection();
+            }
+            this.resetToolEvents();
+        }.bind(this);
+    }
+
+    touchesBox(path, clip) {
+        // whether the box crosses path, surrounds it, or is inside it
+        return (
+            path.intersects(clip) ||
+            clip.bounds.contains(path.bounds) ||
+            (path.closed && path.contains(clip.bounds.center))
+        );
+    }
+
+    startBox(origin, additive, level) {
+        // level "objects" selects the lines/regions the box touches,
+        // "points" the control points inside it: those of the selected
+        // lines/regions if any, else of all of them (selecting them too).
+        // "auto" (shift+drag) selects points when started on the single
+        // selected line/region, else lines/regions.
+        // additive keeps what was selected before.
+        const clip = this.makeSelectionRectangle({ point: origin });
+        const objects = this.mode === "regions" ? this.regions : this.lines;
+        const outlines = this.editableOutlines();
+        const selected = outlines.filter((o) => o.obj.selected);
+        // outlines whose points the box selects, if it selects points
+        let pointsOf = null;
+        // whether lines/regions get selected along with their points
+        let selectOwners = false;
+        if (level === "points") {
+            pointsOf = selected.length ? selected : outlines;
+            selectOwners = !selected.length;
+        } else if (
+            level === "auto" &&
+            this.selection.lines.length + this.selection.regions.length === 1
+        ) {
+            const margin = this.pointTolerance() * 2;
+            if (
+                selected.some(({ path }) =>
+                    path.bounds.expand(margin).contains(origin),
+                )
+            ) {
+                pointsOf = selected;
+            }
+        }
+        const before = pointsOf
+            ? [...this.selection.segments]
+            : objects.filter((o) => o.selected);
+
+        const update = function (point) {
+            this.updateSelectionRectangle(clip, { point });
+            if (pointsOf) {
+                const inBox = (segment) =>
+                    segment.point.isInside(clip.bounds) ||
+                    (additive && before.includes(segment));
+                if (selectOwners) {
+                    // a line can have two outlines (legacy UI)
+                    const owners = new Set(pointsOf.map((o) => o.obj));
+                    for (const obj of owners) {
+                        if (
+                            pointsOf.some(
+                                (o) =>
+                                    o.obj === obj && o.path.segments.some(inBox),
+                            )
+                        ) {
+                            obj.select();
+                        } else {
+                            obj.unselect();
+                        }
+                    }
+                }
+                for (const { obj, path } of pointsOf) {
+                    if (!obj.selected) continue;
+                    for (const segment of path.segments) {
+                        if (inBox(segment)) {
+                            this.addToSelection(segment);
+                        } else if (this.selection.segments.includes(segment)) {
+                            this.removeFromSelection(segment);
+                        }
+                    }
+                }
+            } else {
+                const touched = this.editableOutlines()
+                    .filter(({ path }) => this.touchesBox(path, clip))
+                    .map(({ obj }) => obj);
+                for (const obj of objects) {
+                    if (
+                        touched.includes(obj) ||
+                        (additive && before.includes(obj))
+                    ) {
+                        obj.select();
+                    } else {
+                        obj.unselect();
+                    }
+                }
+            }
+        }.bind(this);
+        const end = function () {
+            clip.remove();
+            this.activeBox = null;
+        }.bind(this);
+
+        this.activeBox = {
+            update,
+            finish: function () {
+                end();
+                this.trigger("baseline-editor:selection", {
+                    target: null,
+                    selection: this.selection,
+                });
+            }.bind(this),
+            cancel: function () {
+                end();
+                this.selecting = null;
+                this.resetToolEvents();
+            }.bind(this),
+        };
+        return this.activeBox;
+    }
+
+    addPointOnPath(obj, path, point) {
+        // "add points" tool: inserts a control point on path where it was
+        // clicked, selects it, and lets it be dragged until the mouse is released
+        this.selecting = obj;
+        const location = path.getNearestLocation(point);
+        // don't stack a point on top of an existing one (e.g. clicking past
+        // the end of a baseline)
+        if (
+            location &&
+            location.point.getDistance(location.curve.point1) >= 1 &&
+            location.point.getDistance(location.curve.point2) >= 1
+        ) {
+            const segment = path.insert(location.index + 1, location.point);
+            this.addToSelection(segment);
+            this.tool.onMouseDrag = function (event) {
+                this.movePointInView(segment.point, event.delta);
+            }.bind(this);
+        }
+        this.tool.onMouseUp = function (event) {
+            this.onMouseUp(event);
+            this.resetToolEvents();
+            obj.updateDataFromCanvas();
+        }.bind(this);
     }
 
     attachTooltip(obj, target) {
@@ -1758,8 +2149,13 @@ export class Segmenter {
             } else if (this.splitting) {
                 this.startCuter(event);
             } else if (event.event.shiftKey) {
-                // lasso selection tool
-                this.startLassoSelection(event);
+                // box selection, adding to the selection
+                this.pressBox(event, null, null, this.boxLevel(event));
+            } else if (this.pressPointAt(event)) {
+                // pressed a control point of the selection, outside its path
+                return;
+            } else if (this.boxLevel(event)) {
+                this.pressBox(event, null, null, this.boxLevel(event));
             } else if (
                 (this.mode == "regions" && !this.newUiEnabled) ||
                 this.activeTool === "add-regions"
@@ -1781,7 +2177,6 @@ export class Segmenter {
             // selection
             if (event.event.shiftKey) {
                 this.selecting.toggleSelect();
-                this.startLassoSelection(event);
             } else {
                 this.selecting.select();
                 this.purgeSelection(this.selecting);
@@ -1947,50 +2342,6 @@ export class Segmenter {
         }.bind(this);
         document.addEventListener("mouseup", finishCut, { once: true });
         document.addEventListener("keyup", onCancel, { once: true });
-    }
-
-    startLassoSelection(event) {
-        let clip = this.makeSelectionRectangle(event);
-        let onCancel = function (event) {
-            if (event.keyCode == 27) {
-                // escape
-                clip.remove();
-                this.purgeSelection();
-                this.resetToolEvents();
-                document.removeEventListener("mouseup", finishSelection);
-                document.removeEventListener("keyup", onCancel);
-                return false;
-            }
-            return null;
-        }.bind(this);
-        let finishSelection = function (event) {
-            clip.remove();
-            this.resetToolEvents();
-            document.removeEventListener("mouseup", finishSelection);
-            document.removeEventListener("keyup", onCancel);
-            this.trigger("baseline-editor:selection", {
-                target: this.selecting,
-                selection: this.selection,
-            });
-        }.bind(this);
-
-        let allLines =
-            (this.selection.lines.length && this.selection.lines) || this.lines;
-        let allRegions =
-            (this.selection.regions.length && this.selection.regions) ||
-            this.regions;
-        let tmpSelected = [];
-        this.tool.onMouseDrag = function (event) {
-            this.updateSelectionRectangle(clip, event);
-            if (["lines", "masks"].includes(this.mode)) {
-                this.lassoSelectionLines(clip, allLines, tmpSelected);
-            } else if (this.mode == "regions") {
-                this.lassoSelectionRegions(clip, allRegions, tmpSelected);
-            }
-        }.bind(this);
-
-        document.addEventListener("mouseup", finishSelection);
-        document.addEventListener("keyup", onCancel);
     }
 
     movePointInView(point, delta) {
@@ -2569,10 +2920,10 @@ export class Segmenter {
         for (let i = this.selection.segments.length - 1; i >= 0; i--) {
             if (this.selection.segments[i].path == null) {
                 // clean up any remaining references (paperjs bug?)
-                this.selection.segments.splice(i);
+                this.selection.segments.splice(i, 1);
             } else if (
                 !except ||
-                except.baselinePath != this.selection.segments[i].path
+                !isOwnPath(except, this.selection.segments[i].path)
             ) {
                 if (this.mode === "masks") {
                     // also unselect paths if in new UI "mask" mode; this usually happens in
@@ -2584,6 +2935,16 @@ export class Segmenter {
         }
         if (!this.newUiEnabled) {
             this.showContextMenu();
+        }
+    }
+
+    unselectSegmentsOf(...paths) {
+        // removes the selected segments (control points) of the given paths
+        for (let i = this.selection.segments.length - 1; i >= 0; i--) {
+            const segment = this.selection.segments[i];
+            if (segment.path && paths.includes(segment.path)) {
+                this.removeFromSelection(segment);
+            }
         }
     }
 
@@ -2616,82 +2977,6 @@ export class Segmenter {
             clip.bounds.y = clip.originalPoint.y;
         } else {
             clip.bounds.y = event.point.y;
-        }
-    }
-
-    clipSelectPoly(clip, segments, tmpSelected) {
-        for (let j in segments) {
-            let segment = segments[j];
-            if (segment.point.isInside(clip.bounds)) {
-                this.addToSelection(segment);
-                tmpSelected.push(segment);
-            } else {
-                let fi = tmpSelected.findIndex(
-                    (s) =>
-                        s.path &&
-                        s.path.id == segment.path.id &&
-                        s.index == segment.index,
-                );
-                if (fi !== -1) {
-                    tmpSelected.slice(fi);
-                    this.removeFromSelection(segment);
-                }
-            }
-        }
-    }
-
-    lassoSelectionRegions(clip, allRegions, tmpSelected) {
-        // draws a rectangle lasso selection tool that selects every segment it crosses
-        for (let i in allRegions) {
-            let allSegments;
-            let region = allRegions[i];
-            this.clipSelectPoly(clip, region.polygonPath.segments, tmpSelected);
-            if (
-                region.polygonPath.intersects(clip) ||
-                region.polygonPath.isInside(clip.bounds)
-            )
-                region.select();
-            else if (allRegions.length == this.regions.length)
-                region.unselect();
-        }
-    }
-
-    lassoSelectionLines(clip, allLines, tmpSelected) {
-        // draws a rectangle lasso selection tool that selects every segment it crosses
-        for (let i in allLines) {
-            let allSegments;
-            let line = allLines[i];
-            if (this.showMasks && line.maskPath) {
-                if (
-                    line.baselinePath &&
-                    (!this.newUiEnabled || this.mode === "lines")
-                ) {
-                    allSegments = line.baselinePath.segments.concat(
-                        line.maskPath.segments,
-                    );
-                } else {
-                    allSegments = line.maskPath.segments;
-                }
-            } else {
-                allSegments = line.baselinePath.segments;
-            }
-            this.clipSelectPoly(clip, allSegments, tmpSelected);
-            if (
-                this.mode === "lines" &&
-                ((line.baselinePath && line.baselinePath.intersects(clip)) ||
-                    (line.baselinePath &&
-                        line.baselinePath.isInside(clip.bounds)) ||
-                    (this.showMasks &&
-                        line.maskPath &&
-                        line.maskPath.intersects(clip)))
-            ) {
-                line.select();
-            } else if (
-                this.mode === "lines" &&
-                allLines.length == this.lines.length
-            ) {
-                line.unselect();
-            }
         }
     }
 
@@ -3135,9 +3420,17 @@ export class Segmenter {
         } else if (this.newUiEnabled) {
             if (this.activeTool === "pan") {
                 this.canvas.style.cursor = "grab";
-            } else if (this.activeTool === "cut") {
+            } else if (
+                ["cut", "box-select", "box-select-points"].includes(
+                    this.activeTool,
+                )
+            ) {
                 this.canvas.style.cursor = "crosshair";
-            } else if (["add-lines", "add-regions"].includes(this.activeTool)) {
+            } else if (
+                ["add-lines", "add-regions", "add-points"].includes(
+                    this.activeTool,
+                )
+            ) {
                 this.canvas.style.cursor = "copy";
             } else {
                 this.canvas.style.cursor = "default";
