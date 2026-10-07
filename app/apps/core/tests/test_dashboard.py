@@ -114,14 +114,14 @@ class DashboardTestCase(TestCase):
         self.assertNotIn(document, response.context['recent_documents'])
 
     def test_shows_own_and_visible_tasks_only(self):
-        project = self.factory.make_project(owner=self.user)
+        project = self.factory.make_project(owner=self.user, name='own project')
         document = self.factory.make_document(owner=self.user, project=project)
 
         own_running = TaskReport.objects.create(
             user=self.user, document=document, label='own running task',
             workflow_state=TaskReport.WORKFLOW_STATE_STARTED)
 
-        other_project = self.factory.make_project(owner=self.other_user)
+        other_project = self.factory.make_project(owner=self.other_user, name='other project')
         other_document = self.factory.make_document(owner=self.other_user, project=other_project)
         unrelated_running = TaskReport.objects.create(
             user=self.other_user, document=other_document, label='unrelated running task',
