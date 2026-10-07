@@ -43,6 +43,7 @@ from core.models import (
     Transcription,
 )
 from core.tasks import _chunks, segment, segtrain, train, transcribe
+from core.utils import normalize_text
 from imports.forms import FileImportError, clean_import_uri, clean_upload_file
 from imports.models import DocumentImport
 from imports.tasks import document_import
@@ -708,7 +709,7 @@ class LineTranscriptionSerializer(serializers.ModelSerializer):
         return cleaned_data
 
     def validate_content(self, content):
-        return self.cleanup(content)
+        return normalize_text(self.cleanup(content))
 
 
 class LineListSerializer(serializers.ListSerializer):
