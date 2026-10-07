@@ -1,0 +1,127 @@
+.escr-task-status {
+    display: flex;
+    align-items: center;
+    margin-right: 0.75rem;
+    white-space: nowrap;
+}
+.escr-task-status .task-status-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    min-height: 32px;
+    padding: 0 8px;
+    border: none;
+    border-radius: 5px;
+    background-color: transparent;
+    font-size: 14px;
+    color: var(--text2);
+    cursor: pointer;
+}
+.escr-task-status .task-status-button:hover {
+    background-color: var(--secondary-hover);
+}
+.escr-task-status .task-status-button:focus {
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem var(--secondary-focus);
+}
+.escr-task-status .task-status-button svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}
+.escr-task-status .task-count + .task-count::before {
+    content: "· ";
+}
+.escr-task-status .count-failed,
+.escr-task-status.is-failed .task-status-button {
+    color: var(--alert);
+    font-weight: 700;
+}
+.escr-task-status .task-status-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: escr-task-status-spin 0.8s linear infinite;
+}
+@keyframes escr-task-status-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+.escr-task-list {
+    width: 400px;
+    max-width: 90vw;
+    font-size: 14px;
+    color: var(--text1);
+}
+.escr-task-list > p {
+    margin: 0 16px 8px;
+}
+.escr-task-list .task-list-error {
+    color: var(--alert);
+}
+.escr-task-list ul {
+    max-height: min(60vh, 480px);
+    overflow-y: auto;
+    margin: 0 0 8px;
+    padding: 0;
+    list-style: none;
+}
+.escr-task-list li {
+    padding: 6px 16px;
+    border-bottom: 1px solid var(--background2);
+}
+.escr-task-list li.is-failed {
+    box-shadow: inset 4px 0 0 var(--alert);
+}
+.escr-task-list .task-heading {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-between;
+    gap: 8px;
+}
+.escr-task-list .task-name {
+    font-weight: 700;
+}
+.escr-task-list .task-state {
+    flex: 0 0 auto;
+    font-size: 12px;
+    color: var(--text2);
+}
+.escr-task-list li.is-failed .task-state {
+    color: var(--alert);
+    font-weight: 700;
+}
+.escr-task-list li.is-completed .task-state {
+    color: var(--completed);
+}
+.escr-task-list .task-meta {
+    display: flex;
+    flex-flow: row wrap;
+    font-size: 12px;
+    color: var(--text2);
+    overflow-wrap: anywhere;
+}
+.escr-task-list .task-meta > * + *::before {
+    content: "·";
+    /* not underlined with a link */
+    display: inline-block;
+    margin: 0 4px;
+    color: var(--text2);
+}
+.escr-task-list .task-reason {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--alert);
+    overflow-wrap: anywhere;
+}
+.escr-task-list .task-list-more {
+    color: var(--text2);
+}
+.escr-task-list .task-list-all {
+    display: inline-block;
+    margin: 0 16px;
+}

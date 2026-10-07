@@ -14,6 +14,7 @@ import forms from "../../vue/store/modules/forms";
 import alerts from "../../vue/store/modules/alerts";
 import globalTools from "./store/globalTools";
 import saveStatus from "./store/saveStatus";
+import taskStatus from "./store/taskStatus";
 
 Vue.use(Vuex);
 Vue.use(vueFilterPrettyBytes);
@@ -33,5 +34,6 @@ export default new Vuex.Store({
         globalTools,
         forms,
         saveStatus,
+        taskStatus,
     },
 });
