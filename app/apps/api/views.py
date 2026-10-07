@@ -427,20 +427,21 @@ class DocumentViewSet(ModelViewSet):
         # Without a task report or a task group, every task of the document is canceled
         scoped = False
 
-        if request.data.get("task_report"):
-            # If a task report PK is provided, try to locate it
-            task_report_pk = int(request.data.get("task_report"))
+        if "task_report" in request.data:
+            # A task report of this document. An empty or invalid value is an error, never a
+            # request to cancel everything.
             try:
-                TaskReport.objects.get(pk=task_report_pk)
-                # limit the canceled tasks to just the one with that pk
-                reports = reports.filter(pk=task_report_pk)
-                scoped = True
-            except TaskReport.DoesNotExist:
-                # otherwise there is an error here, so let's return a response
+                task_report_pk = int(request.data.get("task_report"))
+            except (TypeError, ValueError):
+                task_report_pk = None
+            if not task_report_pk or not document.reports.filter(pk=task_report_pk).exists():
                 return Response({
                     'status': 'error',
                     'error': 'Could not cancel: the requested task could not be found.'
                 }, status=400)
+            # limit the canceled tasks to just the one with that pk
+            reports = reports.filter(pk=task_report_pk)
+            scoped = True
 
         if "task_group" in request.data:
             # A task group of this document, e.g. one row of the document's task dashboard.
@@ -461,12 +462,15 @@ class DocumentViewSet(ModelViewSet):
         count = len(reports)  # evaluate query
         # canceling takes the reports out of the query, so keep their pks for the glue code below
         canceled_pks = [report.pk for report in reports]
+        canceled_trainings = []
         canceled_parts = []
         for report in reports:
             report.cancel(request.user.username)
 
             method_name = report.method.split('.')[-1]
             task_name = CLIENT_TASK_NAME_MAP.get(method_name, method_name)
+            if task_name == 'training':
+                canceled_trainings.append(report.pk)
 
             if report.document_part:
                 canceled_parts.append({
@@ -497,8 +501,10 @@ class DocumentViewSet(ModelViewSet):
         models = document.ocr_models.filter(training=True)
         doc_imports = document.documentimport_set.all()
         if scoped:
-            # only the trainings and imports of the canceled tasks, not those of other users
-            models = models.filter(reports__pk__in=canceled_pks).distinct()
+            # only the trainings and imports of the canceled tasks, not those of other users.
+            # A model is also linked to the reports of the transcriptions it runs: only the
+            # reports of its training count.
+            models = models.filter(reports__pk__in=canceled_trainings).distinct()
             doc_imports = doc_imports.filter(report__pk__in=canceled_pks)
 
         for model in models:
