@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% load i18n %}
+
+{% block body %}
+<h2>{% trans "Delete model" %}</h2>
+<form method="post">
+  {% csrf_token %}
+  <p>
+    {% trans "Are you sure you want to delete the model" %} <strong>{{ object.name }}</strong>?
+  </p>
+  {% if documents_count %}
+  <p>
+    {% blocktrans count counter=documents_count %}
+    It is currently bound to {{ counter }} document, which will no longer be able to use it.
+    {% plural %}
+    It is currently bound to {{ counter }} documents, which will no longer be able to use it.
+    {% endblocktrans %}
+  </p>
+  {% endif %}
+  <p class="text-danger">
+    {% trans "This will permanently remove the model and its trained file. This cannot be undone." %}
+  </p>
+  <input type="submit" class="btn btn-danger" value="{% trans "Confirm" %}">
+  <a href="{{ next }}" class="btn btn-default">{% trans "Cancel" %}</a>
+</form>
+{% endblock body %}

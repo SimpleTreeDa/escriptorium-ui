@@ -978,11 +978,22 @@ class ModelUnbind(LoginRequiredMixin, SuccessMessageMixin, DeleteView):
 
 
 class ModelDelete(LoginRequiredMixin, SuccessMessageMixin, DeleteView):
+    """
+    GET renders a confirmation page naming the model; only a POST actually
+    deletes it, so a single click on the trash icon can't destroy a model.
+    """
     model = OcrModel
+    template_name = 'core/models_list/delete.html'
     success_message = _("Model deleted successfully!")
 
     def get_queryset(self):
         return OcrModel.objects.filter(owner=self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['documents_count'] = self.object.documents.count()
+        context['next'] = self.get_success_url()
+        return context
 
     def get_success_url(self):
         if 'next' in self.request.GET:
