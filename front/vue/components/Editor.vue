@@ -179,6 +179,8 @@ export default {
         this.$store.commit("document/setDefaultTextDirection", this.defaultTextDirection);
         this.$store.commit("document/setMainTextDirection", this.mainTextDirection);
         this.$store.commit("document/setReadDirection", this.readDirection);
+        // the Syriac font chosen for this document, in every panel
+        this.$store.dispatch("document/loadSyriacFont");
         // "Continue where you left off" redirects here with ?line=<the line this user last
         // transcribed>, or ?resume=1 when there is none, to reopen the last page viewed.
         // Read it before loading a page, which records the new last viewed page.

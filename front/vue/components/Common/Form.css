@@ -9,7 +9,7 @@ h3 span.escr-required {
 .escr-help-text {
     font-weight: 400;
     font-size: 12px;
-    font-family: 'Noto Sans';
+    font-family: "Noto Sans", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     font-style: normal;
 }
 .escr-field-errors {

@@ -21,6 +21,12 @@ import {
     withPanelRemoved,
     withSizes,
 } from "../panelLayout";
+import {
+    DEFAULT_SYRIAC_FONT,
+    applySyriacFont,
+    loadSyriacFont,
+    saveSyriacFont,
+} from "../syriacFont";
 
 // "New UI" panels: from userProfile, or by default, [segmentation, visualisation]
 const savedEditorPanels = () => {
@@ -87,6 +93,9 @@ export const initialState = () => ({
     defaultTypes: {},
     loading: false,
     segmentationOpened: false,
+
+    // font of the Syriac text, for this document (see syriacFont.js)
+    syriacFont: DEFAULT_SYRIAC_FONT,
 });
 
 export const mutations = {
@@ -110,6 +119,9 @@ export const mutations = {
     resetEditorPanelSizes(state) {
         state.editorLayout = withEqualSizes(state.editorLayout);
         saveEditorLayout(state.editorLayout);
+    },
+    setSyriacFont(state, value) {
+        state.syriacFont = value;
     },
     setId(state, id) {
         state.id = id;
@@ -680,6 +692,25 @@ export const actions = {
         }
     },
 
+    /**
+     * Use the Syriac font saved for this document; call once its id is set.
+     */
+    loadSyriacFont({ state, commit }) {
+        // eslint-disable-next-line no-undef
+        const value = loadSyriacFont(userProfile, state.id);
+        commit("setSyriacFont", value);
+        applySyriacFont(value);
+    },
+    /**
+     * Use another Syriac font for this document, and save it.
+     */
+    setSyriacFont({ state, commit }, value) {
+        // eslint-disable-next-line no-undef
+        saveSyriacFont(userProfile, state.id, value);
+        // eslint-disable-next-line no-undef
+        commit("setSyriacFont", loadSyriacFont(userProfile, state.id));
+        applySyriacFont(state.syriacFont);
+    },
     /**
      * Show the panels side by side ("row") or stacked ("column") (new UI)
      */
