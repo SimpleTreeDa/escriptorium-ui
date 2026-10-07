@@ -440,6 +440,7 @@ import HelpCompareTranscriptions from "./HelpCompareTranscriptions.vue";
 import ToggleButton from "./ToggleButton/ToggleButton.vue";
 import TranscriptionSelector from "./TranscriptionSelector/TranscriptionSelector.vue";
 import XIcon from "./Icons/XIcon/XIcon.vue";
+import { normalizeText, sameText } from "../../src/editor/text";
 import "./TranscriptionModal.css";
 
 export default Vue.extend({
@@ -505,9 +506,11 @@ export default Vue.extend({
             get: function() {
                 return this.line.currentTrans && this.line.currentTrans.content || "";
             },
-            set: async function(newValue) {
+            set: async function(value) {
                 // from here the text is sent, its request is tracked
                 this.reportUnsaved(null);
+                // in the form the server stores it
+                const newValue = normalizeText(value);
                 let oldValue = this.line.currentTrans.content;
                 if (this.$refs.transInput.value != newValue) {
                     // Note: better way to do that?
@@ -515,7 +518,7 @@ export default Vue.extend({
                     this.computeStyles();
                 }
 
-                if (oldValue != newValue) {
+                if (!sameText(oldValue, newValue)) {
                     await this.$store.dispatch("transcriptions/updateLineTranscriptionVersion", { line: this.line, content: newValue });
                 }
             }
@@ -531,7 +534,7 @@ export default Vue.extend({
     },
     created() {
         $(document).on("hide.bs.modal", "#trans-modal", function(ev) {
-            if (this.localTranscription != this.$refs.transInput.value
+            if (!sameText(this.localTranscription, this.$refs.transInput.value)
                 && !confirm("You have unsaved data, are you sure you want to close the modal?")) {
                 return false;
             }
@@ -605,7 +608,7 @@ export default Vue.extend({
             const saved = (currentTrans && currentTrans.content) || "";
             this.$store.commit("saveStatus/setUnsaved", {
                 key: "line",
-                unsaved: text !== null && text !== saved,
+                unsaved: text !== null && !sameText(text, saved),
             });
         },
         close() {

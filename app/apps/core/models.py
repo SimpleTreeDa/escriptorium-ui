@@ -63,7 +63,7 @@ from core.tasks import (
     train,
     transcribe,
 )
-from core.utils import ColorField
+from core.utils import ColorField, normalize_text
 from core.validators import JSONSchemaValidator
 from escriptorium.celery import app as celery_app
 from reporting.models import TASK_FINAL_STATES, TaskReport
@@ -836,14 +836,14 @@ class Document(ExportModelOperationsMixin("Document"), CascadeUpdate, models.Mod
                     lt, created = LineTranscription.objects.get_or_create(line=line, transcription=trans)
                     # use matches[0]["alg"] instead for forced alignment with dashes
                     # lt.content = matches[0]["alg"]
-                    lt.content = matches[0]["text"]
+                    lt.content = normalize_text(matches[0]["text"])
                     lt.save()
                 # if "merge" is checked and this line is not present, get content from original transcription
                 elif merge:
                     try:
                         old_lt = LineTranscription.objects.get(line=line, transcription=original_trans)
                         lt, created = LineTranscription.objects.get_or_create(line=line, transcription=trans)
-                        lt.content = old_lt.content
+                        lt.content = normalize_text(old_lt.content)
                         lt.save()
                     except LineTranscription.DoesNotExist:
                         pass
@@ -1489,7 +1489,8 @@ class DocumentPart(ExportModelOperationsMixin("DocumentPart"), CascadeUpdate, Or
                 lt.version_source = 'kraken:' + model.name
 
                 for pred in it:
-                    lt.content = pred.prediction
+                    # the graphs keep the characters as the model predicted them
+                    lt.content = normalize_text(pred.prediction)
                     lt.graphs = [{
                         'c': letter,
                         'poly': poly,

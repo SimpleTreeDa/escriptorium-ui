@@ -286,6 +286,7 @@ import GroupedLine from "../components/GroupedLine/GroupedLine.vue";
 import RegionsIcon from "./Icons/RegionsIcon/RegionsIcon.vue";
 import ToggleButton from "./ToggleButton/ToggleButton.vue";
 import TranscriptionDropdown from "./EditorTranscriptionDropdown/EditorTranscriptionDropdown.vue";
+import { normalizeText, sameText } from "../../src/editor/text";
 import "../components/Common/Annotation.css";
 
 export default {
@@ -1136,8 +1137,9 @@ export default {
                parse all lines if the content changed, add it to updated lines
              */
             this.$refs.diploLineComponents.forEach((currentLine) => {
-                let content = currentLine.getEl().textContent;
-                if(currentLine.line.currentTrans.content != content){
+                // in the form the server stores it
+                let content = normalizeText(currentLine.getEl().textContent);
+                if (!sameText(currentLine.line.currentTrans.content, content)) {
                     currentLine.line.currentTrans.content = content;
                     if(currentLine.line.currentTrans.pk) {
                         this.addToUpdatedLines(currentLine.line.currentTrans);
