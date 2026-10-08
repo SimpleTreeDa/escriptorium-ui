@@ -32,4 +32,9 @@ These are internal names or stored data. Renaming them changes nothing that peop
 
 ## Site name
 
-Django's password-reset email names the site from the `Site` row, which comes from `SITE_NAME`. Migration `users/0024` renames a site still called "escriptorium" to `SITE_NAME`, or to Transcriptus if `SITE_NAME` is unset or still the old default.
+Django's password-reset email names the site from the `Site` row. Migration `users/0024` sets that row from `SITE_NAME` and `DOMAIN`. It covers two cases:
+
+- **A new database.** Django adds an `example.com` row only after all migrations have run, so migration 0015 never had a row to fill. Migration 0024 creates the row first.
+- **An existing site** still called "example.com" or "escriptorium". It gets `SITE_NAME`, or Transcriptus if `SITE_NAME` is unset or still the old default, and `DOMAIN` if its domain is still "example.com".
+
+A site name someone chose is left alone.
