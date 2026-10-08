@@ -1,7 +1,7 @@
 <template>
     <EscrPage class="escr-projects-list">
         <template #page-content>
-            <h1>Welcome back, {{ firstName || username }}</h1>
+            <h1>Welcome back, {{ displayName }}</h1>
             <div class="escr-card escr-card-table">
                 <div class="escr-card-padding escr-card-header">
                     <h2>Projects</h2>
@@ -147,6 +147,7 @@ export default {
             createModalOpen: (state) => state.projects.createModalOpen,
             deleteModalOpen: (state) => state.projects.deleteModalOpen,
             firstName: (state) => state.user.firstName,
+            lastName: (state) => state.user.lastName,
             loading: (state) => state.projects.loading,
             nextPage: (state) => state.projects.nextPage,
             projects: (state) => state.projects.projects,
@@ -154,6 +155,11 @@ export default {
             tags: (state) => state.projects.tags,
             username: (state) => state.user.username,
         }),
+        displayName() {
+            return this.firstName && this.lastName
+                ? `${this.firstName} ${this.lastName}`
+                : this.username;
+        },
         headers() {
             return [
                 { label: "Name", value: "name", sortable: true },
