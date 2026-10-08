@@ -9,11 +9,17 @@
             :on-clear="clearNameFilter"
             :on-enter="onFilter"
         />
+        <!--
+            auto-hide lets floating-vue close the dropdown on a click outside it; apply-hide
+            then resets openFilter so the shown prop stays in sync. Escape is handled by the
+            document keydown listener below, because focus stays on the Tags button while the
+            dropdown is open and floating-vue only reacts to Escape from inside the popper.
+        -->
         <VMenu
             :delay="{ show: 0, hide: 100 }"
             :triggers="[]"
             :shown="openFilter === 'tags'"
-            :auto-hide="false"
+            :auto-hide="true"
             @apply-hide="() => toggleOpen(undefined)"
         >
             <FilterButton
@@ -104,6 +110,15 @@ export default {
             "untaggedSelected",
         ]),
     },
+    mounted() {
+        document.addEventListener("keydown", this.onKeydown);
+    },
+    beforeDestroy() {
+        document.removeEventListener("keydown", this.onKeydown);
+        if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
+        }
+    },
     methods: {
         /**
          * Result of clicking the "clear" button by a filter
@@ -151,6 +166,14 @@ export default {
             }
         },
         /**
+         * Close the open filter dialog on Escape.
+         */
+        onKeydown(e) {
+            if (e.key !== "Escape" || !this.openFilter) return;
+            e.preventDefault();
+            this.openFilter = undefined;
+        },
+        /**
          * Result of clicking "Submit" on a filter dialog: close the dialog
          * and apply the filter
          */
@@ -169,11 +192,6 @@ export default {
             "addFilter",
             "removeFilter",
         ]),
-    },
-    beforeUnmount() {
-        if (this.debounceTimer) {
-            clearTimeout(this.debounceTimer);
-        }
     },
 };
 </script>
