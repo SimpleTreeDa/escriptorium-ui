@@ -10,7 +10,7 @@ Add them to the document once, in either way:
 
 - **On the server** (an administrator): `python manage.py apply_ephrem_ontology <document id> ...`, or `--project <project slug>` for every document of a project.
   Running it again changes nothing.
-- **In eScriptorium:** in the document's ontology page, import [`ephrem-ontology.json`](ephrem-ontology.json).
+- **In Transcriptus:** in the document's ontology page, import [`ephrem-ontology.json`](ephrem-ontology.json).
 
 ## 2. Fill in the document metadata
 
@@ -31,7 +31,7 @@ In the document's settings. Keys are matched ignoring case: `Shelfmark` and `she
 - **`record_id`** is the record's persistent identifier, assigned by the project. It must start with a letter and contain only letters, digits, `.`, `_` and `-`, and no two documents may share it.
 - When a key appears under several of its names, the first name in the table wins: an editor's `shelfmark` counts before a `Call number` copied from a IIIF manifest.
 - **`tei_language`** is only needed for a script variant: `syr-Syre` (Estrangela), `syr-Syrj` (vocalised West Syriac), `syr-Syrn` (vocalised East Syriac) or `syr-x-syrm` (Melkite). The document's script setting is never used for this.
-- **`transcribed_by`, `reviewed_by`, `edited_by`** credit people who did not work in eScriptorium. Separate several names with `;`. People who typed or corrected lines, or set page statuses, are credited automatically.
+- **`transcribed_by`, `reviewed_by`, `edited_by`** credit people who did not work in Transcriptus. Separate several names with `;`. People who typed or corrected lines, or set page statuses, are credited automatically.
 
 ## 3. Name the pages and set their works
 

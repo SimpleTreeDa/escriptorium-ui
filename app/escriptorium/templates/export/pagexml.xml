@@ -1,7 +1,7 @@
 {% load export_tags %}<?xml version="1.0" encoding="UTF-8"  standalone="yes"?>
 <PcGts xmlns="http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15 http://schema.primaresearch.org/PAGE/gts/pagecontent/2019-07-15/pagecontent.xsd">
   <Metadata{% if part.source %} externalRef="{{part.source}}"{% endif %}>
-	<Creator>escriptorium</Creator>
+	<Creator>Transcriptus</Creator>
 	<Created>{{ part.created_at|date:'c' }}</Created>
         <LastChange>{{ part.updated_at|date:'c' }}</LastChange>
   </Metadata>

@@ -3,9 +3,9 @@
         <div class="escr-upper-navgroup">
             <a
                 href="/"
-                aria-label="eScriptorium"
+                aria-label="Transcriptus home"
             >
-                <EscrLogo />
+                <TranscriptusLogo />
             </a>
             <VMenu
                 v-if="isAuthenticated && !searchDisabled"
@@ -189,13 +189,13 @@
 <script>
 import { Menu as VMenu } from "floating-vue";
 import DarkModeIcon from "../Icons/DarkModeIcon/DarkModeIcon.vue";
-import EscrLogo from "../Icons/EscrLogo/EscrLogo.vue";
 import HomeIcon from "../Icons/HomeIcon/HomeIcon.vue";
 import LightModeIcon from "../Icons/LightModeIcon/LightModeIcon.vue";
 import ModelsIcon from "../Icons/ModelsIcon/ModelsIcon.vue";
 import ProfileIcon from "../Icons/ProfileIcon/ProfileIcon.vue";
 import SearchLargeIcon from "../Icons/SearchLargeIcon/SearchLargeIcon.vue";
 import TasksIcon from "../Icons/TasksIcon/TasksIcon.vue";
+import TranscriptusLogo from "../Icons/TranscriptusLogo/TranscriptusLogo.vue";
 import "../VerticalMenu/VerticalMenu.css";
 import "./GlobalNavigation.css";
 import { mapActions, mapState } from "vuex";
@@ -203,7 +203,7 @@ import { mapActions, mapState } from "vuex";
 export default {
     name: "EscrGlobalNavigation",
     components: {
-        EscrLogo,
+        TranscriptusLogo,
         DarkModeIcon,
         HomeIcon,
         LightModeIcon,

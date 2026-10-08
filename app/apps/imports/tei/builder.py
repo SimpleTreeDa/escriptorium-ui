@@ -15,7 +15,7 @@ XML_ID = "{%s}id" % profile.XML_NS
 XML_LANG = "{%s}lang" % profile.XML_NS
 
 EDITORIAL_DECLARATION = (
-    'Diplomatic transcription made in eScriptorium, from the transcription layer "{}". '
+    'Diplomatic transcription made in Transcriptus, from the transcription layer "{}". '
     "One lb element per manuscript line, one pb element per page and one cb element per column. "
     "Headings (head) and paragraphs (p) are those the editors marked; the rest of the text is in ab elements. "
     "Line text is as entered: not normalised and not punctuated."

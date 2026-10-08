@@ -1,12 +1,12 @@
 {
-  "name": "escriptorium",
+  "name": "transcriptus",
   "version": "0.1.0",
-  "description": "eScriptorium Frontend project",
+  "description": "Transcriptus frontend, built on eScriptorium's",
   "license": "MIT",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "https://gitlab.com/scripta/escriptorium.git"
+    "url": "https://github.com/SimpleTreeDa/escriptorium-ui.git"
   },
   "scripts": {
     "build": "webpack --config webpack.dev.js",
