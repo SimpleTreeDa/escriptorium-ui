@@ -12,3 +12,8 @@ variables.env
 # Kraken models at the repo root are uploaded through the app, not baked into the image
 # (root level only, test assets under app/ are kept)
 *.mlmodel
+# The image builds the frontend itself: a local build output or node_modules
+# in the context would only slow the build down, and webpack keeps the old
+# modification time of any bundle it finds unchanged in an existing dist.
+front/dist/
+front/node_modules/
