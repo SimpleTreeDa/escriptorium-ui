@@ -150,8 +150,8 @@ msgstr ""
 "Segmentierungs- oder Erkennungsmodell Modell handelt)."
 
 #: apps/core/forms.py
-msgid "eScriptorium is not compatible with bounding box models."
-msgstr "eScriptorium ist nicht mit Bounding-Box-Modellen kompatibel."
+msgid "Transcriptus is not compatible with bounding box models."
+msgstr "Transcriptus ist nicht mit Bounding-Box-Modellen kompatibel."
 
 #: apps/core/forms.py
 msgid ""
@@ -1464,11 +1464,11 @@ msgstr "Homepage"
 
 #: escriptorium/templates/core/home.html
 msgid ""
-"eScriptorium: A Digital Text Production Pipeline for Print and Handwritten "
-"Texts using machine learning techniques."
+"Transcriptus: A Digital Text Production Pipeline for Print and Handwritten "
+"Texts using machine learning techniques, built on eScriptorium."
 msgstr ""
 "Erzeugen von Text für Drucke und handgeschriebene Dokumente mit Hilfe "
-"maschineller Lerntechniken."
+"maschineller Lerntechniken, auf Grundlage von eScriptorium."
 
 #: escriptorium/templates/core/home.html
 msgid "Automatic<br>Transcription"
@@ -1520,6 +1520,18 @@ msgstr ""
 #: escriptorium/templates/core/home.html
 msgid "Resources"
 msgstr "Ressourcen"
+
+#: escriptorium/templates/core/home.html
+msgid "eScriptorium community"
+msgstr "eScriptorium-Community"
+
+#: escriptorium/templates/core/home.html
+msgid "Built on"
+msgstr "Basiert auf"
+
+#: escriptorium/templates/core/credits.html
+msgid "Transcriptus is built on eScriptorium."
+msgstr "Transcriptus basiert auf eScriptorium."
 
 #: escriptorium/templates/core/home.html
 msgid "Tutorial"
@@ -2733,16 +2745,16 @@ msgid "on"
 msgstr "in"
 
 #: escriptorium/templates/users/email/invitation_html.html
-msgid "eScriptorium!"
-msgstr "eScriptorium beizutreten!"
+msgid "Transcriptus!"
+msgstr "Transcriptus beizutreten!"
 
 #: escriptorium/templates/users/email/invitation_html.html
 msgid "All you need to do is click on the link below:"
 msgstr "Klicken Sie dafür einfach auf den folgenden Link:"
 
 #: escriptorium/templates/users/email/invitation_html.html
-msgid "Sincerely, the eScriptorium team."
-msgstr "Mit freundlichen Grüßen, das eScriptorium-Team."
+msgid "Sincerely, the Transcriptus team."
+msgstr "Mit freundlichen Grüßen, das Transcriptus-Team."
 
 #: escriptorium/templates/users/group_detail_invite.html
 msgid "Back to profile"
@@ -2786,8 +2798,8 @@ msgid "No other user in this team."
 msgstr "Kein anderer Benutzer in diesem Team."
 
 #: escriptorium/templates/users/invitation_accept_register.html
-msgid "Register to eScriptorium"
-msgstr "Registrieren Sie sich für eScriptorium"
+msgid "Register to Transcriptus"
+msgstr "Registrieren Sie sich für Transcriptus"
 
 #: escriptorium/templates/users/invitation_accept_register.html
 #, python-format

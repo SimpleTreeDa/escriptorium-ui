@@ -4,7 +4,7 @@ This document describes an installation into a [Debian-based](https://en.wikiped
 
 # System Requirements
 
-The installation will probably not work with less than 4 GB of RAM. For running eScriptorium, you will want to have a minimum of 2 CPU cores available.
+The installation will probably not work with less than 4 GB of RAM. For running Transcriptus, you will want to have a minimum of 2 CPU cores available.
 
 # Prerequisites
 

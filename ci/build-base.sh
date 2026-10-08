@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Build the eScriptorium Docker image.
+# Build the Transcriptus Docker image.
 # Requires CI_PROJECT_DIR and CI_REGISTRY_IMAGE to be set.
 # VERSION defaults to latest.
 # Will automatically login to a registry if CI_REGISTRY, CI_REGISTRY_USER and CI_REGISTRY_PASSWORD are set.

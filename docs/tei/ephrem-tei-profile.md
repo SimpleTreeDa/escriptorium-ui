@@ -4,8 +4,8 @@
 **Requirements:** the project brief *Syriac Project TEI File Requirements*, and its eleven items of required information.
 **Used by:** the "TEI (Ephrem)" exporter, format key `ephremtei` ([#50](https://github.com/SimpleTreeDa/escriptorium-ui/issues/50), [#13](https://github.com/SimpleTreeDa/escriptorium-ui/issues/13), [#28](https://github.com/SimpleTreeDa/escriptorium-ui/issues/28)). Editors: see [How to export TEI](how-to-export.md).
 
-This document defines the TEI that eScriptorium exports for the Ephrem Project website.
-It is a profile of standard TEI P5, not a new schema: the files are validated against the official `tei_all` schema, and this document fixes which parts of TEI we use and how eScriptorium data fills them.
+This document defines the TEI that Transcriptus exports for the Ephrem Project website.
+It is a profile of standard TEI P5, not a new schema: the files are validated against the official `tei_all` schema, and this document fixes which parts of TEI we use and how Transcriptus data fills them.
 
 ## Contents
 
@@ -29,14 +29,14 @@ It is a profile of standard TEI P5, not a new schema: the files are validated ag
 | Question | Version 1.1 |
 |---|---|
 | Sources | **Manuscripts only.** Printed editions are out of scope. |
-| Export unit | **One TEI file per eScriptorium document**, not one per work. |
+| Export unit | **One TEI file per Transcriptus document**, not one per work. |
 | Pages | **All pages** chosen in the export dialog, whatever their status. |
 | Record identifier | **The document's `record_id` metadata**, assigned by the project, unique across documents. |
 | Record URI | **`EPHREM_TEI_URI_BASE` followed by the record id**, when the instance sets it. |
-| Folio label | **The page Name** in eScriptorium. |
+| Folio label | **The page Name** in Transcriptus. |
 | Text structure | **A text flow**: headings and paragraphs as elements, pages, columns and lines as milestones (`pb`, `cb`, `lb`). |
 | Paragraphs | **Only where editors mark them** (line type *ParagraphStart*); other text is in neutral `ab` blocks. |
-| Language | **`syr`**, or an approved Syriac tag set by the document's `tei_language` metadata; never derived from eScriptorium's script setting. |
+| Language | **`syr`**, or an approved Syriac tag set by the document's `tei_language` metadata; never derived from the script setting in Transcriptus. |
 | Licence and publisher wording | **Deferred** until the website's requirements are known. |
 | Schema | **Official TEI P5 `tei_all.rng`, unchanged.** This profile defines the subset and conventions. |
 | Validation | **RelaxNG**, plus checks of the internal links and of the eleven required items, run on every export. No Schematron. |
@@ -44,7 +44,7 @@ It is a profile of standard TEI P5, not a new schema: the files are validated ag
 
 ## 2. How the export is built
 
-The brief plans this workflow: eScriptorium → PAGE XML export → converter adds project metadata → minimal TEI generation → TEI validation → downloadable TEI file.
+The brief plans this workflow: Transcriptus → PAGE XML export → converter adds project metadata → minimal TEI generation → TEI validation → downloadable TEI file.
 
 We build the same pipeline **without the intermediate PAGE XML file**, because PAGE XML doesn't carry what eight of the eleven required items need (the record id, the manuscript and work, the language, the people, the statuses, the folio names, the uncertain readings): a converter would have to read the database anyway.
 The exporter is the package `app/apps/imports/tei/`, in five stages:
@@ -170,7 +170,7 @@ The complete example is the [features document](#11-reference-files).
 One row for each of the brief's eleven required items.
 "Required data" means the exporter refuses to export without it ([section 9](#9-checks-before-export-and-the-readiness-check)); the validation of every file checks each item again ([section 10](#10-validation)).
 
-| # | Brief item | TEI | eScriptorium source | Required data |
+| # | Brief item | TEI | Transcriptus source | Required data |
 |---|---|---|---|---|
 | 1 | Stable record ID | `TEI/@xml:id`; `publicationStmt/idno[@type="ephrem"]`; `idno[@type="URI"]` | Document metadata `record_id`; the `EPHREM_TEI_URI_BASE` setting | `record_id` |
 | 2 | Manuscript identification | `msDesc/msIdentifier`: `settlement`, `repository`, `idno[@type="shelfmark"]` | Document metadata `settlement`, `repository`, `shelfmark` (or their other names) | `repository`, `shelfmark` |
@@ -189,7 +189,7 @@ One row for each of the brief's eleven required items.
 ### 5.1 Record identifier and the other ids
 
 `TEI/@xml:id` and `publicationStmt/idno[@type="ephrem"]` are the document's **`record_id`** metadata.
-It is assigned by the project and doesn't change when the document is re-imported or moved to another instance, which the eScriptorium document id would.
+It is assigned by the project and doesn't change when the document is re-imported or moved to another instance, which the Transcriptus document id would.
 
 - It must start with a letter or `_` and contain only letters, digits, `.`, `_` and `-`, so that it is a valid `xml:id` and can end a URI and name a file.
 - It must not start like the other ids in the file (`surface-`, `zone-`, `work-`, `pers-`, `htr-`, `status-`).
@@ -205,7 +205,7 @@ Other ids in the file:
 | Region (`zone`) | `zone-r{block pk}` |
 | Line (`zone`) | `zone-l{line pk}` |
 | Work (`msItem`) | `work-{n}`, numbered in order of first appearance |
-| Person with an eScriptorium account (`persName`) | `pers-{user id}` |
+| Person with a Transcriptus account (`persName`) | `pers-{user id}` |
 | Person without one (`persName`) | `pers-x-{name}` |
 | HTR model (`name`) | `htr-{model name}` |
 | A page's current status (`change`) | `status-{part pk}`; older changes `status-{part pk}-2`, … |
@@ -230,21 +230,21 @@ The name is the user's full name, or their username if no full name is set. Emai
 | Edited by | Users who set a page to *Ground truth*, *Final edited copy* or *Ready for TEI export*; names in `edited_by` |
 
 - Line versions come from `LineTranscription.version_author` and `version_source`, and from the `versions` history (the last 20 edits of each line).
-- `transcribed_by`, `reviewed_by` and `edited_by` credit people who did not work in eScriptorium. Several names are separated by `;`. A name that is the username or full name (ignoring case) of someone already credited from the document's lines or statuses adds the role to that person; any other name is a person of its own, `pers-x-{name}`.
+- `transcribed_by`, `reviewed_by` and `edited_by` credit people who did not work in Transcriptus. Several names are separated by `;`. A name that is the username or full name (ignoring case) of someone already credited from the document's lines or statuses adds the role to that person; any other name is a person of its own, `pers-x-{name}`.
 - **Automatic text recognition.** A version whose source is `kraken:{model name}` was produced by a model. Each model gets its own `respStmt`, with `resp` *Automatic text recognition by* and `name type="software"`. The user who ran the model is not credited for those versions.
 
 ### 5.4 Publication
 
 ```xml
 <publicationStmt>
-  <authority>{eScriptorium project name}</authority>
+  <authority>{Transcriptus project name}</authority>
   <idno type="ephrem">{record_id}</idno>
   <idno type="URI">{EPHREM_TEI_URI_BASE}{record_id}</idno>   <!-- only if the setting is set -->
   <date when="{export date, YYYY-MM-DD}"/>
 </publicationStmt>
 ```
 
-TEI requires a responsible body before an `idno`. Until the website's wording is agreed, `authority` is the name of the eScriptorium project that holds the document.
+TEI requires a responsible body before an `idno`. Until the website's wording is agreed, `authority` is the name of the Transcriptus project that holds the document.
 Version 1.1 has no licence (`availability`).
 
 ### 5.5 Manuscript and works
@@ -276,7 +276,7 @@ Version 1.1 has no licence (`availability`).
 ### 5.6 Encoding
 
 `encodingDesc/editorialDecl` is one fixed paragraph that names the transcription layer:
-*"Diplomatic transcription made in eScriptorium, from the transcription layer "{name}". One lb element per manuscript line, one pb element per page and one cb element per column. Headings (head) and paragraphs (p) are those the editors marked; the rest of the text is in ab elements. Line text is as entered: not normalised and not punctuated."*
+*"Diplomatic transcription made in Transcriptus, from the transcription layer "{name}". One lb element per manuscript line, one pb element per page and one cb element per column. Headings (head) and paragraphs (p) are those the editors marked; the rest of the text is in ab elements. Line text is as entered: not normalised and not punctuated."*
 
 ### 5.7 Language
 
@@ -297,11 +297,11 @@ The language tags are Syriaca.org's:
 | `syr-x-syrm` | Syriac in Melkite script |
 
 `tei_language` is matched ignoring case; any other value is an error.
-The script subtag is an editorial statement: Syriaca.org keeps `Syrj` and `Syrn` for vocalised text, so it is **never** derived from the document's script in eScriptorium, which only sets the editor's font and direction. Syriaca.org does not use `syc`.
+The script subtag is an editorial statement: Syriaca.org keeps `Syrj` and `Syrn` for vocalised text, so it is **never** derived from the document's script in Transcriptus, which only sets the editor's font and direction. Syriaca.org does not use `syc`.
 
 ### 5.8 Revision and review status
 
-The brief's status vocabulary is the one eScriptorium uses for pages, so its codes are used unchanged:
+The brief's status vocabulary is the one Transcriptus uses for pages, so its codes are used unchanged:
 
 | Code | Label |
 |---|---|
@@ -352,7 +352,7 @@ The text is therefore one flow per work: its **logical structure** (works, secti
 ```
 
 - A paragraph or block of text runs on across page and column breaks; `pb`, `cb` and `lb` sit inside it.
-- Lines are in eScriptorium's reading order.
+- Lines are in the reading order set in Transcriptus.
 - `text/@type="ManuscriptTranscription"` is the Digital Syriac Corpus's type for transcriptions made from a manuscript.
 
 ### 6.2 Works
@@ -429,7 +429,7 @@ Text annotations become TEI elements when their taxonomy's name, ignoring case, 
 
 ### 6.10 Characters
 
-- Line text is exported exactly as stored. eScriptorium stores it in Unicode NFC ([#70](https://github.com/SimpleTreeDa/escriptorium-ui/pull/70)), and the exporter normalises nothing further.
+- Line text is exported exactly as stored. Transcriptus stores it in Unicode NFC ([#70](https://github.com/SimpleTreeDa/escriptorium-ui/pull/70)), and the exporter normalises nothing further.
 - Right-to-left marks and zero-width characters are kept.
 - `&`, `<` and `>` are escaped. Text is never read as markup.
 - Characters that XML 1.0 forbids (control characters other than tab and newline) are reported as errors.
@@ -456,12 +456,12 @@ Text annotations become TEI elements when their taxonomy's name, ignoring case, 
 - **Percent-encoding** (Python's `quote()`): `MS1 f023r.jpg` becomes `MS1%20f023r.jpg`. Decoding the URL gives back the exact file name, including Syriac and accented names. A space, `%`, `(` or `[` would make the file invalid TEI, and `#` or `?` would change the link's meaning.
 - Two exported pages with the same image file name are an error; both would point to the same file.
 
-**The source link:** pages imported from a IIIF manifest also get `graphic type="source"` with the URL eScriptorium downloaded the image from (`DocumentPart.source`).
+**The source link:** pages imported from a IIIF manifest also get `graphic type="source"` with the URL Transcriptus downloaded the image from (`DocumentPart.source`).
 It is written only when `source` is an `http://` or `https://` address without spaces; PDF and zip imports store values like `pdf//…` and `zip//…`.
 
 **Zones:**
 
-- Coordinates are pixels of the image stored in eScriptorium.
+- Coordinates are pixels of the image stored in Transcriptus.
 - Every exported region has a zone, including pictures, which have no text. Region zones use the region polygon; line zones use the line mask and sit inside their region's zone.
 - Lines outside any region sit directly in the `surface`.
 - A line without a mask has no zone and no `lb/@facs`. Baselines are not exported.
@@ -532,7 +532,7 @@ Every exported file is validated before it is written. A problem here is a bug i
 - **Declared in every file** with the `<?xml-model?>` line shown in [section 3](#3-the-file-at-a-glance), so TEI editors such as Oxygen validate exports automatically.
 - **No custom schema:** everything this profile adds is either a fixed value the generator writes or a data check the exporter runs. A project ODD would only pay off if people wrote Ephrem TEI by hand.
 - **Syriaca.org's schema doesn't fit:** it removes `surface` and `zone`.
-- `lxml` 6.1.0 with libxml2 2.14.6, as in the eScriptorium image, compiles it in about 10 seconds, once per process, and validates a file in milliseconds.
+- `lxml` 6.1.0 with libxml2 2.14.6, as in the Transcriptus image, compiles it in about 10 seconds, once per process, and validates a file in milliseconds.
 
 ### 10.2 What checks what
 
@@ -555,12 +555,12 @@ Both are in `app/apps/imports/tests/samples/`, and `app/apps/imports/tests/test_
 - **`ephrem_tei_features.xml`**: a synthetic document that uses every construct in this profile: two columns, running material, a heading and a section, a paragraph across a page break, `unclear`, `gap` and both kinds of `add`, margin and commentary notes, a quire signature, a picture, unknown types, several works, a work URI, credits from metadata, the record URI. It is the export of the fixture in `test_ephrem_tei_exporter.py`, with the database ids renumbered.
 - **`ephrem_tei_sample.xml`**: the canonical sample, from real data.
 
-**Source of the canonical sample: Sachau 176, ff. 179r–179v** (eScriptorium document 15, "Sachau 176 - Training Data"), from the transcription layer `kraken:syr_41transcribathon_docs_d_3`, which is where the corrections were made. The work is Narsai's *Memra for Holy Thursday*, which the Berlin catalogue places at ff. 175v–182v.
+**Source of the canonical sample: Sachau 176, ff. 179r–179v** (Transcriptus document 15, "Sachau 176 - Training Data"), from the transcription layer `kraken:syr_41transcribathon_docs_d_3`, which is where the corrections were made. The work is Narsai's *Memra for Holy Thursday*, which the Berlin catalogue places at ff. 175v–182v.
 
 - f. 179r has 27 lines, all corrected by hand after automatic recognition; f. 179v has 28 lines, the first 2 corrected and the rest automatic recognition output. That exercises both kinds of credit.
 - It has one column, a *Main* region on each page and one line outside any region on f. 179v, real line masks, image file names with spaces, and page statuses with no recorded who or when.
 - Vat. sir. 111, the first choice (about 522, one of the earliest witnesses to Ephrem), has no transcription on the project's instance yet.
-- **Values not yet in eScriptorium:** the record id (`sachau-176`), page names, and the document metadata `repository`, `shelfmark`, `settlement`, `work` and `author` are the values editors will enter. The person id depends on the instance's user ids.
+- **Values not yet in Transcriptus:** the record id (`sachau-176`), page names, and the document metadata `repository`, `shelfmark`, `settlement`, `work` and `author` are the values editors will enter. The person id depends on the instance's user ids.
 
 ## 12. Relation to the Digital Syriac Corpus
 
@@ -586,7 +586,7 @@ The brief asks for a model informed by the [Digital Syriac Corpus](https://githu
 - Literal `[…]` for lacunae.
 - The Syriaca.org schema.
 
-**New, because the Corpus has no precedent:** `facsimile`, `surface` and `zone` with `@facs` links; `lb` and `cb`; `unclear`, `gap` and `add`; margin notes and page furniture; responsibility and status from eScriptorium's edit history and page statuses; each page linked to its status.
+**New, because the Corpus has no precedent:** `facsimile`, `surface` and `zone` with `@facs` links; `lb` and `cb`; `unclear`, `gap` and `add`; margin notes and page furniture; responsibility and status from Transcriptus's edit history and page statuses; each page linked to its status.
 
 ## 13. Not in version 1.1
 
@@ -639,3 +639,4 @@ The brief asks for a model informed by the [Digital Syriac Corpus](https://githu
 | Work URI | Not in v1 | `msItem/title/@ref` from `work_uri` |
 | Link and required-item checks | In the tests | On every export, and in the readiness check |
 | Download | A zip | A `.xml` file, or a `.zip` with the images |
+| Encoding statement | "made in eScriptorium" | "made in Transcriptus", the platform's new name |

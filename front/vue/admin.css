@@ -1,11 +1,11 @@
 /*
  * Site administration (Django admin) restyled to match the rest of
- * eScriptorium. Loaded after Django's own stylesheets and globalNavigation.css
+ * Transcriptus. Loaded after Django's own stylesheets and globalNavigation.css
  * (which brings the theme tokens and Noto Sans from index.css), see
  * app/escriptorium/templates/admin/base_site.html.
  */
 
-/* Django admin variables, mapped onto the eScriptorium theme tokens */
+/* Django admin variables, mapped onto the Transcriptus theme tokens */
 :root {
     --escr-admin-font: "Noto Sans", "Resized Arabic", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     --escr-admin-radius: 15px;
@@ -254,7 +254,11 @@ body.escr-admin thead th a:visited {
     color: var(--text1);
 }
 body.escr-admin tbody tr:hover {
-    background: var(--background);
+    background: var(--background2);
+}
+/* background2 is a big jump on dark, so soften it to a slightly lighter row */
+:root.dark-mode body.escr-admin tbody tr:hover {
+    background: color-mix(in srgb, var(--background) 30%, var(--background2));
 }
 
 /* Small buttons, like "Tags" on the projects page */
@@ -271,6 +275,7 @@ body.escr-admin #nav-sidebar a.addlink {
     font-size: 12px;
     font-weight: 600;
     line-height: 16px;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
     transition: background-color 0.15s ease-in-out;
 }
 body.escr-admin.dashboard .module td a.addlink:hover,

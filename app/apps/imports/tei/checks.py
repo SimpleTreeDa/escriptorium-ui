@@ -311,7 +311,7 @@ class Checker:
                                  [role for role in profile.ROLES if role in named[name]]))
         people.sort(key=lambda credit: (credit.name.lower(), credit.id))
         if not people:
-            self.report.warning(OTHER, "No one is credited: no line was typed or corrected in eScriptorium, no page "
+            self.report.warning(OTHER, "No one is credited: no line was typed or corrected in Transcriptus, no page "
                                        "status was set by a user, and the document has no transcribed_by, "
                                        "reviewed_by or edited_by metadata")
         models = [Credit(xml_id("htr-", model, taken), model, [profile.MODEL_ROLE]) for model in models]

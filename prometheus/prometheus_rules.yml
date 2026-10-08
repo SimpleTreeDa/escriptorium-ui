@@ -32,4 +32,4 @@ groups:
             severity: critical
           annotations:
             summary: Web down over 1 minute
-            description: "eScriptorium service is down rules expression value {{ $value }}"
+            description: "Transcriptus service is down rules expression value {{ $value }}"

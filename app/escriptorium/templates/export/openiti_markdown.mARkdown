@@ -5,7 +5,7 @@
 {% endif %}
 #META# CREATED: {% current_time %}
 
-#META# CREATED BY: eScriptorium v{{ version }}
+#META# CREATED BY: Transcriptus v{{ version }}
 
 #META# IMAGE FILENAME: {{ part.filename }}
 

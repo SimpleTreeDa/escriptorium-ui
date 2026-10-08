@@ -528,7 +528,7 @@ class ModelUploadForm(BootstrapFormMixin, forms.ModelForm):
         if self._model_job not in ('segmentation', 'recognition'):
             raise forms.ValidationError(_("Invalid model (Couldn't determine whether it's a segmentation or recognition model)."))
         elif self._model_job == 'recognition' and model.seg_type == "bbox":
-            raise forms.ValidationError(_("eScriptorium is not compatible with bounding box models."))
+            raise forms.ValidationError(_("Transcriptus is not compatible with bounding box models."))
 
         try:
             self.model_metadata = model.user_metadata

@@ -145,9 +145,9 @@ msgstr ""
 "reconnaissance."
 
 #: apps/core/forms.py
-msgid "eScriptorium is not compatible with bounding box models."
+msgid "Transcriptus is not compatible with bounding box models."
 msgstr ""
-"eScriptorium n'est pas compatible avec les modèles de reconnaissance de type "
+"Transcriptus n'est pas compatible avec les modèles de reconnaissance de type "
 "boîte englobante."
 
 #: apps/core/forms.py
@@ -1425,8 +1425,8 @@ msgstr ""
 
 #: escriptorium/templates/core/home.html
 msgid ""
-"eScriptorium: A Digital Text Production Pipeline for Print and Handwritten "
-"Texts using machine learning techniques."
+"Transcriptus: A Digital Text Production Pipeline for Print and Handwritten "
+"Texts using machine learning techniques, built on eScriptorium."
 msgstr ""
 
 #: escriptorium/templates/core/home.html
@@ -1479,6 +1479,18 @@ msgstr ""
 #: escriptorium/templates/core/home.html
 msgid "Resources"
 msgstr "Ressources"
+
+#: escriptorium/templates/core/home.html
+msgid "eScriptorium community"
+msgstr "Communauté eScriptorium"
+
+#: escriptorium/templates/core/home.html
+msgid "Built on"
+msgstr "Basé sur"
+
+#: escriptorium/templates/core/credits.html
+msgid "Transcriptus is built on eScriptorium."
+msgstr "Transcriptus est basé sur eScriptorium."
 
 #: escriptorium/templates/core/home.html
 msgid "Tutorial"
@@ -2536,7 +2548,7 @@ msgid "on"
 msgstr ""
 
 #: escriptorium/templates/users/email/invitation_html.html
-msgid "eScriptorium!"
+msgid "Transcriptus!"
 msgstr ""
 
 #: escriptorium/templates/users/email/invitation_html.html
@@ -2544,7 +2556,7 @@ msgid "All you need to do is click on the link below:"
 msgstr ""
 
 #: escriptorium/templates/users/email/invitation_html.html
-msgid "Sincerely, the eScriptorium team."
+msgid "Sincerely, the Transcriptus team."
 msgstr ""
 
 #: escriptorium/templates/users/group_detail_invite.html
@@ -2586,7 +2598,7 @@ msgid "No other user in this team."
 msgstr ""
 
 #: escriptorium/templates/users/invitation_accept_register.html
-msgid "Register to eScriptorium"
+msgid "Register to Transcriptus"
 msgstr ""
 
 #: escriptorium/templates/users/invitation_accept_register.html
