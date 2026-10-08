@@ -82,9 +82,9 @@
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
         <h2 class="mb-2 mr-3">
             {% if user.get_short_name %}
-                {% blocktrans with name=user.get_short_name %}Welcome back, {{ name }}{% endblocktrans %}
+                {% blocktrans with name=user.get_short_name %}Welcome back to Transcriptus, {{ name }}{% endblocktrans %}
             {% else %}
-                {% blocktrans with name=user.get_username %}Welcome back, {{ name }}{% endblocktrans %}
+                {% blocktrans with name=user.get_username %}Welcome back to Transcriptus, {{ name }}{% endblocktrans %}
             {% endif %}
         </h2>
         <div class="mb-2">
@@ -448,15 +448,19 @@
                 <div class="card-header"><h5><i class="fas fa-question-circle mr-1"></i> {% trans "Help" %}</h5></div>
                 <div class="card-body py-2">
                     <ul class="list-unstyled mb-0">
+                        <li><a href="{% url 'contactus' %}">{% trans "Contact" %}</a></li>
+                    </ul>
+                    <h6 class="dashboard-subtitle mt-2 mb-1">{% trans "eScriptorium community" %}</h6>
+                    <ul class="list-unstyled mb-0">
                         <li><a href="https://escriptorium.readthedocs.io/" target="_blank" rel="noopener">{% trans "Tutorial" %}</a></li>
                         <li><a href="https://groupes.renater.fr/sympa/subscribe/escriptorium-users" target="_blank" rel="noopener">{% trans "User mailing list" %}</a></li>
                         <li><a href="https://matrix.to/#/#escripta_escriptorium:gitter.im" target="_blank" rel="noopener">{% trans "Community Chat" %}</a></li>
-                        <li><a href="{% url 'contactus' %}">{% trans "Contact" %}</a></li>
                     </ul>
                     <div class="small text-muted mt-2">
                         <a class="text-muted" href="{% url 'contributors' %}">{% trans "Contributors" %}</a>
                         &middot; <a class="text-muted" href="{% url 'credits' %}">{% trans "Credits" %}</a>
-                        &middot; {% trans "Version" %} {{ VERSION_DATE }}
+                        &middot; Transcriptus {% trans "Version" %} {{ VERSION_DATE }}
+                        &middot; {% trans "Built on" %} <a class="text-muted" href="https://gitlab.com/scripta/escriptorium" target="_blank" rel="noopener">eScriptorium</a>
                     </div>
                 </div>
             </div>

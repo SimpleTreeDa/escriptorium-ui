@@ -28,7 +28,7 @@ These are internal names or stored data. Renaming them changes nothing that peop
 - **The `escriptorium` Python package** and `DJANGO_SETTINGS_MODULE`, the celery app, the nginx upstream, `ESCRIPTORIUM_ENV`, the `escr-` CSS prefix and `<body id="escriptorium">`. These match upstream, which keeps merges from eScriptorium simple.
 - **The localStorage key `escriptorium.userProfile`.** Renaming it resets everyone's saved preferences.
 - **`@escriptorium/virtual-keyboard`**, a third-party package, and the upstream base image `registry.gitlab.com/scripta/escriptorium/base`.
-- **Upstream links and credits**: the eScriptorium community links on the home page, the funders' logos, `contributors_example/`, and the eScriptorium copyright notice in `LICENSE`, which the MIT licence requires.
+- **Upstream links and credits**: the eScriptorium community links on the home page and in the dashboard's Help card, the funders' logos, `contributors_example/`, and the eScriptorium copyright notice in `LICENSE`, which the MIT licence requires.
 
 ## Site name
 
