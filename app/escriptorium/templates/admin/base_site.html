@@ -1,12 +1,12 @@
 {% extends "admin/base.html" %}
 {% load i18n static %}
 {% comment %}
-Site administration restyled to match the rest of eScriptorium: the global
+Site administration restyled to match the rest of Transcriptus: the global
 navigation on the left, Noto Sans, the light/dark theme of the main UI, and
 each admin module in its own card. Styles live in front/vue/admin.css.
 {% endcomment %}
 
-{% block title %}eScriptorium - {% if subtitle %}{{ subtitle }} | {% endif %}{{ title }}{% endblock %}
+{% block title %}Transcriptus - {% if subtitle %}{{ subtitle }} | {% endif %}{{ title }}{% endblock %}
 
 {% block dark-mode-vars %}
   <script>
@@ -19,7 +19,9 @@ each admin module in its own card. Styles live in front/vue/admin.css.
 
 {% block extrastyle %}
   {{ block.super }}
-  <link rel="icon" href="{% static "images/favicon.ico" %}">
+  <link rel="icon" href="{% static "images/favicon.ico" %}" sizes="32x32">
+  <link rel="icon" href="{% static "images/transcriptus-icon.svg" %}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{% static "images/apple-touch-icon.png" %}">
   <link rel="stylesheet" href="{% static 'globalNavigation.css' %}">
   <link rel="stylesheet" href="{% static 'siteAdmin.css' %}">
 {% endblock %}
