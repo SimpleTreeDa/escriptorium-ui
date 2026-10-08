@@ -1,5 +1,8 @@
 <template>
-    <div class="escr-filter-set">
+    <div
+        class="escr-filter-set"
+        @keydown.esc="toggleOpen(undefined)"
+    >
         <span>Filter by:</span>
         <SearchInput
             :value="nameFilter"
@@ -9,11 +12,21 @@
             :on-clear="clearNameFilter"
             :on-enter="onFilter"
         />
+        <!--
+            auto-hide lets floating-vue close the dropdown on a click outside it and on
+            Escape; apply-hide then resets openFilter so the shown prop stays in sync.
+            floating-vue treats the Tags button as "outside", but the button's own click
+            handler already toggles openFilter, so the later auto-hide is a no-op.
+            popper-triggers is emptied because the "menu" theme otherwise hides the
+            popper on mouseleave and blur, and auto-hide focuses the popper when it opens,
+            so clicking a tag inside it would blur the popper and close the dropdown.
+        -->
         <VMenu
             :delay="{ show: 0, hide: 100 }"
             :triggers="[]"
+            :popper-triggers="[]"
             :shown="openFilter === 'tags'"
-            :auto-hide="false"
+            :auto-hide="true"
             @apply-hide="() => toggleOpen(undefined)"
         >
             <FilterButton
