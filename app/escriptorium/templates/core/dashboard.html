@@ -81,11 +81,7 @@
 <div class="escr-dashboard py-3">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
         <h2 class="mb-2 mr-3">
-            {% if user.get_short_name %}
-                {% blocktrans with name=user.get_short_name %}Welcome back to Transcriptus, {{ name }}{% endblocktrans %}
-            {% else %}
-                {% blocktrans with name=user.get_username %}Welcome back to Transcriptus, {{ name }}{% endblocktrans %}
-            {% endif %}
+            {% blocktrans with name=user.get_full_name %}Welcome back to Transcriptus, {{ name }}{% endblocktrans %}
         </h2>
         <div class="mb-2">
             <a class="btn btn-outline-secondary btn-sm" href="{% url 'projects-list' %}">{% trans "My Projects" %}</a>

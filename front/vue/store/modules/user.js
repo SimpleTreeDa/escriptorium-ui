@@ -9,6 +9,7 @@ import {
 const state = () => ({
     canInvite: false,
     firstName: "",
+    lastName: "",
     /**
      * groups: [{
      *     pk: Number,
@@ -39,6 +40,7 @@ const actions = {
             commit("setCanInvite", data.can_invite);
             commit("setIsStaff", data.is_staff);
             commit("setFirstName", data.first_name);
+            commit("setLastName", data.last_name);
             commit("setUsername", data.username);
         } catch (error) {
             dispatch("alerts/addError", error, { root: true });
@@ -96,6 +98,9 @@ const mutations = {
     },
     setIsStaff(state, isStaff) {
         state.isStaff = isStaff;
+    },
+    setLastName(state, lastName) {
+        state.lastName = lastName;
     },
     setRecognitionModels(state, models) {
         state.recognitionModels = models;
