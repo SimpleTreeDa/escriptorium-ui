@@ -1,6 +1,5 @@
 svg.escr-logo {
-    width: 48px;
-    height: 48px;
-    /* The markings are cut out of the square, so give them a white backdrop on dark themes */
-    background: #fff;
+    width: 56px;
+    height: auto;
+    fill: var(--text1);
 }
