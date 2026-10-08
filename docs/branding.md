@@ -6,17 +6,17 @@ The platform is called **Transcriptus**. It is built on [eScriptorium](https://g
 
 The logo is *Julidochromis transcriptus*, the fish the name comes from.
 
-The source artwork is a traced image: white markings on a dark fish against a black background. The trace drew a black square and cut the markings out of it as holes. In the files below that square is removed, so the markings are the shape, and the view is cropped to the fish.
+The artwork is a traced image, `Julidochromis-Transcriptus.svg`: a black square with the fish's light markings cut out of it, so the markings show whatever is behind the square. The navigation shows that square as drawn, on a white backdrop, so the markings read white on dark themes as well as light ones. The icon files crop the view to the fish and drop the square.
 
 | File | What it is | Used by |
 |---|---|---|
-| `front/vue/components/Icons/TranscriptusLogo/TranscriptusLogo.vue` | The markings, in the theme's text colour (`--text1`), 56px wide | The global navigation |
-| `app/escriptorium/static/images/transcriptus-logo.svg` | The markings in white, for dark backgrounds | The legacy-mode navbar |
-| `app/escriptorium/static/images/transcriptus-icon.svg` | The white markings on a dark rounded tile (`#212323`) | The SVG favicon and the README |
+| `front/vue/components/Icons/TranscriptusLogo/TranscriptusLogo.vue` | The traced square, inline, 48px, on a white backdrop | The global navigation |
+| `app/escriptorium/static/images/transcriptus-logo.svg` | The traced SVG, as drawn | The legacy-mode navbar, 30px on a white backdrop |
+| `app/escriptorium/static/images/transcriptus-icon.svg` | The white markings on a dark rounded tile (`#212323`), cropped to the fish | The SVG favicon and the README |
 | `app/escriptorium/static/images/favicon.ico` | The tile at 16, 32 and 48 px | Browsers, and nginx's `/favicon.ico` |
 | `app/escriptorium/static/images/apple-touch-icon.png` | The tile at 180 px | iOS home screens |
 
-The PNG and ICO files are renders of `transcriptus-icon.svg`. If the artwork changes, make them again from that SVG.
+The PNG and ICO files are renders of `transcriptus-icon.svg`. If the artwork changes, copy the new SVG over `transcriptus-logo.svg`, paste its `<g>` into the Vue component, and make the tile and its renders again.
 
 ## Names that still say eScriptorium, on purpose
 
