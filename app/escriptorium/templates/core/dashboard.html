@@ -350,7 +350,7 @@
             </div>
         </div>
 
-        <div class="col-lg-4">
+        <div class="col-lg-4 d-flex flex-column">
             {# ---------------- Quick actions ---------------- #}
             <div class="card mb-3" id="dashboard-quick-actions">
                 <div class="card-header"><h5><i class="fas fa-bolt mr-1"></i> {% trans "Quick actions" %}</h5></div>
@@ -375,10 +375,9 @@
             </div>
 
             {# ---------------- Teams and invitations ---------------- #}
-            <div class="card mb-3" id="dashboard-teams">
-                <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="card mb-3 flex-grow-1" id="dashboard-teams">
+                <div class="card-header">
                     <h5><i class="fas fa-user-friends mr-1"></i> {% trans "Teams" %}</h5>
-                    <a class="small" href="{% url 'profile-team-list' %}">{% trans "Manage" %}</a>
                 </div>
                 {% if teams %}
                 <ul class="list-group list-group-flush">
@@ -427,18 +426,16 @@
                 </ul>
                 {% endif %}
 
-                {% if perms.users.can_invite %}
-                <div class="card-body py-2 border-top small">
-                    {% if sent_invitations_count %}
-                    <a href="{% url 'profile-invites-list' %}">
-                        {% blocktrans count n=sent_invitations_count %}1 invitation you sent is pending{% plural %}{{ n }} invitations you sent are pending{% endblocktrans %}
+                <div class="card-body d-flex flex-column justify-content-end border-top mt-auto flex-grow-0 py-3">
+                    <a class="btn btn-sm btn-outline-primary mb-2" href="{% url 'profile-team-list' %}"><i class="fas fa-users-cog fa-fw mr-1"></i>{% trans "Manage teams" %}</a>
+                    {% if perms.users.can_invite %}
+                    <a class="btn btn-sm btn-outline-primary mb-2" href="{% url 'profile-invites-list' %}">
+                        <i class="fas fa-envelope-open-text fa-fw mr-1"></i>{% trans "Invitations you sent" %}
+                        {% if sent_invitations_count %}<span class="badge badge-primary badge-pill ml-1" title="{% trans "Pending" %}">{{ sent_invitations_count }}</span>{% endif %}
                     </a>
-                    {% else %}
-                    <a href="{% url 'profile-invites-list' %}">{% trans "Invitations you sent" %}</a>
-                    &middot; <a href="{% url 'send-invitation' %}">{% trans "Invite someone" %}</a>
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'send-invitation' %}"><i class="fas fa-user-plus fa-fw mr-1"></i>{% trans "Invite someone" %}</a>
                     {% endif %}
                 </div>
-                {% endif %}
             </div>
 
             {# ---------------- Quotas ---------------- #}
@@ -471,28 +468,6 @@
                 </div>
             </div>
             {% endif %}
-
-            {# ---------------- Help ---------------- #}
-            <div class="card mb-3" id="dashboard-help">
-                <div class="card-header"><h5><i class="fas fa-question-circle mr-1"></i> {% trans "Help" %}</h5></div>
-                <div class="card-body py-2">
-                    <ul class="list-unstyled mb-0">
-                        <li><a href="{% url 'contactus' %}">{% trans "Contact" %}</a></li>
-                    </ul>
-                    <h6 class="dashboard-subtitle mt-2 mb-1">{% trans "eScriptorium community" %}</h6>
-                    <ul class="list-unstyled mb-0">
-                        <li><a href="https://escriptorium.readthedocs.io/" target="_blank" rel="noopener">{% trans "Tutorial" %}</a></li>
-                        <li><a href="https://groupes.renater.fr/sympa/subscribe/escriptorium-users" target="_blank" rel="noopener">{% trans "User mailing list" %}</a></li>
-                        <li><a href="https://matrix.to/#/#escripta_escriptorium:gitter.im" target="_blank" rel="noopener">{% trans "Community Chat" %}</a></li>
-                    </ul>
-                    <div class="small text-muted mt-2">
-                        <a class="text-muted" href="{% url 'contributors' %}">{% trans "Contributors" %}</a>
-                        &middot; <a class="text-muted" href="{% url 'credits' %}">{% trans "Credits" %}</a>
-                        &middot; Transcriptus {% trans "Version" %} {{ VERSION_DATE }}
-                        &middot; {% trans "Built on" %} <a class="text-muted" href="https://gitlab.com/scripta/escriptorium" target="_blank" rel="noopener">eScriptorium</a>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 </div>
