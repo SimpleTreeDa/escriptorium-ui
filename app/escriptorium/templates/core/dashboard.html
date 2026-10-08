@@ -9,6 +9,33 @@
 <style>
 /* Colors come from the theme variables so the page follows dark mode;
    the fallbacks are the Bootstrap 4 defaults for the legacy light UI. */
+.escr-dashboard .dashboard-brand a {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text1, inherit);
+    text-decoration: none;
+}
+/* The fish artwork is white, so it is used as a mask and takes the text color. */
+.escr-dashboard .dashboard-brand-fish {
+    display: inline-block;
+    width: 4.4rem;
+    height: 2rem;
+    margin-right: .75rem;
+    background-color: currentColor;
+    -webkit-mask: url("{% static 'images/transcriptus-logo.svg' %}") center / contain no-repeat;
+    mask: url("{% static 'images/transcriptus-logo.svg' %}") center / contain no-repeat;
+}
+.escr-dashboard .dashboard-brand-name {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: .15em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+.escr-dashboard .dashboard-brand a:hover {
+    text-decoration: none;
+    opacity: .8;
+}
 .escr-dashboard .card {
     background-color: var(--background1, #fff);
     color: var(--text1, inherit);
@@ -79,6 +106,12 @@
 </style>
 
 <div class="escr-dashboard py-3">
+    <div class="dashboard-brand text-center mb-4">
+        <a href="{% url 'home' %}" aria-label="Transcriptus">
+            <span class="dashboard-brand-fish" aria-hidden="true"></span>
+            <span class="dashboard-brand-name">Transcriptus</span>
+        </a>
+    </div>
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
         <h2 class="mb-2 mr-3">
             {% blocktrans with name=user.get_full_name %}Welcome back to Transcriptus, {{ name }}{% endblocktrans %}
