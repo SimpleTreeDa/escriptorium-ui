@@ -52,7 +52,13 @@ accepts `--help`.
 ## Contributing
 Changes go through pull requests on this repository. For the upstream project, see [Contributing to eScriptorium](https://gitlab.com/scripta/escriptorium/-/wikis/contributing).
 
+## License
+
+Transcriptus is released under the [MIT license](LICENSE). It is a derivative of [eScriptorium](https://gitlab.com/scripta/escriptorium), which is also MIT-licensed and used here under those terms. The license file keeps both copyright notices: Transcriptus (© 2026 Colorado Christian University) and eScriptorium (© 2018 Robin Tissot, PSL). The MIT terms require that these notices and the permission text are included in all copies or substantial portions of the software.
+
 ## Built on eScriptorium
+
+Transcriptus is a fork of eScriptorium, and the credits below are eScriptorium's own. The upstream project is at <https://gitlab.com/scripta/escriptorium>.
 
 eScriptorium is part of the [Scripta](https://www.psl.eu/en/scripta), [RESILIENCE](https://www.resilience-ri.eu) and [Biblissima+](https://projet.biblissima.fr/) projects, and has received funding from Université PSL and from The European Union's [Horizon 2020 Research and Innovation Programme](https://ec.europa.eu/programmes/horizon2020/en/what-horizon-2020) under Grant Agreement no. 871127, from the Programme d'investissements d'avenir of the [Agence Nationale de Recheche](https://anr.fr/fr/france-2030/france-2030/) under Grant Reference no. ANR-21-ESRE-0005, as well as from other contributors listed below. Its goal is provide researchers in the humanities with an integrated set of tools to transcribe, annotate, translate and publish historical documents.
 The eScriptorium app itself is at the 'center'. It is a work in progress but will implement at least automatic transcriptions through kraken, indexation for complex search and filtering, annotation and some simple forms of collaborative working such as sharing and versioning.
