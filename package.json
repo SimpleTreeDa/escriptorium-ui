@@ -1,7 +1,7 @@
 {
   "name": "escriptorium-ui",
   "private": true,
-  "description": "Developer scripts for the eScriptorium docker stack. The frontend lives in front/, the backend in app/.",
+  "description": "Developer scripts for the Transcriptus docker stack. The frontend lives in front/, the backend in app/.",
   "type": "module",
   "engines": {
     "node": ">=18"

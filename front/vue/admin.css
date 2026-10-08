@@ -1,11 +1,11 @@
 /*
  * Site administration (Django admin) restyled to match the rest of
- * eScriptorium. Loaded after Django's own stylesheets and globalNavigation.css
+ * Transcriptus. Loaded after Django's own stylesheets and globalNavigation.css
  * (which brings the theme tokens and Noto Sans from index.css), see
  * app/escriptorium/templates/admin/base_site.html.
  */
 
-/* Django admin variables, mapped onto the eScriptorium theme tokens */
+/* Django admin variables, mapped onto the Transcriptus theme tokens */
 :root {
     --escr-admin-font: "Noto Sans", "Resized Arabic", var(--escr-syriac-font, "Noto Sans Syriac"), sans-serif;
     --escr-admin-radius: 15px;

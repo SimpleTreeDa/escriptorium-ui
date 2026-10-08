@@ -41,7 +41,7 @@ class Profile {
         if (!this.get("cookie-consent")) {
             let alert = Alert.add(
                 "cookie-consent",
-                "eScriptorium uses cookies to store the user session and local storage to save user interface preferences.",
+                "Transcriptus uses cookies to store the user session and local storage to save user interface preferences.",
                 "warning",
                 [
                     {
