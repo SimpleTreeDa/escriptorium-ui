@@ -3,7 +3,7 @@
 
 #META# CREATED: 2022-01-01T00:00:00
 
-#META# CREATED BY: eScriptorium v1.0.0-testing
+#META# CREATED BY: Transcriptus v1.0.0-testing
 
 #META# IMAGE FILENAME: default2.png
 

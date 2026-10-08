@@ -1137,7 +1137,7 @@ class IIIFManifestParser(ParserDocument):
             time.sleep(0.1 * current_retry)  # avoid being throttled; add a little backoff
             try:
                 headers = {
-                    'User-Agent': 'eScriptorium'
+                    'User-Agent': 'Transcriptus (eScriptorium)'
                 }
                 response = requests.get(url, headers=headers, stream=True, verify=False, timeout=10)
                 response.raise_for_status()

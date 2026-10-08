@@ -28,7 +28,7 @@ class FileImportError(Exception):
 def clean_uri(uri, document, tempfile, is_mets=False, mets_base_uri=None):
     try:
         headers = {
-            'User-Agent': 'eScriptorium'
+            'User-Agent': 'Transcriptus (eScriptorium)'
         }
         resp = requests.get(uri, headers=headers)
         resp.raise_for_status()
