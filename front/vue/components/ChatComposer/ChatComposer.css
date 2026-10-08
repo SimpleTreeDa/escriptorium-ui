@@ -1,0 +1,22 @@
+/* the question box and its send button, at the bottom of the AI Chat page */
+.escr-chat-composer {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: flex-end;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--background2);
+}
+.escr-chat-composer .escr-chat-composer-field {
+    flex: 1 1 auto;
+}
+.escr-chat-composer .escr-chat-composer-field textarea {
+    margin: 0;
+    min-height: 44px;
+    max-height: 160px;
+    resize: vertical;
+    font: inherit;
+}
+.escr-chat-composer button {
+    flex: 0 0 auto;
+}

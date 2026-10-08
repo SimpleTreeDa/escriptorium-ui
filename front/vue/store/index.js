@@ -2,6 +2,7 @@ import Vue from "vue";
 import Vuex, { Store } from "vuex";
 import FloatingVue from "floating-vue";
 import alerts from "./modules/alerts";
+import assistant from "./modules/assistant";
 import characters from "./modules/characters";
 import document from "./modules/document";
 import filter from "./modules/filter";
@@ -46,6 +47,7 @@ const store = new Store({
     },
     modules: {
         alerts,
+        assistant,
         characters,
         document,
         filter,

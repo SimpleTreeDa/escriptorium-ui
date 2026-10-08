@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     'imports',
     'language_flags',
     'reporting',
+    'assistant',
     'django_prometheus',
     'solo',
 ]
@@ -441,6 +442,10 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'core.pagination.CustomPagination',
     'PAGE_SIZE': 10,
+    'DEFAULT_THROTTLE_RATES': {
+        # questions to the AI Chat assistant, per user
+        'assistant': '20/min',
+    },
 }
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
@@ -485,6 +490,28 @@ TEXT_ALIGNMENT_ENABLED = os.getenv('TEXT_ALIGNMENT', "False").lower() not in ("f
 IMPORT_ALLOWED_DOMAINS = os.getenv('IMPORT_ALLOWED_DOMAINS', '*').split(',')
 
 # Sentry support
+# The AI Chat assistant (app 'assistant'): an OpenAI-compatible chat completions
+# server, LM Studio on the LAN for now. Hard-coded on purpose in this first
+# version; each value is one os.getenv() away from being configurable.
+ASSISTANT = {
+    'PROVIDER': 'openai_compatible',
+    'BASE_URL': 'http://192.168.50.212:1234/v1',
+    'MODEL': 'qwen3.6-35b-a3b-m5',
+    'DISPLAY_NAME': 'Qwen 3.6',
+    'PRODUCT_NAME': 'Transcriptus',  # how the assistant names the application
+    'API_KEY': '',  # LM Studio needs none; sent as a Bearer token when set
+    'TIMEOUT': 55,  # seconds, under nginx's 60 s read timeout
+    # The model reasons before answering and the reasoning counts here: with a
+    # small budget it runs out before the answer starts (an "empty answer").
+    'MAX_TOKENS': 4000,
+    'TEMPERATURE': 0.3,
+    # Reasoning models think before they answer, slowly and at length; 'none'
+    # switches that off (LM Studio honours it). 'low', 'medium' or 'high'
+    # switch it back on, and None leaves the server's default.
+    'REASONING_EFFORT': 'none',
+    'MAX_HISTORY': 20,  # messages kept from the conversation the browser sends
+}
+
 SENTRY_DSN = os.getenv('SENTRY_DSN')
 ESCRIPTORIUM_ENV = os.getenv('ESCRIPTORIUM_ENV', 'dev')
 if SENTRY_DSN:

@@ -1,0 +1,45 @@
+/* one message of the AI Chat conversation */
+.escr-chat-message {
+    display: flex;
+    flex-flow: column nowrap;
+    align-self: flex-start;
+    align-items: flex-start;
+    max-width: 75%;
+}
+.escr-chat-message--user {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+.escr-chat-message-meta {
+    display: flex;
+    gap: 8px;
+    margin: 0 4px 2px;
+    font-size: 12px;
+    color: var(--text2);
+}
+.escr-chat-message-author {
+    font-weight: 600;
+}
+.escr-chat-message-body {
+    border-radius: 12px;
+    padding: 10px 14px;
+    background: var(--background2);
+    color: var(--text1);
+    /* the answer as written: line breaks kept, never rendered as HTML */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.45;
+}
+.escr-chat-message--user .escr-chat-message-body {
+    background: var(--secondary-hover);
+    border-bottom-right-radius: 4px;
+}
+.escr-chat-message--assistant .escr-chat-message-body {
+    border-bottom-left-radius: 4px;
+}
+.escr-chat-message-pending {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text2);
+}

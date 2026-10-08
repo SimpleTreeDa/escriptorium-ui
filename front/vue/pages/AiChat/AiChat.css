@@ -1,0 +1,71 @@
+/* AI Chat page: one card filling the viewport, the conversation in the
+   middle and the question box at the bottom */
+.escr-ai-chat .escr-ai-chat-card {
+    display: flex;
+    flex-flow: column nowrap;
+    box-sizing: border-box;
+    height: calc(100vh - 32px);
+    max-height: calc(100vh - 32px);
+}
+.escr-ai-chat .escr-card-header {
+    flex: 0 0 auto;
+}
+.escr-ai-chat .escr-ai-chat-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+}
+.escr-ai-chat .escr-ai-chat-model {
+    color: var(--text2);
+    font-size: 14px;
+}
+.escr-ai-chat .escr-ai-chat-focus {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 1rem 0 0;
+    font-size: 14px;
+}
+.escr-ai-chat .escr-ai-chat-focus .escr-dropdown {
+    min-width: 220px;
+}
+/* the conversation */
+.escr-ai-chat .escr-ai-chat-log {
+    flex: 1 1 auto;
+    display: flex;
+    flex-flow: column nowrap;
+    gap: 12px;
+    overflow-y: auto;
+    padding: 4px 4px 12px;
+}
+.escr-ai-chat .escr-ai-chat-empty {
+    margin: auto;
+    max-width: 640px;
+    text-align: center;
+    color: var(--text2);
+}
+.escr-ai-chat .escr-ai-chat-suggestions {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 1rem;
+}
+.escr-ai-chat .escr-ai-chat-error {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    align-self: flex-start;
+    gap: 12px;
+    max-width: 75%;
+}
+.escr-ai-chat .escr-ai-chat-error .escr-alert {
+    margin-top: 0;
+    padding-right: 16px;
+    height: auto;
+    min-height: 32px;
+}
+/* the question box */
+.escr-ai-chat .escr-chat-composer {
+    flex: 0 0 auto;
+}
