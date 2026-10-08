@@ -42,7 +42,7 @@ to do it.
 
 
 def product_name():
-    return settings.ASSISTANT.get('PRODUCT_NAME', 'eScriptorium')
+    return settings.ASSISTANT.get('PRODUCT_NAME', 'Transcriptus')
 
 
 def system_message(context_text, recent_days=7):

@@ -498,7 +498,7 @@ ASSISTANT = {
     'BASE_URL': 'http://192.168.50.212:1234/v1',
     'MODEL': 'qwen3.6-35b-a3b-m5',
     'DISPLAY_NAME': 'Qwen 3.6',
-    'PRODUCT_NAME': 'eScriptorium',  # how the assistant names the application
+    'PRODUCT_NAME': 'Transcriptus',  # how the assistant names the application
     'API_KEY': '',  # LM Studio needs none; sent as a Bearer token when set
     'TIMEOUT': 55,  # seconds, under nginx's 60 s read timeout
     # The model reasons before answering and the reasoning counts here: with a
