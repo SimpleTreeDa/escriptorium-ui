@@ -1,5 +1,10 @@
-eScriptorium is part of the [Scripta](https://www.psl.eu/en/scripta), [RESILIENCE](https://www.resilience-ri.eu) and [Biblissima+](https://projet.biblissima.fr/) projects, and has received funding from Université PSL and from The European Union's [Horizon 2020 Research and Innovation Programme](https://ec.europa.eu/programmes/horizon2020/en/what-horizon-2020) under Grant Agreement no. 871127, from the Programme d'investissements d'avenir of the [Agence Nationale de Recheche](https://anr.fr/fr/france-2030/france-2030/) under Grant Reference no. ANR-21-ESRE-0005, as well as from other contributors listed below. Its goal is provide researchers in the humanities with an integrated set of tools to transcribe, annotate, translate and publish historical documents.
-The eScriptorium app itself is at the 'center'. It is a work in progress but will implement at least automatic transcriptions through kraken, indexation for complex search and filtering, annotation and some simple forms of collaborative working such as sharing and versioning.
+<img src="app/escriptorium/static/images/transcriptus-icon.svg" alt="" width="96" align="right">
+
+# Transcriptus
+
+Transcriptus is a platform to transcribe, annotate and publish historical documents, built on [eScriptorium](https://gitlab.com/scripta/escriptorium). It keeps eScriptorium's pipeline (automatic transcription with kraken, search, annotation, sharing and versioning) and adds its own interface changes and the TEI (Ephrem) export ([docs/tei](docs/tei/)).
+
+Its logo is *Julidochromis transcriptus*, the fish the name comes from.
 
 ## The stack
 - nginx
@@ -19,7 +24,7 @@ Two options,
 - [install with Docker](https://gitlab.com/scripta/escriptorium/-/wikis/docker-install), or a
 - [full local install](https://gitlab.com/scripta/escriptorium/-/wikis/full-install).
 
-eScriptorium needs either Linux, macOS or Windows (with WSL).
+Transcriptus needs either Linux, macOS or Windows (with WSL). The install guides are eScriptorium's: follow them with this repository in place of eScriptorium's.
 
 
 ## Development scripts
@@ -45,9 +50,14 @@ is not reachable as the current user; pass `--sudo` to force it. Every script
 accepts `--help`.
 
 ## Contributing
-See [Contributing to eScriptorium](https://gitlab.com/scripta/escriptorium/-/wikis/contributing).
+Changes go through pull requests on this repository. For the upstream project, see [Contributing to eScriptorium](https://gitlab.com/scripta/escriptorium/-/wikis/contributing).
 
-## Steering Committee
+## Built on eScriptorium
+
+eScriptorium is part of the [Scripta](https://www.psl.eu/en/scripta), [RESILIENCE](https://www.resilience-ri.eu) and [Biblissima+](https://projet.biblissima.fr/) projects, and has received funding from Université PSL and from The European Union's [Horizon 2020 Research and Innovation Programme](https://ec.europa.eu/programmes/horizon2020/en/what-horizon-2020) under Grant Agreement no. 871127, from the Programme d'investissements d'avenir of the [Agence Nationale de Recheche](https://anr.fr/fr/france-2030/france-2030/) under Grant Reference no. ANR-21-ESRE-0005, as well as from other contributors listed below. Its goal is provide researchers in the humanities with an integrated set of tools to transcribe, annotate, translate and publish historical documents.
+The eScriptorium app itself is at the 'center'. It is a work in progress but will implement at least automatic transcriptions through kraken, indexation for complex search and filtering, annotation and some simple forms of collaborative working such as sharing and versioning.
+
+### eScriptorium steering committee
 
 - Daniel Stoekl Ben Ezra (EPHE-PSL, UMR AOROC 8546)
 - Peter Stokes (EPHE-PSL, UMR AOROC 8546)
@@ -58,7 +68,7 @@ See [Contributing to eScriptorium](https://gitlab.com/scripta/escriptorium/-/wik
 - Thibault Clérice (Inria)
 - Hassen Aguili (Inria)
 
-## Current financial and technical contributors include:
+### eScriptorium's current financial and technical contributors include:
 - [École Pratique des Hautes Études (EPHE)](https://www.ephe.psl.eu)
 - [Biblissima+](https://projet.biblissima.fr/)
 - [Resilience](https://www.resilience-ri.eu/)
