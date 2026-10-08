@@ -31,6 +31,7 @@ from api.views import (
     TextualWitnessViewSet,
     UserViewSet,
 )
+from assistant.views import ChatView
 
 router = routers.DefaultRouter()
 router.register(r'scripts', ScriptViewSet)
@@ -73,6 +74,7 @@ urlpatterns = [
     path('', include(documents_router.urls)),
     path('', include(parts_router.urls)),
     path('', include(projects_router.urls)),
+    path('assistant/chat/', ChatView.as_view(), name='assistant-chat'),
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('token-auth/', RegenerableAuthToken.as_view())
 ]

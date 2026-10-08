@@ -102,6 +102,18 @@
                     </ul>
                 </template>
             </VMenu>
+            <a
+                v-if="isAuthenticated"
+                href="/assistant/"
+                aria-label="AI chat"
+                :class="{
+                    'escr-globalnav-icon': true,
+                    'escr-globalnav-icon-active': location.pathname === '/assistant/',
+                }"
+            >
+                <ChatIcon />
+                <span>AI Chat</span>
+            </a>
         </div>
         <div class="escr-lower-navgroup">
             <VMenu
@@ -188,6 +200,7 @@
 </template>
 <script>
 import { Menu as VMenu } from "floating-vue";
+import ChatIcon from "../Icons/ChatIcon/ChatIcon.vue";
 import DarkModeIcon from "../Icons/DarkModeIcon/DarkModeIcon.vue";
 import EscrLogo from "../Icons/EscrLogo/EscrLogo.vue";
 import HomeIcon from "../Icons/HomeIcon/HomeIcon.vue";
@@ -203,6 +216,7 @@ import { mapActions, mapState } from "vuex";
 export default {
     name: "EscrGlobalNavigation",
     components: {
+        ChatIcon,
         EscrLogo,
         DarkModeIcon,
         HomeIcon,
