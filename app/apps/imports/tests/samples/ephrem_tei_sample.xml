@@ -2,7 +2,7 @@
 <?xml-model href="https://www.tei-c.org/Vault/P5/4.12.0/xml/tei/custom/schema/relaxng/tei_all.rng" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>
 <!--
   Canonical sample for the Ephrem TEI profile, version 1.1 (docs/tei/ephrem-tei-profile.md).
-  Source: eScriptorium document 15 (Sachau 176 - Training Data), pages 179r, 179v,
+  Source: Transcriptus document 15 (Sachau 176 - Training Data), pages 179r, 179v,
   transcription layer "kraken:syr_41transcribathon_docs_d_3", read on 2026-10-07.
   Text, polygons, credits and statuses are the real data. Page names, the record id and the document
   metadata (repository, settlement, shelfmark, work, author) are the values editors will enter;
@@ -46,7 +46,7 @@
     </fileDesc>
     <encodingDesc>
       <editorialDecl>
-        <p>Diplomatic transcription made in eScriptorium, from the transcription layer "kraken:syr_41transcribathon_docs_d_3". One lb element per manuscript line, one pb element per page and one cb element per column. Headings (head) and paragraphs (p) are those the editors marked; the rest of the text is in ab elements. Line text is as entered: not normalised and not punctuated.</p>
+        <p>Diplomatic transcription made in Transcriptus, from the transcription layer "kraken:syr_41transcribathon_docs_d_3". One lb element per manuscript line, one pb element per page and one cb element per column. Headings (head) and paragraphs (p) are those the editors marked; the rest of the text is in ab elements. Line text is as entered: not normalised and not punctuated.</p>
       </editorialDecl>
     </encodingDesc>
     <profileDesc>
